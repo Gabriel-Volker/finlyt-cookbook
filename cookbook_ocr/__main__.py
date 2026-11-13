@@ -30,7 +30,7 @@ def load_api_keys() -> tuple[str, str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Compare two OCR readings of a recipe.")
+    parser = argparse.ArgumentParser(description="Transcribe, compare and extract a recipe.")
     parser.add_argument("recipe", type=Path, help="PDF, PNG or JPEG recipe")
     parser.add_argument("--output", type=Path, help="Write the JSON report to this file")
     args = parser.parse_args()
@@ -57,7 +57,9 @@ def main() -> int:
 
     review_count = len(report["comparison"]["review_items"])
     if review_count:
-        print(f"Human review required for {review_count} item(s).", file=sys.stderr)
+        print(f"Human review required for {review_count} transcription item(s).", file=sys.stderr)
+    if report["extraction_issues"] or (report["status"] == "needs_review" and not review_count):
+        print("Human review required for unresolved recipe fields.", file=sys.stderr)
     return 0
 
 

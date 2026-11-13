@@ -1,0 +1,70 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "servings", "ingredients", "tools", "steps"],
+  "properties": {
+    "title": {"$ref": "#/$defs/nullable_span"},
+    "servings": {"$ref": "#/$defs/nullable_span"},
+    "ingredients": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "quantity", "unit", "preparation", "optional_when"],
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"$ref": "#/$defs/span"},
+          "quantity": {"$ref": "#/$defs/nullable_span"},
+          "unit": {"$ref": "#/$defs/nullable_span"},
+          "preparation": {"$ref": "#/$defs/nullable_span"},
+          "optional_when": {"$ref": "#/$defs/nullable_span"}
+        }
+      }
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name"],
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"$ref": "#/$defs/span"}
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["instruction", "ingredient_ids", "tool_ids", "duration", "condition"],
+        "properties": {
+          "instruction": {"$ref": "#/$defs/span"},
+          "ingredient_ids": {"type": "array", "items": {"type": "string"}},
+          "tool_ids": {"type": "array", "items": {"type": "string"}},
+          "duration": {"$ref": "#/$defs/nullable_span"},
+          "condition": {"$ref": "#/$defs/nullable_span"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "span": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "quote", "text"],
+      "properties": {
+        "source": {"type": "string", "enum": ["A", "B"]},
+        "quote": {"type": "string"},
+        "text": {"type": "string"}
+      }
+    },
+    "nullable_span": {
+      "anyOf": [
+        {"$ref": "#/$defs/span"},
+        {"type": "null"}
+      ]
+    }
+  }
+}

@@ -54,3 +54,11 @@ Codex proposed requiring literal excerpts from each reading and validating those
 ## 2026-11-13 13:45 · Models selected for OCR and comparison
 
 Gabriel selected Gemini 3.1 Flash-Lite and GPT-6 Luna for independent transcriptions. GPT-6 Luna compares the anonymous text readings. Conflicts, omissions, and unreadable text go into the JSON report for human review, with page references where available and literal excerpts checked in code. The [implementation test](AI_LOG.md#2026-11-13-134528134556--implemented-ocr-and-review-pipeline) flagged a disagreement in the illustrated header.
+
+## 2026-11-13 14:17 · Recipe fields and document instructions
+
+Gabriel asked for a Python extraction stage that returns ingredients, quantities, utensils, steps, and servings in JSON, preserves their origin, and flags discrepancies. GPT-6 Luna extracts the recipe from the two anonymous transcriptions. Python verifies each quote against its assigned reading and derives the page index from that reading. It restores whitespace only when the other characters match exactly. Step references must resolve to existing ingredients or utensils.
+
+An unstated field stays null. When a discrepancy affects a field, the report withholds the value and links the source evidence to its review item. If evidence fails validation, extraction gets one retry. Any field that still lacks a valid quote stays null and receives a review entry at its JSON path.
+
+Both OCR providers receive the fixed prompt separately from the attachment. The comparison and extraction models receive the readings as untrusted source material, use strict schemas, and run without tools. Exact evidence supports inspection of the output. It cannot establish that two OCR readings are accurate when both make the same mistake.

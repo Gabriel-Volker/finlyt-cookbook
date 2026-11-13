@@ -80,11 +80,11 @@ class GeminiClient:
             "x-goog-api-key",
             self._api_key,
             {
+                "systemInstruction": {"parts": [{"text": prompt}]},
                 "contents": [
                     {
                         "role": "user",
                         "parts": [
-                            {"text": prompt},
                             {"inlineData": {"mimeType": mime_type, "data": encoded}},
                         ],
                     }
@@ -120,6 +120,9 @@ class OpenAIClient:
             {"max_output_tokens": 4096, **payload, "model": OPENAI_MODEL, "store": False},
         )
         if result.get("status") != "completed":
+            incomplete = result.get("incomplete_details") or {}
+            if incomplete.get("reason") == "max_output_tokens":
+                raise ProviderError("OpenAI reached the output token limit.")
             raise ProviderError("OpenAI did not return a completed response.")
 
         text = "\n".join(
@@ -139,7 +142,7 @@ class OpenAIClient:
         if mime_type == "application/pdf":
             attachment = {
                 "type": "input_file",
-                "filename": Path(filename).name,
+                "filename": "recipe.pdf",
                 "file_data": data_uri,
             }
         else:
@@ -147,9 +150,7 @@ class OpenAIClient:
 
         return self.respond(
             input=[
-                {
-                    "role": "user",
-                    "content": [{"type": "input_text", "text": prompt}, attachment],
-                }
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": [attachment]},
             ]
         )

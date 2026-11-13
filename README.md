@@ -11,6 +11,14 @@ python -m cookbook_ocr Recipe.pdf --output outputs/recipe-review.json
 
 The command accepts PDF, PNG, and JPEG. Omit `--output` to write JSON to standard output.
 
-When the report status is `needs_review`, inspect each entry in `comparison.review_items` against the source page. It includes a page index when available, the reason, and the corresponding excerpts from both readings. The command checks that each excerpt occurs verbatim in its assigned transcription. Equivalent quantities and formatting are listed under `equivalent_variations`. The `no_discrepancies` status means the comparator found no issues in the two readings. Human review is recorded as a pending action in the report.
+The `recipe` object contains the title, servings, ingredients, utensils, and ordered steps. Ingredients have quantities, units, preparation notes, and any explicitly stated optionality. Steps reference ingredient and utensil IDs and preserve stated durations and conditions.
+
+Each extracted field carries a value, status, and evidence with its transcription label, page index when identifiable, and verbatim quote. A `missing` field has a null value. When a flagged discrepancy overlaps an extracted field, the field has status `needs_review` and a null value, with the evidence and one-based review item indices retained. Review items for passages outside the recipe, such as the cookbook attribution, remain visible in `comparison.review_items`.
+
+The CLI restores source whitespace in extraction quotes when it can match every other character exactly. It retries comparison or extraction once if that stage returns invalid evidence. Any extracted field still lacking valid evidence is withheld and identified in `extraction_issues` by its path within `recipe`.
+
+When the report status is `needs_review`, inspect the flagged fields, `extraction_issues`, and each entry in `comparison.review_items`. Each comparison entry includes a page index when available, the reason, and the excerpts from both readings. The command checks that each excerpt occurs verbatim in its assigned transcription. Equivalent quantities and formatting are listed under `equivalent_variations`.
+
+The OCR providers receive fixed system instructions separately from the attachment. The comparison and extraction calls receive the transcriptions as source data in a user message. They use strict output schemas and run without tools. The CLI verifies excerpts and step references before it writes a report. These checks reduce the risk of document instructions affecting the output. Review the original page when a value is in doubt.
 
 Run the local tests with `python -m unittest discover -s tests -v`.

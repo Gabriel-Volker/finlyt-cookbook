@@ -14,6 +14,7 @@ PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
 TRANSCRIPTION_A = "Page 1\nPear compote by Mara\nUse ¾ cup of water."
 TRANSCRIPTION_B = "Page 1\nPear compote by Ma[unreadable]\nUse 3/4 cup of water."
 DOCUMENT = b"%PDF-1.7\n"
+EMPTY_RECIPE = {"title": None, "servings": None, "ingredients": [], "tools": [], "steps": []}
 
 
 def comparison_with_uncertainty():
@@ -78,7 +79,7 @@ class PipelineTests(unittest.TestCase):
 
     def test_review_items_set_pipeline_status(self):
         comparison = comparison_with_uncertainty()
-        self.openai.respond.return_value = json.dumps(comparison)
+        self.openai.respond.side_effect = [json.dumps(comparison), json.dumps(EMPTY_RECIPE)]
 
         report = run_pipeline(DOCUMENT, "recipe.pdf", self.gemini, self.openai)
 
@@ -93,6 +94,27 @@ class PipelineTests(unittest.TestCase):
         )
         self.assertEqual(report["comparison"], comparison)
         self.assertEqual(report["status"], "needs_review")
+        self.assertEqual(report["recipe"]["servings"]["status"], "missing")
+        extraction_call = self.openai.respond.call_args.kwargs
+        self.assertEqual(extraction_call["text"]["format"]["name"], "recipe_extraction")
+        self.assertEqual(
+            json.loads(extraction_call["input"][1]["content"]),
+            {"A": TRANSCRIPTION_A, "B": TRANSCRIPTION_B},
+        )
+
+    def test_retries_comparison_with_invalid_evidence(self):
+        invalid = comparison_with_uncertainty()
+        invalid["review_items"][0]["a_excerpt"] = "Missing from source"
+        valid = comparison_with_uncertainty()
+        self.openai.respond.side_effect = [
+            json.dumps(invalid), json.dumps(valid), json.dumps(EMPTY_RECIPE)
+        ]
+
+        report = run_pipeline(DOCUMENT, "recipe.pdf", self.gemini, self.openai)
+        self.assertEqual(report["comparison"], valid)
+        self.gemini.transcribe.assert_called_once()
+        self.openai.transcribe.assert_called_once()
+        self.assertEqual(self.openai.respond.call_count, 3)
 
     def test_equivalent_fraction_does_not_require_review(self):
         self.gemini.transcribe.return_value = "Use ¾ cup of water."
@@ -100,12 +122,48 @@ class PipelineTests(unittest.TestCase):
         comparison = comparison_with_uncertainty()
         comparison["review_items"] = []
         comparison["equivalent_variations"][0]["page"] = None
-        self.openai.respond.return_value = json.dumps(comparison)
+        self.openai.respond.side_effect = [json.dumps(comparison), json.dumps(EMPTY_RECIPE)]
 
         report = run_pipeline(DOCUMENT, "recipe.pdf", self.gemini, self.openai)
 
         self.assertEqual(report["status"], "no_discrepancies")
         self.assertEqual(report["comparison"], comparison)
+
+    def test_retries_extraction_with_invalid_evidence_without_repeating_ocr(self):
+        invalid_recipe = {
+            **EMPTY_RECIPE,
+            "title": {"source": "A", "quote": "Fabricated", "text": "Fabricated"},
+        }
+        self.openai.respond.side_effect = [
+            json.dumps(comparison_with_uncertainty()),
+            json.dumps(invalid_recipe),
+            json.dumps(EMPTY_RECIPE),
+        ]
+
+        report = run_pipeline(DOCUMENT, "recipe.pdf", self.gemini, self.openai)
+
+        self.gemini.transcribe.assert_called_once()
+        self.openai.transcribe.assert_called_once()
+        self.assertEqual(self.openai.respond.call_count, 3)
+        self.assertEqual(report["recipe"]["title"]["status"], "missing")
+
+    def test_withholds_field_if_evidence_is_still_invalid_after_retry(self):
+        invalid_recipe = {
+            **EMPTY_RECIPE,
+            "title": {"source": "A", "quote": "Fabricated", "text": "Fabricated"},
+        }
+        self.openai.respond.side_effect = [
+            json.dumps({"review_items": [], "equivalent_variations": []}),
+            json.dumps(invalid_recipe),
+            json.dumps(invalid_recipe),
+        ]
+
+        report = run_pipeline(DOCUMENT, "recipe.pdf", self.gemini, self.openai)
+
+        self.assertEqual(report["status"], "needs_review")
+        self.assertIsNone(report["recipe"]["title"]["value"])
+        self.assertEqual(report["recipe"]["title"]["status"], "needs_review")
+        self.assertEqual(report["extraction_issues"][0]["field"], "/title")
 
     def test_rejects_invalid_comparison_evidence(self):
         cases = [
