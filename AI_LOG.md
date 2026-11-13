@@ -127,3 +127,16 @@ The final CLI checks finished at 14:36:57. All 23 unit tests passed, including e
 Gabriel asked whether the VLMs receive the original PDF and whether rendering it locally could change the cost. Codex checked the provider adapters and confirmed that both receive the original file as base64. A local inspection found one embedded image and no extractable text on each of the two Sauerbraten pages.
 
 The providers render pages on their side and can also supply embedded text when available. The [Gemini 3 media resolution table](https://aistudio.google.com/docs/media-resolution#token-counts) gives approximate defaults of 560 visual tokens per PDF page and 1,120 per separate image. The [OpenAI file input guide](https://developers.openai.com/api/docs/guides/file-inputs?api-mode=responses#pdf-detail-levels) describes the default PDF image detail and how lower detail reduces input tokens. The previous direct PDF runs measured 1,178 input tokens for Gemini and 14,833 for Luna. A comparison with separately rendered pages remains unmeasured.
+
+## 2026-11-13 14:43:05–14:43:29 · Luna PDF and PNG comparison
+
+Gabriel asked Codex to rasterize both recipe pages and compare their cost and transcription quality with the original PDF. Codex used Poppler to render lossless PNGs at the scan dimensions, 1702 × 2451 and 1799 × 2615 pixels. GPT-6 Luna received both PNGs in page order in a single request, with `detail: high` and the exact prompt from the earlier test. A fresh request sent the original PDF with the same prompt and the [default PDF detail](https://developers.openai.com/api/docs/guides/file-inputs#pdf-detail-levels).
+
+| Input | Input tokens | Cache write tokens | Output tokens | Reasoning tokens within output | API time | Estimated USD |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Original PDF | 14,833 | 14,830 | 1,342 | 947 | 16.76 s | $0.00252505 |
+| Two PNGs | 6,025 | 6,022 | 1,948 | 1,552 | 23.64 s | $0.00172705 |
+
+Both requests reported zero cache reads and three ordinary input tokens. Estimates use the [standard Luna rates](https://developers.openai.com/api/docs/pricing) and [30-minute cache-write accounting](https://developers.openai.com/api/docs/guides/prompt-caching). PNGs used 59.4% fewer input tokens and cost 31.6% less in this pair. The image request generated more reasoning tokens and took 6.88 seconds longer. The earlier PDF run cost an estimated $0.00282455.
+
+Both formats recovered all three measured ingredients, the title, the year and all four illustration labels. The recipe body matched exactly across the two requests and the earlier PDF run. The PNGs recovered `Josefines` as written in the scan. The fresh PDF request gave `Josefinens`, while the earlier PDF request gave `Jose[unleserlich]ines`. The PNG response also put the second page's illustration labels after the recipe, where they appear on the page. Transcriptions and usage metadata are saved locally. These are single runs for each format in the paired comparison.
