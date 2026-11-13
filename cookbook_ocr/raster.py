@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from io import BytesIO
 from math import isfinite
 from typing import TypeVar
@@ -19,6 +20,12 @@ _PDF_WORKER = ThreadPoolExecutor(max_workers=1, thread_name_prefix="cookbook-pdf
 _Result = TypeVar("_Result")
 
 
+@dataclass(frozen=True)
+class PreparedPdf:
+    pages: list[bytes] | None
+    has_text_layer: bool = False
+
+
 def run_pdf_task(task: Callable[..., _Result], *args) -> _Result:
     """Keep PyMuPDF operations from preview and extraction on one thread."""
     return _PDF_WORKER.submit(task, *args).result()
@@ -26,10 +33,14 @@ def run_pdf_task(task: Callable[..., _Result], *args) -> _Result:
 
 def rasterize_pdf(document: bytes) -> list[bytes] | None:
     """Return lossless PNGs, or None if the PDF exceeds the raster budget."""
-    return run_pdf_task(_rasterize_pdf, document)
+    return prepare_pdf(document).pages
 
 
-def _rasterize_pdf(document: bytes) -> list[bytes] | None:
+def prepare_pdf(document: bytes) -> PreparedPdf:
+    return run_pdf_task(_prepare_pdf, document)
+
+
+def _prepare_pdf(document: bytes) -> PreparedPdf:
     try:
         with pymupdf.open(stream=document, filetype="pdf") as pdf:
             if not pdf.is_pdf:
@@ -39,11 +50,14 @@ def _rasterize_pdf(document: bytes) -> list[bytes] | None:
             if not pdf.page_count:
                 raise ValueError("The PDF has no pages.")
             if pdf.page_count > MAX_RASTER_PAGES:
-                return None
+                return PreparedPdf(None)
 
             pages = []
             png_bytes = 0
+            has_text_layer = False
             for page in pdf:
+                if not has_text_layer:
+                    has_text_layer = any(char.isalnum() for char in page.get_text())
                 dimensions = (page.rect.width, page.rect.height)
                 if not all(isfinite(length) and length > 0 for length in dimensions):
                     raise ValueError(f"PDF page {page.number + 1} has invalid dimensions.")
@@ -57,8 +71,8 @@ def _rasterize_pdf(document: bytes) -> list[bytes] | None:
                         image.save(buffer, format="PNG", compress_level=3)
                         png_bytes += buffer.tell()
                         if png_bytes > MAX_RASTER_PNG_BYTES:
-                            return None
+                            return PreparedPdf(None)
                         pages.append(buffer.getvalue())
-            return pages
+            return PreparedPdf(pages, has_text_layer)
     except (RuntimeError, OSError) as error:
         raise ValueError("Could not render the PDF pages. Check that the file is readable.") from error

@@ -100,3 +100,7 @@ Gabriel asked to let the reviewer confirm or correct flagged fields and preserve
 ## 2026-11-13 16:18 · Plan vegan substitutions from the recipe
 
 Gabriel chose Luna to propose vegan substitutes and cooking changes in advance for each recipe. Generate the plan from the structured recipe during import and refresh it when a reviewer changes the source fields. Save the plan alongside the recipe. Apply the validated substitutions before scaling so Python can reconcile the ingredient names and measures in the updated instructions. Flag uncertain replacements or quantities for review. Serving adjustment remains available when vegan planning fails.
+
+## 2026-11-13 16:30 · Preserve uploads when blur evidence is uncertain
+
+Gabriel asked to reject unreadable blur while preserving legible recipes. Require severe visual blur and explicit agreement from both readers on every page before asking for a sharper copy. Keep the upload eligible for review if either reader recovers any text, if the PDF has a text layer, or if a check is inconclusive. The detector uses the existing Pillow dependency and the same PDF pages sent to Luna. Keep settings that describe a particular example in the bundled example report.

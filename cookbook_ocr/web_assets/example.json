@@ -1,5 +1,10 @@
 {
   "example": true,
+  "example_settings": {
+    "original_servings": 4,
+    "servings": 6,
+    "vegan": true
+  },
   "status": "no_discrepancies",
   "transcriptions": {
     "A": "[page: 1]\nSauerbraten\n\nIngredients\n1/2 l vinegar\n1/2 l water\n4 sliced onions\npepper\ncloves\nsalt\nbay leaves\nbeef roast\n\nMethod\nBoil 1/2 l vinegar, 1/2 l water and 4 sliced onions with pepper, cloves,\nsalt and bay leaves.\nPour the marinade over the beef roast for a shorter rest.\nFor a longer rest, cool the marinade before adding the beef roast.\n\n[page: 2]\nbacon\nbutter\nsome apples (optional)\ncarrots (optional)\njuniper berries (optional)\nbeef drippings\nflour\nred wine\nsoaked currants\nraisins\nsugar to taste\n\nMethod\nRender the bacon, add butter, then brown the dried beef roast on all sides.\nWhen the roast is browned, pour in a little of the marinade.\nAdd apples, carrots and juniper berries to the pot if desired.\nCover the pot and braise the beef roast gently until tender.\nStir flour into the beef drippings and loosen the mixture with marinade and red wine.\nAdd soaked currants, raisins and sugar to taste, balancing sweetness and acidity.\nLet the beef roast rest in the sauce before slicing and serving.",

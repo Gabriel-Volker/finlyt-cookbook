@@ -3,12 +3,32 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from .extraction import PAGE_MARKER, build_recipe, has_unresolved_fields
+from .extraction import PAGE_MARKER, UNREADABLE, build_recipe, has_unresolved_fields
 from .providers import GeminiClient, OpenAIClient, ProviderError
+from .quality import assess_blur
+from .raster import prepare_pdf
 from .vegan import validate_vegan_plan
 
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
+
+
+class UnreadableRecipeError(ValueError):
+    """The source appears severely blurred and neither reader recovered any text."""
+
+
+def _all_pages_unreadable(transcription: str, count: int) -> bool:
+    markers = list(PAGE_MARKER.finditer(transcription))
+    if not markers or [marker[1] for marker in markers] != [str(page) for page in range(1, count + 1)]:
+        return False
+    if transcription[:markers[0].start()].strip():
+        return False
+    ends = [marker.start() for marker in markers[1:]] + [len(transcription)]
+    for marker, end in zip(markers, ends):
+        body = transcription[marker.end():end].strip()
+        if not body or UNREADABLE.sub("", body).strip():
+            return False
+    return True
 
 
 def validate_comparison(result: dict, a: str, b: str) -> None:
@@ -122,8 +142,21 @@ def run_pipeline(
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         gemini_reading = executor.submit(gemini.transcribe, document, filename, transcription_prompt)
-        luna_reading = executor.submit(openai.transcribe, document, filename, transcription_prompt)
+        prepared = prepare_pdf(document) if Path(filename).suffix.lower() == ".pdf" else None
+        options = {"prepared_pdf": prepared} if prepared is not None else {}
+        luna_reading = executor.submit(openai.transcribe, document, filename, transcription_prompt, **options)
         a, b = gemini_reading.result(), luna_reading.result()
+
+    pages = prepared.pages if prepared is not None else [document]
+    no_readable_text = bool(
+        pages and _all_pages_unreadable(a, len(pages)) and _all_pages_unreadable(b, len(pages))
+    )
+    if no_readable_text and (prepared is None or not prepared.has_text_layer):
+        assessments = assess_blur(pages)
+        if len(assessments) == len(pages) and all(item.suspected for item in assessments):
+            raise UnreadableRecipeError(
+                "The document is too blurred to read. Upload a sharper photo or scan with the text in focus."
+            )
 
     comparison = compare_transcriptions(openai, comparison_prompt, schema, a, b)
     transcriptions = {"A": a, "B": b}
@@ -150,7 +183,11 @@ def run_pipeline(
                 f"\n\nThe previous extraction failed validation. {error} "
                 "Copy exact source text and quotes, and ensure all step references exist."
             )
-    needs_review = comparison["review_items"] or has_unresolved_fields(recipe)
+    if no_readable_text and not (recipe["ingredients"] and recipe["steps"]):
+        extraction_issues.append({
+            "field": "/recipe", "reason": "Neither reader recovered usable text. Check the original or try a sharper copy.",
+        })
+    needs_review = comparison["review_items"] or extraction_issues or has_unresolved_fields(recipe)
     return {
         "status": "needs_review" if needs_review else "no_discrepancies",
         "transcriptions": transcriptions,

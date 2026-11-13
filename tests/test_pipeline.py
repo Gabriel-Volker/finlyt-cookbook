@@ -3,6 +3,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
+import pymupdf
+
 from cookbook_ocr.pipeline import (
     compare_transcriptions,
     plan_vegan_recipe,
@@ -14,7 +16,9 @@ from cookbook_ocr.pipeline import (
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
 TRANSCRIPTION_A = "Page 1\nPear compote by Mara\nUse ¾ cup of water."
 TRANSCRIPTION_B = "Page 1\nPear compote by Ma[unreadable]\nUse 3/4 cup of water."
-DOCUMENT = b"%PDF-1.7\n"
+with pymupdf.open() as pdf:
+    pdf.new_page()
+    DOCUMENT = pdf.tobytes()
 EMPTY_RECIPE = {"title": None, "servings": None, "ingredients": [], "tools": [], "steps": []}
 
 
@@ -90,6 +94,7 @@ class PipelineTests(unittest.TestCase):
         luna_args = self.openai.transcribe.call_args.args
         self.assertEqual(gemini_args, luna_args)
         self.assertEqual(gemini_args[:2], (DOCUMENT, "recipe.pdf"))
+        self.assertEqual(len(self.openai.transcribe.call_args.kwargs["prepared_pdf"].pages), 1)
         self.assertEqual(
             report["transcriptions"], {"A": TRANSCRIPTION_A, "B": TRANSCRIPTION_B}
         )

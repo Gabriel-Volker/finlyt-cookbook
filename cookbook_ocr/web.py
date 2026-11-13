@@ -16,7 +16,7 @@ from PIL import Image, ImageOps
 
 from .__main__ import load_api_keys, load_openai_key
 from .adaptation import adapt_recipe
-from .pipeline import plan_vegan_recipe, run_pipeline
+from .pipeline import UnreadableRecipeError, plan_vegan_recipe, run_pipeline
 from .providers import GeminiClient, MIME_TYPES, OpenAIClient, ProviderError
 from .raster import run_pdf_task
 from .review import review_recipe
@@ -186,6 +186,8 @@ class CookbookHandler(BaseHTTPRequestHandler):
             raise RequestError("Not found.", HTTPStatus.NOT_FOUND)
         except RequestError as error:
             self._json({"error": str(error)}, error.status)
+        except UnreadableRecipeError as error:
+            self._json({"error": str(error), "code": "unreadable_blur"}, HTTPStatus.UNPROCESSABLE_ENTITY)
         except ProviderError as error:
             self._json({"error": str(error)}, HTTPStatus.BAD_GATEWAY)
         except ValueError as error:

@@ -10,7 +10,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from .extraction import PAGE_MARKER
-from .raster import rasterize_pdf
+from .raster import PreparedPdf, rasterize_pdf
 
 
 GEMINI_MODEL = "gemini-3.1-flash-lite"
@@ -145,13 +145,15 @@ class OpenAIClient:
             raise ProviderError("OpenAI returned no output text.")
         return text
 
-    def transcribe(self, document: bytes, filename: str, prompt: str) -> str:
+    def transcribe(
+        self, document: bytes, filename: str, prompt: str, *, prepared_pdf: PreparedPdf | None = None,
+    ) -> str:
         mime_type = _document_mime_type(document, filename)
         if mime_type != "application/pdf":
             image = {"type": "input_image", "image_url": f"data:{mime_type};base64,{_base64(document)}"}
             return self._transcribe_parts(prompt, [image])
 
-        pages = rasterize_pdf(document)
+        pages = prepared_pdf.pages if prepared_pdf is not None else rasterize_pdf(document)
         if pages is None:
             LOGGER.warning("The PDF exceeds the local raster budget. Luna will receive the original PDF.")
             attachment = {

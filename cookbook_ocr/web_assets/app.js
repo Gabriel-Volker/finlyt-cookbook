@@ -69,7 +69,9 @@ function loadReport(report, file) {
   state.report = report;
   state.file = file;
   state.example = !file;
-  state.filename = file?.name || "Sauerbraten example";
+  const settings = state.example ? report.example_settings : null;
+  const title = clean(value(report.recipe.title));
+  state.filename = file?.name || (title ? `${title} example` : "Recipe example");
   state.pages = pageCount(report);
   state.page = 1;
   state.selected = 0;
@@ -84,8 +86,8 @@ function loadReport(report, file) {
   state.previews.clear();
 
   updateOriginalServings(true);
-  $("#target-servings").value = state.example ? 6 : "";
-  $("#vegan").setAttribute("aria-checked", String(state.example && hasVeganPlan()));
+  $("#target-servings").value = settings?.servings ?? "";
+  $("#vegan").setAttribute("aria-checked", String(settings?.vegan === true && hasVeganPlan()));
   renderVeganOption();
   message("#field-review-status");
   show("review");
@@ -93,15 +95,16 @@ function loadReport(report, file) {
 
 function updateOriginalServings(reset = false) {
   const source = currentRecipe().servings;
+  const exampleBaseline = state.example ? state.report.example_settings?.original_servings : null;
   const known = ["stated", "reviewed"].includes(source?.status) && /^(?:(?:serves|makes|yield|für|rende|para)\s+)?([1-9]\d*)(?:\s+(?:servings?|people|persons?|portions?|porç(?:ão|ões)|pessoas?|portionen?|personen?))?[.:]?$/i.exec(clean(value(source)));
   const original = $("#original-servings");
   if (known || reset || original.readOnly) {
-    original.value = known?.[1] || (state.example ? 4 : "");
+    original.value = known?.[1] ?? exampleBaseline ?? "";
   }
   original.readOnly = Boolean(known);
   $("#original-hint").textContent = known
     ? source.status === "reviewed" ? "Set in Review." : "Stated in the recipe."
-    : state.example ? "Example assumption. The source has no serving count."
+    : exampleBaseline ? "Example assumption. The source has no serving count."
       : "Enter the original yield to scale this recipe.";
 }
 

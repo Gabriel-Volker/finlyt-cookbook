@@ -10,14 +10,18 @@ flowchart TD
         upload["Validate PDF, PNG or JPEG"]
         gemini["Transcribe with Gemini"]
         luna["Transcribe with Luna"]
+        unreadable{"Severe blur and no readable text?"}
+        rescan(["Request a sharper copy"])
         compare["Compare texts A and B with Luna"]
         extract["Extract with Luna and validate evidence"]
         plan["Ask Luna for a vegan plan"]
         example["Load the example report"]
         upload -->|"Parallel OCR"| gemini
         upload -->|"Parallel OCR"| luna
-        gemini --> compare
-        luna --> compare
+        gemini --> unreadable
+        luna --> unreadable
+        unreadable -->|"Yes"| rescan
+        unreadable -->|"No or uncertain"| compare
         compare --> extract
         extract --> plan
     end
@@ -73,5 +77,6 @@ flowchart TD
 ```
 
 - For PDF uploads, Gemini receives the file and Luna receives rasterized pages, with a PDF fallback above the local raster budget. Luna compares the two transcriptions, extracts the source recipe, and prepares a vegan plan from the validated fields.
+- The blur check can reject an upload only when both readers explicitly report unreadable text on every page and the image check corroborates severe blur. A PDF text layer prevents blur rejection.
 - Review keeps the original extraction and evidence alongside the reviewer's decisions. Unresolved fields and document-level alerts remain visible.
 - Adapt uses the reviewed recipe when decisions exist. Scaling requires a usable original serving count. Python applies the stored vegan plan before scaling if both options are selected. The export includes the original report, review decisions, the plan, and any adaptation.
