@@ -16,6 +16,7 @@
 
 :root {
   color-scheme: light;
+  scrollbar-gutter: stable;
   --canvas: #f6f5ef;
   --surface: #fffefa;
   --ink: #20271e;
@@ -549,16 +550,11 @@ h3 {
   border-top: 1px solid var(--line);
 }
 
-.data-table tbody tr.selected {
+.data-table tbody tr[data-row-edit]:hover {
   background: var(--accent-pale);
 }
 
-.data-table tbody tr:has(.row-button):hover {
-  background: var(--accent-pale);
-}
-
-.data-table td:first-child,
-.row-button {
+.data-table td:first-child {
   font-weight: 600;
 }
 
@@ -580,15 +576,37 @@ h3 {
   overflow-wrap: anywhere;
 }
 
-.row-button {
+.edit-value {
+  max-width: 100%;
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--ink);
+  color: inherit;
+  letter-spacing: inherit;
   text-align: left;
+  overflow-wrap: anywhere;
 }
 
-.row-button:hover {
+.edit-value:not(.step-row):hover,
+.edit-value:not(.step-row):focus-visible {
+  color: var(--accent-ink);
+  text-decoration: underline;
+}
+
+.data-table .edit-value,
+#comparison .edit-value {
+  min-height: 24px;
+  text-decoration: underline dotted var(--accent-line);
+  text-underline-offset: 3px;
+}
+
+.edit-amount {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+}
+
+#pending-review-fields .edit-value {
   color: var(--accent-ink);
 }
 
@@ -609,14 +627,12 @@ h3 {
   text-align: left;
 }
 
-.step-list > li + li,
-.step-row + .step-row {
+.step-list > li + li {
   border-top: 1px solid var(--line);
 }
 
 .step-row:hover,
-.step-row[aria-pressed="true"],
-.step-row.selected {
+.step-row:focus-visible {
   background: var(--accent-pale);
 }
 
@@ -661,7 +677,6 @@ h3 {
   color: var(--ink);
 }
 
-#evidence,
 #comparison,
 #field-review-source,
 #adapted-steps {
@@ -707,10 +722,6 @@ h3 {
   color: var(--ink);
   font: 400 15px / 1.5 ui-monospace, monospace;
   white-space: pre-wrap;
-}
-
-.evidence-quote.ingredient-quote {
-  font: 400 28px / 1.2 var(--serif);
 }
 
 .fact-row {
@@ -928,6 +939,25 @@ dialog::backdrop {
   background: rgb(25 38 48 / 48%);
 }
 
+html:has(dialog[open]) {
+  overflow: hidden;
+}
+
+#field-review {
+  width: min(580px, calc(100% - 32px));
+}
+
+#field-review .dialog-head {
+  margin-bottom: 16px;
+  overflow-wrap: anywhere;
+}
+
+#field-review-source {
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+
 .preview-image {
   width: auto;
   max-width: 100%;
@@ -1017,6 +1047,11 @@ dialog::backdrop {
 }
 
 @media (max-width: 390px) {
+  .tabs {
+    flex-wrap: wrap;
+    padding-inline: 10px;
+  }
+
   .example-card {
     flex-wrap: wrap;
   }

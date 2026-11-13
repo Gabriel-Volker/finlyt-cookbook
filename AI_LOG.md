@@ -291,3 +291,9 @@ The original run recorded a generic incomplete-transcription error. The client e
 Gabriel clarified that `examples/` should contain the recipe outputs. Codex removed the PDFs from the unpublished commit and saved the recorded extraction and original scaling reports for Torta de coco, Casadinhos, and Pé-de-moleque. Python replayed their adaptations and reproduced the saved results. The older vegan proposals were withheld because they predate the current approval contract.
 
 The four Sauerbraten files cover extraction, scaling to six servings, the vegan request, and the vegan request at six servings. The scaling result uses a demo baseline of four. Both vegan requests produced `needs_review` because the original gives no roast quantity, and neither produced an adaptation. These examples replayed the saved extraction with the current CLI. No new provider calls were needed.
+
+## 2026-11-13 17:49–17:54 · Open the Review editor directly from a value
+
+Gabriel reported that clicking an item still required searching the full field list to change it. Codex replaced the separate editor with a dialog opened from the clicked value, step, or utensil. The dialog focuses the selected field and shows only fields for the same item. It retains source excerpts and restores focus to the trigger when closed. Flagged fields can also open their editor directly from the pending list.
+
+All 113 tests passed in Docker. Chromium verified the deployed app at `127.0.0.1:8000` on desktop and at a 390 × 700 viewport. The checks covered editing a late row without moving the document, preserving an unsaved value during source preview, saving, confirming, clearing, undoing, editing step links, and opening a flagged field with both OCR excerpts. Codex rebuilt and restarted the local container.

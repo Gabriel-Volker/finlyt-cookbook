@@ -10,7 +10,7 @@ const countLabel = (number, name) => `${number} ${name}${number === 1 ? "" : "s"
 
 const state = {
   screen: "import", file: null, filename: "", report: null, example: false,
-  tab: "ingredients", selected: 0, pages: 1, page: 1,
+  tab: "ingredients", pages: 1, page: 1,
   review: null, reviewPath: "", reviewing: false,
   scalingPlan: null, veganPlan: null,
   adaptation: null, adaptRequest: 0, previewRequest: 0, busy: false,
@@ -49,7 +49,6 @@ function show(screen) {
   $("#workspace-name").textContent = state.filename || "Recipe workspace";
   if (screen === "review") {
     renderReview();
-    renderFieldReview();
   }
   if (screen === "adapt") {
     renderAdaptation();
@@ -74,7 +73,6 @@ function loadReport(report, file) {
   state.filename = file?.name || (title ? `${title} example` : "Recipe example");
   state.pages = pageCount(report);
   state.page = 1;
-  state.selected = 0;
   state.tab = "ingredients";
   state.review = null;
   state.reviewPath = "";
@@ -148,11 +146,6 @@ async function runImport(action, progress) {
   }
 }
 
-function evidenceField(item) {
-  if (state.tab === "steps") return item?.instruction;
-  return item?.quantity?.evidence || item?.quantity?.status === "needs_review" ? item.quantity : item?.name;
-}
-
 function ingredientLabel(ingredient) {
   return clean(value(ingredient?.name)) || "Unresolved ingredient";
 }
@@ -185,6 +178,17 @@ function table(headers, body) {
     </tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
+const reviewTabs = {ingredients: "Ingredients", steps: "Steps", tools: "Utensils"};
+
+function editValue(path, label, text, className = "") {
+  return `<button type="button" class="edit-value ${className}" data-edit-field="${escape(path)}"
+    aria-label="${escape(label)}" aria-haspopup="dialog">${text}</button>`;
+}
+
+function editableText(field, missing = "—") {
+  return field.status === "needs_review" ? "Needs review" : clean(value(field)) || missing;
+}
+
 function renderReview() {
   const report = state.report;
   const recipe = currentRecipe();
@@ -192,7 +196,7 @@ function renderReview() {
   const linkedFindings = new Set(fields.flatMap(({field}) => field.review_item_ids || []));
   const documentFindings = (report.comparison?.review_items || []).filter((item, index) => !linkedFindings.has(index + 1));
   const documentIssues = (report.extraction_issues || []).some(({field}) => ["/recipe", "/ingredients", "/steps"].includes(field));
-  $("#review-title").textContent = clean(value(recipe.title)) || "Untitled recipe";
+  $("#edit-recipe-title").textContent = clean(value(recipe.title)) || "Untitled recipe";
   $("#review-subtitle").textContent = `${state.filename} · ${countLabel(state.pages, "page")}`;
   const pendingFields = state.review ? state.review.status === "needs_review" : fields.length > 0;
   const reviewNeeded = pendingFields || documentIssues || documentFindings.length > 0 || (!state.review && report.status === "needs_review");
@@ -208,60 +212,62 @@ function renderReview() {
   for (const button of all(".tab")) {
     const tab = button.dataset.tab;
     const active = state.tab === tab;
-    button.textContent = `${tab === "ingredients" ? "Ingredients" : "Steps"} · ${recipe[tab].length}`;
+    button.textContent = `${reviewTabs[tab]} · ${recipe[tab].length}`;
     button.setAttribute("aria-selected", String(active));
     button.tabIndex = active ? 0 : -1;
   }
   $("#review-list").setAttribute("aria-labelledby", `${state.tab}-tab`);
   if (state.tab === "ingredients") {
     const rows = recipe.ingredients.map((item, index) => {
-      const field = evidenceField(item);
-      const page = field?.evidence?.page;
-      const preparation = clean(value(item.preparation)) || (value(item.optional_when) ? "Optional" : "—");
-      return `<tr class="${index === state.selected ? "selected" : ""}" data-row="${index}">
-        <th scope="row"><button type="button" class="row-button" data-select="${index}" aria-pressed="${index === state.selected}">${escape(ingredientLabel(item))}</button></th>
-        <td>${escape(ingredientAmount(item) || "—")}</td>
-        <td>${escape(preparation)}</td>
-        <td>${page ? `Page ${escape(page)}` : "—"}</td>
+      const base = `/ingredients/${index}`;
+      const name = ingredientLabel(item);
+      const evidence = item.quantity.evidence || item.name.evidence;
+      const page = evidence?.page;
+      const optional = editableText(item.optional_when, "");
+      const quantity = editValue(`${base}/quantity`, `Edit quantity for ${name}`, escape(editableText(item.quantity)));
+      const unit = editableText(item.unit, "");
+      return `<tr data-row-edit="${base}/quantity">
+        <th scope="row">${editValue(`${base}/name`, `Edit name for ${name}`, escape(name))}</th>
+        <td><div class="edit-amount">${quantity}${unit ? editValue(`${base}/unit`, `Edit unit for ${name}`, escape(unit)) : ""}</div></td>
+        <td>${editValue(`${base}/preparation`, `Edit preparation for ${name}`, escape(editableText(item.preparation)))}
+          ${optional ? editValue(`${base}/optional_when`, `Edit optionality for ${name}`, escape(optional)) : ""}</td>
+        <td>${page ? `<button type="button" class="edit-value" data-source-page="${escape(page)}"
+          data-source-reading="${escape(evidence.source || "A")}">Page ${escape(page)}</button>` : "—"}</td>
       </tr>`;
     }).join("");
     $("#review-list").innerHTML = `<div class="section-head"><h2>Extracted ingredients</h2>
       <span>${countLabel(recipe.ingredients.length, "ingredient")}</span></div>
       ${rows ? table(["Ingredient", "Amount", "Preparation", "Source"], rows) : '<p class="empty">No ingredients were extracted.</p>'}`;
-  } else {
+  } else if (state.tab === "steps") {
     $("#review-list").innerHTML = `<div class="section-head"><h2>Cooking steps</h2>
       <span class="badge">${state.pages > 1 ? `Pages 1–${state.pages}` : "Page 1"}</span></div>
-      <ol class="step-list">${recipe.steps.map((step, index) => `<li>
-        <button type="button" class="step-row ${index === state.selected ? "selected" : ""}" data-select="${index}" aria-pressed="${index === state.selected}">
+      <ol class="step-list">${recipe.steps.map((step, index) => `<li>${editValue(
+        `/steps/${index}/instruction`, `Edit ${stepLabel(step, index)}`,
+        `
           <span class="step-number">${index + 1}</span>
           <span class="step-copy"><strong class="step-title">${escape(stepLabel(step, index))}</strong>
-            <span>${escape(stepDescription(step))}</span></span>
-        </button></li>`).join("")}</ol>
+            <span>${escape(stepDescription(step))}</span></span>`, "step-row",
+      )}</li>`).join("")}</ol>
       ${recipe.steps.length ? "" : '<p class="empty">No steps were extracted.</p>'}`;
+  } else {
+    const rows = recipe.tools.map((tool, index) => {
+      const name = editableText(tool.name, `Utensil ${index + 1}`);
+      return `<tr><th scope="row">${editValue(`/tools/${index}/name`, `Edit ${name}`, escape(name))}</th></tr>`;
+    }).join("");
+    $("#review-list").innerHTML = `<div class="section-head"><h2>Utensils</h2></div>
+      ${rows ? table(["Name"], rows) : '<p class="empty">No utensils were extracted.</p>'}`;
   }
-  renderEvidence();
+  renderPendingReview(fields);
   renderComparison();
 }
 
-function renderEvidence() {
-  const item = currentRecipe()[state.tab][state.selected];
-  const field = evidenceField(item);
-  const evidence = field?.evidence;
-  const ingredient = state.tab === "ingredients";
-  const subject = ingredient ? ingredientLabel(item) : stepLabel(item || {}, state.selected);
-  const detail = ingredient && field === item?.quantity ? " · Quantity" : "";
-  const metadata = [state.filename, evidence?.page ? `Page ${evidence.page}` : "",
-    evidence?.source ? `Reading ${evidence.source}` : ""].filter(Boolean).join(" / ");
-  $("#open-source").disabled = !evidence && !state.file;
-  const amount = ingredient ? ingredientAmount(item) : "";
-  const label = field?.status === "reviewed" ? "Reviewed amount" : "Extracted amount";
-  $("#evidence").innerHTML = item ? `<p>${escape(ingredient ? subject + detail : metadata)}</p>
-    ${evidence ? `<div class="evidence-box">
-      ${ingredient ? `<div class="evidence-meta">${escape(metadata)}</div>` : ""}
-      <blockquote class="evidence-quote${ingredient ? " ingredient-quote" : ""}">“${escape(evidence.quote)}”</blockquote>
-    </div>` : "<p>No source excerpt is available for this field.</p>"}
-    ${ingredient ? `<div class="fact-row"><span>${label}</span><strong>${escape(amount || "Not stated")}</strong></div>` : ""}`
-    : "<p>Select a recipe item to view its evidence.</p>";
+function renderPendingReview(fields) {
+  const reviewed = new Set((state.review?.decisions || []).map(({path}) => path));
+  const pending = fields.filter(({path}) => !reviewed.has(path));
+  $("#pending-review").hidden = !pending.length;
+  $("#field-review-count").textContent = String(pending.length);
+  $("#pending-review-fields").innerHTML = pending.map(({path, label}) =>
+    `<li>${editValue(path, `Edit ${label}`, escape(label))}</li>`).join("");
 }
 
 function renderComparison() {
@@ -287,7 +293,8 @@ function renderComparison() {
   }).join("");
   $("#comparison").innerHTML = `<p>${escape(intro)}</p>
     ${list ? `<ul class="comparison-list">${list}</ul>` : ""}
-    <div class="fact-row"><strong>Original servings</strong><span>${escape(value(recipe.servings) || (recipe.servings?.status === "needs_review" ? "Needs review" : "Not stated"))}</span></div>`;
+    <div class="fact-row"><strong>Original servings</strong>${editValue("/servings", "Edit original servings",
+      escape(editableText(recipe.servings, "Not stated")))}</div>`;
 }
 
 const reviewFieldLabels = {
@@ -303,21 +310,21 @@ function reviewFields() {
   const original = state.report.recipe;
   const recipe = currentRecipe();
   const fields = [];
-  function add(item, names, group, path = "", label = "") {
+  function add(item, names, label, path = "") {
     for (const name of names) {
       const collection = reviewReferenceFields[name];
       const field = collection ? {value: item[name] || [], status: "stated"} : item[name];
-      fields.push({path: `${path}/${name}`, field, name, group, collection,
+      fields.push({path: `${path}/${name}`, field, name, record: path, subject: label, collection,
         label: [label, reviewFieldLabels[name]].filter(Boolean).join(" · ")});
     }
   }
   add(original, ["title", "servings"], "Recipe");
   original.ingredients.forEach((item, index) => add(item, ["name", "quantity", "unit", "preparation", "optional_when"],
-    "Ingredients", `/ingredients/${index}`, clean(value(recipe.ingredients[index].name)) || `Ingredient ${index + 1}`));
-  original.tools.forEach((item, index) => add(item, ["name"], "Utensils", `/tools/${index}`,
-    clean(value(recipe.tools[index].name)) || `Utensil ${index + 1}`));
+    clean(value(recipe.ingredients[index].name)) || `Ingredient ${index + 1}`, `/ingredients/${index}`));
+  original.tools.forEach((item, index) => add(item, ["name"],
+    clean(value(recipe.tools[index].name)) || `Utensil ${index + 1}`, `/tools/${index}`));
   original.steps.forEach((item, index) => add(item, ["instruction", "duration", "condition", "ingredient_ids", "tool_ids"],
-    "Steps", `/steps/${index}`, stepLabel(item, index)));
+    stepLabel(item, index), `/steps/${index}`));
   return fields;
 }
 
@@ -327,26 +334,17 @@ function flaggedFields() {
 
 function renderFieldReview() {
   const fields = reviewFields();
+  const selected = fields.find(({path}) => path === state.reviewPath);
+  if (!selected) return;
   const decisions = new Map((state.review?.decisions || []).map((decision) => [decision.path, decision]));
-  const pending = fields.filter(({field, path}) => field.status === "needs_review" && !decisions.has(path));
-  const selected = fields.find(({path}) => path === state.reviewPath)
-    || pending[0] || fields[0];
-  state.reviewPath = selected.path;
   const decision = decisions.get(selected.path);
+  const localFields = fields.filter(({record}) => record === selected.record);
   const select = $("#field-review-path");
-  const groups = new Map([["Needs review", pending]]);
-  const pendingPaths = new Set(pending.map(({path}) => path));
-  for (const field of fields) {
-    if (pendingPaths.has(field.path)) continue;
-    if (!groups.has(field.group)) groups.set(field.group, []);
-    groups.get(field.group).push(field);
-  }
-  select.innerHTML = [...groups].filter(([, entries]) => entries.length).map(([label, entries]) =>
-    `<optgroup label="${escape(label)}">${entries.map(({path, label}) =>
-      `<option value="${escape(path)}">${escape(label)}${decisions.has(path) ? " · Reviewed" : ""}</option>`).join("")}</optgroup>`).join("");
+  select.innerHTML = localFields.map(({path, name, field}) => `<option value="${escape(path)}">
+    ${escape(reviewFieldLabels[name])}${decisions.has(path) ? " · Reviewed" : field.status === "needs_review" ? " · Needs review" : ""}</option>`).join("");
   select.value = selected.path;
-  $("#field-review-count").textContent = pending.length ? `${pending.length} flagged` : "";
-  $("#field-review-count").hidden = !pending.length;
+  $("#field-review-picker").hidden = localFields.length === 1;
+  $("#field-review-title").textContent = `Edit ${selected.subject}`;
   $("#field-review-reopen").hidden = !decision;
   $("#field-review-reopen").textContent = selected.field.status === "needs_review" ? "Reopen" : "Undo review";
   const reviewedValue = decision ? decision.value : selected.field.value;
@@ -361,11 +359,15 @@ function renderFieldReview() {
     const name = clean(value(entry.name)) || `${selected.collection === "tools" ? "Utensil" : "Ingredient"} ${index + 1}`;
     return `<option value="${escape(entry.id)}"${sourceValue.includes(entry.id) ? " selected" : ""}>${escape(name)}</option>`;
   }).join("") : "";
-  $("#field-review-value").value = isReference ? "" : reviewedValue ?? "";
-  $("#field-review-clear").hidden = !reviewOptionalFields.has(selected.name) || (reviewedValue === null && !pendingPaths.has(selected.path));
-  $("#field-review-hint").textContent = selected.path === "/servings"
-    ? "Enter the original serving count as a positive whole number."
-    : "Confirm a reading after checking the source, or save a correction.";
+  const input = $("#field-review-value");
+  input.value = isReference ? "" : reviewedValue ?? "";
+  input.rows = selected.name === "instruction" ? 4 : 2;
+  $("#field-review-value-label").textContent = reviewFieldLabels[selected.name];
+  const needsReview = selected.field.status === "needs_review" && !decision;
+  $("#field-review-clear").hidden = !reviewOptionalFields.has(selected.name) || (reviewedValue === null && !needsReview);
+  const hint = $("#field-review-hint");
+  hint.hidden = selected.path !== "/servings";
+  hint.textContent = hint.hidden ? "" : "Enter the original serving count as a positive whole number.";
 
   const stepIndex = isReference ? Number(selected.path.split("/")[2]) : null;
   const evidence = isReference ? state.report.recipe.steps[stepIndex].instruction.evidence : selected.field.evidence;
@@ -393,11 +395,32 @@ function renderFieldReview() {
     <button type="button" class="button text" data-source-page="${escape(page)}" data-source-reading="${escape(evidence?.source || issue?.evidence?.source || "A")}">Open source page</button>`;
 }
 
+function focusReviewValue() {
+  const input = $("#field-review-value").disabled ? $("#field-review-references") : $("#field-review-value");
+  input.focus({preventScroll: true});
+}
+
+let reviewTrigger;
+
+function openFieldReview(path, trigger) {
+  if (state.reviewing) return;
+  const dialog = $("#field-review");
+  reviewTrigger = trigger;
+  state.reviewPath = path;
+  message("#field-review-status");
+  renderFieldReview();
+  dialog.showModal();
+  dialog.scrollTop = 0;
+  focusReviewValue();
+}
+
 function setReviewBusy(busy) {
   state.reviewing = busy;
+  $("#close-field-review").disabled = busy;
+  $("#field-review-form").setAttribute("aria-busy", String(busy));
   const isReference = !$("#field-review-links").hidden;
   for (const control of all("#field-review-form select, #field-review-form textarea, #field-review-form button, button[data-screen='adapt']")) {
-    control.disabled = busy || (control.id === "field-review-value" && isReference)
+    control.disabled = (busy && !control.dataset.sourcePage) || (control.id === "field-review-value" && isReference)
       || (control.id === "field-review-references" && !isReference);
   }
 }
@@ -479,7 +502,10 @@ async function saveFieldReview(action, clear = false) {
   } catch (error) {
     if (report === state.report) message("#field-review-status", error.message, true);
   } finally {
-    if (report === state.report) setReviewBusy(false);
+    if (report === state.report) {
+      setReviewBusy(false);
+      if (!$("#source-dialog").open) focusReviewValue();
+    }
   }
 }
 
@@ -727,19 +753,16 @@ for (const eventName of ["dragover", "dragleave", "drop"]) {
   });
 }
 document.addEventListener("click", (event) => {
-  const button = event.target.closest("button[data-screen],button[data-tab],button[data-select],button[data-source-page]");
+  const button = event.target.closest("button");
   if (button?.dataset.screen) show(button.dataset.screen);
   if (button?.dataset.tab && button.dataset.tab !== state.tab) {
     state.tab = button.dataset.tab;
-    state.selected = 0;
     renderReview();
   }
-  const row = event.target.closest("[data-row]");
-  const selection = button?.dataset.select ?? row?.dataset.row;
-  if (selection !== undefined) {
-    state.selected = Number(selection);
-    renderReview();
-    if (button) $(`[data-select="${selection}"]`)?.focus({preventScroll: true});
+  const path = button ? button.dataset.editField : event.target.closest("[data-row-edit]")?.dataset.rowEdit;
+  if (path) {
+    const trigger = button || $(`#review-list [data-edit-field="${path}"]`);
+    openFieldReview(path, trigger);
   }
   if (button?.dataset.sourcePage) openPage(button.dataset.sourcePage, button.dataset.sourceReading || "A");
 });
@@ -750,14 +773,23 @@ $(".brand").addEventListener("click", (event) => {
 $(".tabs").addEventListener("keydown", (event) => {
   if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
   event.preventDefault();
-  const other = $(state.tab === "ingredients" ? "#steps-tab" : "#ingredients-tab");
+  const tabs = all(".tab");
+  const index = tabs.findIndex((tab) => tab.dataset.tab === state.tab);
+  const offset = event.key === "ArrowRight" ? 1 : -1;
+  const other = tabs[(index + offset + tabs.length) % tabs.length];
   other.click();
   other.focus();
 });
-$("#open-source").addEventListener("click", () => {
-  const item = currentRecipe()[state.tab][state.selected];
-  const evidence = evidenceField(item)?.evidence;
-  openPage(evidence?.page || 1, evidence?.source || "A");
+$("#close-field-review").addEventListener("click", () => $("#field-review").close());
+$("#field-review").addEventListener("cancel", (event) => {
+  if (state.reviewing) event.preventDefault();
+});
+$("#field-review").addEventListener("close", () => {
+  const path = reviewTrigger?.dataset.editField;
+  const trigger = reviewTrigger?.isConnected ? reviewTrigger
+    : (path && $(`[data-edit-field="${path}"]`)) || $(`#${state.tab}-tab`);
+  trigger.focus({preventScroll: true});
+  reviewTrigger = null;
 });
 $("#field-review-path").addEventListener("change", (event) => {
   state.reviewPath = event.target.value;
@@ -766,7 +798,7 @@ $("#field-review-path").addEventListener("change", (event) => {
 });
 $("#field-review-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  saveFieldReview(event.submitter?.value || "confirm");
+  saveFieldReview(event.submitter?.value || "correct");
 });
 $("#field-review-clear").addEventListener("click", () => saveFieldReview("correct", true));
 $("#field-review-reopen").addEventListener("click", () => saveFieldReview(null));
