@@ -66,3 +66,7 @@ Gabriel asked for the cost of the Luna run and a comparison with `gpt-6.1-sol`. 
 Both responses reported zero cached input tokens and three ordinary input tokens. The estimates use the [standard API rates](https://developers.openai.com/api/docs/pricing) and [30-minute cache write rates](https://developers.openai.com/api/docs/guides/prompt-caching). Sol cost about 15.1 times as much and returned 10.25 seconds sooner in these single runs.
 
 The recipe body matches on both pages after joining words split at line breaks and normalizing spacing. Both models recovered the same ingredients, quantities, and preparation instructions. Sol read `Josefines` as written in the illustrated header. Luna returned `Jose[unleserlich]ines`. Sol also kept the second page's illustration labels below the recipe, where they appear in the scan. Sol preserved more of the original line breaks and added a period to the illustrated title.
+
+## 2026-11-13 11:59 · Lunch break
+
+Gabriel paused work on the project for lunch.
