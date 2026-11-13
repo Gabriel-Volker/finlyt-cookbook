@@ -442,3 +442,13 @@ Gabriel asked whether previous uploads are cached. Codex confirmed that the web 
 ## 2026-11-13 20:31 · Diagnose the Pastèizinhos translation warning
 
 Gabriel asked why the app showed the Portuguese recipe with English output selected. Codex recovered the cached import and replayed its recipe translation once with Luna. The response translated `uva passa sem sementes` as `seedless raisins` at `/english/ingredients/11/name`. The validator counted Portuguese `sem` as a negation and missed English `-less`, so it rejected this one ingredient name and the UI displayed the original recipe. Replaying the same response with `raisins without seeds` in that field produced both languages with no errors. The original rejected provider response was unavailable. The live replay reproduced the warning independently.
+
+## 2026-11-13 20:33–20:38 · Remove the upload cache and investigate vegan verification
+
+Gabriel asked to remove the upload cache and investigate why the vegan attempt appeared to lose the Gemini connection. The initial report showed completed Gemini scaling verification. Luna stopped the vegan path before Gemini because two eggs had a numeric amount and a null unit. Luna and Gemini now treat that form as a stated count when the ingredient is countable. In the live replay Luna recognized the count and abstained because its proposed type of substitute required a different measure. A separate live test called the Gemini vegan verifier successfully and approved a suitable baking fat replacement. The older warning did not preserve the provider cause. The updated verifier distinguishes HTTP errors, missing credentials, timeouts, transport failures and invalid responses.
+
+Every upload now runs the pipeline and receives a fresh translation session. The sessions still hold the prepared output for the current recipe so switching languages or servings does not repeat translation. Both activity diagrams describe the revised flow.
+
+## 2026-11-13 20:36–20:39 · Remove the standalone negation block
+
+Gabriel clarified that he wanted the rule counting negation words removed. The translation prompt still requires preserving prohibitions, conditions and absence. Python retains placeholder and numeric-limit validation. The recorded `seedless raisins` response produced both languages, and the ten-minute limit inversion was still rejected. All 185 tests passed locally and in Docker. Codex restarted the local app with the updated image and verified HTTP 200 and the new import and translation code in the running container.

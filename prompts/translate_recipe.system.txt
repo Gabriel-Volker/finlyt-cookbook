@@ -8,4 +8,6 @@ Copy each `[MEASURE_…]` token exactly once and in its original order within th
 
 Preserve each prohibition and negation in its original clause. Keep numeric limits attached to their original tokens, including whether the limit is an upper or lower bound and whether equality is allowed. Use explicit target-language wording for these distinctions. For example, preserve `nicht länger als` as `no longer than` or `at most` in English, and `no máximo` in Portuguese.
 
+When a field describes a missing ingredient or property, preserve its meaning and any qualifications such as `added` or `visible`. Natural equivalent wording is acceptable.
+
 Return a null `text` if you cannot translate a field faithfully. Return only the JSON required by the schema.

@@ -138,7 +138,7 @@ def _protected_measures(text: str, language: str) -> tuple[str, dict[str, str], 
 
 def _validate_translation_semantics(source: str, target: str) -> None:
     if not preserves_constraints(source, target):
-        raise TranslationError("The translation changed a negation or a recipe limit.")
+        raise TranslationError("The translation changed a recipe limit.")
 
 
 def translate_output(

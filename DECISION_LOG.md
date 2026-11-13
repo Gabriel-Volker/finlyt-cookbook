@@ -144,3 +144,11 @@ Gabriel chose upfront translation so language and serving changes are immediatel
 ## 2026-11-13 20:20 · Preserve recipe evidence while optimizing extraction
 
 Gabriel asked to reduce Luna's extraction latency and retries without sacrificing quality. Start at low reasoning effort and validate locally. Repair individual invalid fields when possible and reserve a full retry for structural failures. Keep review flags when the evidence remains unresolved. Measure extraction separately from OCR and downstream planning.
+
+## 2026-11-13 20:33 · Reprocess each upload in the demo
+
+Gabriel chose to process each uploaded file independently, including repeated uploads of the same bytes. Prepare both output languages within the current upload so changes to language and servings stay responsive.
+
+## 2026-11-13 20:36 · Remove word-based negation blocking from translation
+
+Gabriel chose to remove the standalone negation check after it rejected correct culinary wording. Keep the requirement to preserve negations in the translation prompt and continue checking numeric measures and their limits in Python.

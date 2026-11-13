@@ -102,11 +102,11 @@ class TranslationTests(unittest.TestCase):
         path = "/steps/0/instruction"
         self.recipe["steps"][0]["instruction"] = field("Die Sauce nicht länger als 10 Minuten kochen.")
         self.response({**ENGLISH, path: "Boil the sauce for longer than [MEASURE_A]."})
-        with self.assertRaisesRegex(TranslationError, "negation or a recipe limit"):
+        with self.assertRaisesRegex(TranslationError, "changed a recipe limit"):
             translate_recipe(self.openai, self.recipe)
 
         self.response({**ENGLISH, path: "Do not stir and boil the sauce for longer than [MEASURE_A]."})
-        with self.assertRaisesRegex(TranslationError, "negation or a recipe limit"):
+        with self.assertRaisesRegex(TranslationError, "changed a recipe limit"):
             translate_recipe(self.openai, self.recipe)
 
         for reply in (
@@ -127,7 +127,7 @@ class TranslationTests(unittest.TestCase):
             "Cook for at least [MEASURE_A] and for at most [MEASURE_B].",
             "Cook for [MEASURE_A] and for [MEASURE_B].",
         ):
-            with self.subTest(reply=reply), self.assertRaisesRegex(TranslationError, "negation or a recipe limit"):
+            with self.subTest(reply=reply), self.assertRaisesRegex(TranslationError, "changed a recipe limit"):
                 self.response({**ENGLISH, path: reply})
                 translate_recipe(self.openai, self.recipe)
 
@@ -135,29 +135,25 @@ class TranslationTests(unittest.TestCase):
         result = translate_recipe(self.openai, self.recipe)
         self.assertEqual(result["steps"][0]["instruction"]["value"], "Cook for at least 5 min and for less than 10 min.")
 
-    def test_rejects_a_lost_or_moved_negation_without_any_numbers(self):
-        path = "/steps/0/instruction"
-        self.recipe["steps"][0]["instruction"] = field("Não mexa. Depois cubra.")
-        for reply in ("Stir. Then cover.", "Stir. Then do not cover."):
-            with self.subTest(reply=reply), self.assertRaisesRegex(TranslationError, "negation or a recipe limit"):
+    def test_accepts_culinary_absence_adjectives_without_a_word_count_check(self):
+        path = "/ingredients/0/name"
+        for source, reply in (
+            ("uva passa sem sementes", "seedless raisins"),
+            ("Hähnchen ohne Knochen", "boneless chicken"),
+            ("farinha sem glúten", "gluten-free flour"),
+        ):
+            with self.subTest(source=source, reply=reply):
+                self.recipe["ingredients"][0]["name"] = field(source)
                 self.response({**ENGLISH, path: reply})
-                translate_recipe(self.openai, self.recipe)
+                result = translate_recipe(self.openai, self.recipe)
+                self.assertEqual(result["ingredients"][0]["name"]["value"], reply)
+                self.assertEqual(result["ingredients"][0]["name"]["evidence"]["quote"], source)
 
-        self.response({**ENGLISH, path: "Do not stir. Then cover."})
+    def test_accepts_rephrased_instruction_with_no_explicit_negation_word(self):
+        self.recipe["steps"][0]["instruction"] = field("Não tampe a panela.")
+        self.response({**ENGLISH, "/steps/0/instruction": "Leave the lid off."})
         result = translate_recipe(self.openai, self.recipe)
-        self.assertEqual(result["steps"][0]["instruction"]["value"], "Do not stir. Then cover.")
-
-    def test_accepts_a_negated_condition_moved_to_start_of_sentence(self):
-        path = "/steps/0/instruction"
-        self.recipe["steps"][0]["instruction"] = field("Den Braten, wenn er nicht geschnitten ist, in die Soße legen.")
-        translated = "If the roast has not been sliced, place it in the sauce."
-        self.response({**ENGLISH, path: translated})
-        result = translate_recipe(self.openai, self.recipe)
-        self.assertEqual(result["steps"][0]["instruction"]["value"], translated)
-
-        self.response({**ENGLISH, path: "If the roast has been sliced, do not place it in the sauce."})
-        with self.assertRaisesRegex(TranslationError, "negation or a recipe limit"):
-            translate_recipe(self.openai, self.recipe)
+        self.assertEqual(result["steps"][0]["instruction"]["value"], "Leave the lid off.")
 
     def test_accepts_not_until_after_as_an_equivalent_time_bound(self):
         path = "/steps/0/instruction"
@@ -166,16 +162,11 @@ class TranslationTests(unittest.TestCase):
         result = translate_recipe(self.openai, self.recipe)
         self.assertIn("until after 8 days", result["steps"][0]["instruction"]["value"])
 
-        self.recipe["steps"][0]["instruction"] = field("Não mexa e cubra.")
-        self.response({**ENGLISH, path: "Stir and do not cover."})
-        with self.assertRaisesRegex(TranslationError, "negation or a recipe limit"):
-            translate_recipe(self.openai, self.recipe)
-
     def test_preserves_a_numeric_range_across_equivalent_wording(self):
         path = "/steps/0/instruction"
         self.recipe["steps"][0]["instruction"] = field("Cozinhe por entre 5 e 10 minutos.")
         self.response({**ENGLISH, path: "Cook for [MEASURE_A] and [MEASURE_B]."})
-        with self.assertRaisesRegex(TranslationError, "negation or a recipe limit"):
+        with self.assertRaisesRegex(TranslationError, "changed a recipe limit"):
             translate_recipe(self.openai, self.recipe)
 
         self.response({**ENGLISH, path: "Cook for between [MEASURE_A] and [MEASURE_B]."})
@@ -185,7 +176,7 @@ class TranslationTests(unittest.TestCase):
     def test_original_language_notes_preserve_inclusive_bounds_and_prohibitions(self):
         notes = {"time": "Do not boil for longer than 10 minutes. Do not stir."}
         self.response({"/display/0": "Länger als [MEASURE_A] Minuten kochen. Nicht umrühren."})
-        with self.assertRaisesRegex(TranslationError, "negation or a recipe limit"):
+        with self.assertRaisesRegex(TranslationError, "changed a recipe limit"):
             translate_output(self.openai, self.recipe, notes, language="original")
 
         self.response({"/display/0": "Höchstens [MEASURE_A] Minuten kochen. Nicht umrühren."})
