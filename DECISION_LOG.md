@@ -72,3 +72,9 @@ Apply scaling first and then vegan rules. The rules preserve ingredient IDs and 
 ## 2026-11-13 14:49 · Keep direct PDF input
 
 Gabriel made pipeline rasterization conditional on cost savings on Gemini as well as a fast conversion. On this scan, Gemini used more input tokens for PNGs at default detail and the same number at low detail. The [benchmark](AI_LOG.md#2026-11-13-144829144924--gemini-pdf-and-png-comparison) records the result. Direct PDF remains the pipeline input.
+
+## 2026-11-13 15:04 · Use rasterized pages for Luna
+
+Gabriel chose a separate input format for each OCR reader. Gemini receives the original PDF. Luna receives lossless PNGs rendered in memory with PyMuPDF and encoded with Pillow at compression level 3. The local budget is 32 pages and 36 MB of PNG data. Above either limit, Luna receives the original PDF and the CLI reports the fallback. The Docker image packages the two rendering dependencies, with recipe files and credentials supplied at runtime.
+
+Keep the scaling calculation deterministic. Recognized seasoning and vessel-dependent oil amounts retain the source measure and require review. The same rule applies to the amount in the step. The demo leaves adjustments for pan capacity, batch size, and ingredient amounts split across steps to the cook.

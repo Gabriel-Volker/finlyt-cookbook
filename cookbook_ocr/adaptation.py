@@ -27,6 +27,20 @@ YIELD_INSTRUCTION = re.compile(
     re.IGNORECASE,
 )
 QUANTITY_START = r"(?<![\w.,/⁄∕–—−-])(?<![0-9]\s)"
+SALT_NAMES = re.compile(
+    r"(?:(?:table|sea|kosher) salt|salt|sal(?: marinho| grosso| fino)?|"
+    r"(?:speise|meer|koch|tafel)salz|salz)", re.IGNORECASE
+)
+PEPPER_NAMES = re.compile(
+    r"(?:pepper|(?:(?:ground|cracked) )?(?:black|white) pepper|"
+    r"pimenta(?:[- ]do[- ]reino| preta| branca)|pfeffer|"
+    r"(?:(?:schwarz|weiß)er|gemahlener) pfeffer)", re.IGNORECASE
+)
+OIL_WORD = re.compile(r"\b(?:oil|[óo]leo|azeite|öl|[\w]+öl)\b", re.IGNORECASE)
+OIL_PURPOSE = (
+    r"(?:for (?:deep[- ]?)?frying|for greasing|to (?:grease|coat) the pan|"
+    r"para fritar|para untar|zum (?:frittieren|braten|einfetten))"
+)
 
 
 def _portion_count(field: dict) -> int | None:
@@ -39,6 +53,48 @@ def _portion_count(field: dict) -> int | None:
 
 def _phrase_pattern(text: str) -> str:
     return r"\s+".join(re.escape(word) for word in text.split())
+
+
+def _manual_scale_reason(ingredient: dict, steps: list[dict]) -> str | None:
+    name = ingredient["name"]["value"] or ""
+    normalized_name = " ".join(name.split())
+    unit = ingredient["unit"]["value"]
+    if SALT_NAMES.fullmatch(normalized_name) or (
+        PEPPER_NAMES.fullmatch(normalized_name)
+        and (unit or normalized_name.casefold() != "pepper")
+    ):
+        return "Check the seasoning by taste before changing its original amount."
+    if not OIL_WORD.search(normalized_name):
+        return None
+
+    preparation = ingredient["preparation"]["value"] or ""
+    if re.search(OIL_PURPOSE, f"{normalized_name} {preparation}", re.IGNORECASE):
+        return "Check how much oil is needed for the pan or frying vessel."
+
+    named_oil = _phrase_pattern(normalized_name)
+    units = "|".join(_phrase_pattern(alias) for alias in unit_aliases(unit)) if unit else ""
+    measure = rf"(?:{QUANTITY_PATTERN}\s*(?:{units})\s+(?:of\s+|de\s+)?)?" if units else ""
+    oil_reference = rf"{measure}{named_oil}(?!\w)"
+    linked_oil = re.compile(
+        rf"(?<!\w){named_oil}(?!\w)\s*[,(-]?\s*{OIL_PURPOSE}\b|"
+        rf"\b(?:fry[^.!?;,]{{0,80}}? in|fritar[^.!?;,]{{0,80}}? em|frite[^.!?;,]{{0,80}}? em)\s+{oil_reference}|"
+        rf"\b(?:grease|coat) (?:the )?pan with\s+{oil_reference}|"
+        rf"\bin\s+{oil_reference}\s+(?:braten|frittieren)\b",
+        re.IGNORECASE,
+    )
+    # Quotes may contain instructions which were extracted into a separate step.
+    quotes = [(field.get("evidence") or {}).get("quote") or "" for field in (
+        ingredient["name"], ingredient["quantity"], ingredient["unit"], ingredient["preparation"]
+    )]
+    instructions = [
+        step[key]["value"] or ""
+        for step in steps
+        if ingredient["id"] in step["ingredient_ids"]
+        for key in ("instruction", "condition")
+    ]
+    if any(linked_oil.search(text) for text in (*quotes, *instructions)):
+        return "Check how much oil is needed for the pan or frying vessel."
+    return None
 
 
 def _ingredient_measure_patterns(ingredient: dict) -> tuple[re.Pattern, ...]:
@@ -184,6 +240,10 @@ def adapt_recipe(
                 adjusted = scale_quantity(quantity, unit, factor)
                 if adjusted is None:
                     warn(f"{path}/quantity", "The source measure cannot be scaled numerically.")
+                    continue
+                review_reason = _manual_scale_reason(ingredient, recipe["steps"])
+                if review_reason:
+                    warn(f"{path}/quantity", review_reason)
                     continue
                 scaled, scaled_unit = adjusted
                 measures[ingredient["id"]] = (

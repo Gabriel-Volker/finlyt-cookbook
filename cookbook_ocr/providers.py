@@ -2,11 +2,15 @@
 
 import base64
 import json
+import logging
 from http.client import HTTPException
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+
+from .extraction import PAGE_MARKER
+from .raster import rasterize_pdf
 
 
 GEMINI_MODEL = "gemini-3.1-flash-lite"
@@ -22,6 +26,7 @@ MIME_TYPES = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
 }
+LOGGER = logging.getLogger(__name__)
 
 
 class ProviderError(RuntimeError):
@@ -59,13 +64,17 @@ def _post_json(
     return result
 
 
-def _encode_document(document: bytes, filename: str) -> tuple[str, str]:
+def _document_mime_type(document: bytes, filename: str) -> str:
     mime_type = MIME_TYPES.get(Path(filename).suffix.lower())
     if not mime_type:
         raise ValueError("Supported input files are PDF, PNG, and JPEG.")
     if not document:
         raise ValueError("The input document is empty.")
-    return mime_type, base64.b64encode(document).decode("ascii")
+    return mime_type
+
+
+def _base64(data: bytes) -> str:
+    return base64.b64encode(data).decode("ascii")
 
 
 class GeminiClient:
@@ -73,7 +82,7 @@ class GeminiClient:
         self._api_key = api_key
 
     def transcribe(self, document: bytes, filename: str, prompt: str) -> str:
-        mime_type, encoded = _encode_document(document, filename)
+        mime_type = _document_mime_type(document, filename)
         result = _post_json(
             "Gemini",
             GEMINI_URL,
@@ -85,7 +94,7 @@ class GeminiClient:
                     {
                         "role": "user",
                         "parts": [
-                            {"inlineData": {"mimeType": mime_type, "data": encoded}},
+                            {"inlineData": {"mimeType": mime_type, "data": _base64(document)}},
                         ],
                     }
                 ],
@@ -137,20 +146,39 @@ class OpenAIClient:
         return text
 
     def transcribe(self, document: bytes, filename: str, prompt: str) -> str:
-        mime_type, encoded = _encode_document(document, filename)
-        data_uri = f"data:{mime_type};base64,{encoded}"
-        if mime_type == "application/pdf":
-            attachment = {
-                "type": "input_file",
-                "filename": "recipe.pdf",
-                "file_data": data_uri,
-            }
-        else:
-            attachment = {"type": "input_image", "image_url": data_uri}
+        mime_type = _document_mime_type(document, filename)
+        if mime_type != "application/pdf":
+            image = {"type": "input_image", "image_url": f"data:{mime_type};base64,{_base64(document)}"}
+            return self._transcribe_parts(prompt, [image])
 
+        pages = rasterize_pdf(document)
+        if pages is None:
+            LOGGER.warning("The PDF exceeds the local raster budget. Luna will receive the original PDF.")
+            attachment = {
+                "type": "input_file", "filename": "recipe.pdf",
+                "file_data": f"data:application/pdf;base64,{_base64(document)}",
+            }
+            return self._transcribe_parts(prompt, [attachment])
+
+        attachments = [
+            {"type": "input_image", "image_url": f"data:image/png;base64,{_base64(page)}", "detail": "high"}
+            for page in pages
+        ]
+        raster_prompt = (
+            f"{prompt.rstrip()}\n\nThe attachment is {len(pages)} page images in physical page order. "
+            "Treat each image as a separate page, including images with no readable text. "
+            "Use one generated page marker per image. Printed page numbers remain document text."
+        )
+        text = self._transcribe_parts(raster_prompt, attachments)
+        expected = [str(number) for number in range(1, len(pages) + 1)]
+        if PAGE_MARKER.findall(text) != expected:
+            raise ProviderError("OpenAI did not return the expected page markers for the rasterized PDF.")
+        return text
+
+    def _transcribe_parts(self, prompt: str, attachments: list[dict]) -> str:
         return self.respond(
             input=[
                 {"role": "system", "content": prompt},
-                {"role": "user", "content": [attachment]},
+                {"role": "user", "content": attachments},
             ]
         )

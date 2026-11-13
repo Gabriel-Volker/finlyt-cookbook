@@ -102,6 +102,46 @@ class AdaptationTests(unittest.TestCase):
             {"/ingredients/0/quantity", "/ingredients/3", "/steps/0/instruction"},
         )
 
+    def test_leaves_numeric_seasoning_and_frying_oil_for_manual_review(self):
+        source = recipe("2", [
+            ingredient("salt", "sea salt", "2", "tsp"),
+            ingredient("pepper", "Pfeffer", "1", "g"),
+            ingredient("oil", "oil", "1", "l"),
+            ingredient("olive-oil", "olive oil", "50", "ml"),
+            ingredient("potatoes", "potatoes", "400", "g"),
+        ], [
+            step("Season 400 g potatoes with 2 tsp sea salt and 1 g Pfeffer. "
+                 "Fry them in 1 l oil at 180 °C for 12 minutes.",
+                 "salt", "pepper", "oil", "potatoes", duration="12 minutes"),
+            step("Mix in 50 ml olive oil.", "olive-oil"),
+        ])
+        result = adapt_recipe(source, servings=4)
+        adapted = result["recipe"]
+        self.assertEqual(result["status"], "needs_review")
+        self.assertEqual(
+            [item["quantity"]["value"] for item in adapted["ingredients"]],
+            ["2", "1", "1", "100", "800"],
+        )
+        self.assertEqual(
+            adapted["steps"][0]["instruction"]["value"],
+            "Season 800 g potatoes with 2 tsp sea salt and 1 g Pfeffer. "
+            "Fry them in 1 l oil at 180 °C for 12 minutes.",
+        )
+        self.assertEqual(adapted["steps"][1]["instruction"]["value"], "Mix in 100 ml olive oil.")
+        self.assertEqual(
+            {item["path"] for item in result["review_items"]},
+            {f"/ingredients/{i}/quantity" for i in range(3)},
+        )
+
+    def test_flags_pan_oil_from_extracted_purpose(self):
+        source = recipe("2", [
+            ingredient("pan-oil", "canola oil", "10", "ml", preparation="for greasing"),
+        ], [step("Use 10 ml canola oil.", "pan-oil")])
+        result = adapt_recipe(source, servings=4)
+        self.assertEqual(result["status"], "needs_review")
+        self.assertEqual(result["recipe"]["ingredients"][0]["quantity"]["value"], "10")
+        self.assertEqual(result["recipe"]["steps"][0]["instruction"]["value"], "Use 10 ml canola oil.")
+
     def test_vegan_and_scaling_update_ingredient_and_instructions_together(self):
         source = recipe("2", [
             ingredient("bacon", "bacon", "200", "g"),

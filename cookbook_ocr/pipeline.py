@@ -3,7 +3,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from .extraction import build_recipe, has_unresolved_fields
+from .extraction import PAGE_MARKER, build_recipe, has_unresolved_fields
 from .providers import GeminiClient, OpenAIClient
 
 
@@ -11,7 +11,16 @@ PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
 
 
 def validate_comparison(result: dict, a: str, b: str) -> None:
-    """Require each citation to appear literally in its own transcription."""
+    """Require each citation to appear literally in its own transcription and page."""
+    source_pages = []
+    for source in (a, b):
+        markers = list(PAGE_MARKER.finditer(source))
+        page_ends = [marker.start() for marker in markers[1:]] + [len(source)]
+        source_pages.append({
+            marker.group(1): source[marker.end():next_start]
+            for marker, next_start in zip(markers, page_ends)
+        })
+
     for items in (result["review_items"], result["equivalent_variations"]):
         for item in items:
             page = item["page"]
@@ -20,9 +29,13 @@ def validate_comparison(result: dict, a: str, b: str) -> None:
             excerpts = (item["a_excerpt"], item["b_excerpt"])
             if excerpts == (None, None):
                 raise ValueError("Comparison item has no evidence in either transcription.")
-            for label, excerpt, source in zip(("A", "B"), excerpts, (a, b)):
-                if excerpt is not None and (not excerpt.strip() or excerpt not in source):
+            for label, excerpt, source, pages in zip(("A", "B"), excerpts, (a, b), source_pages):
+                if excerpt is None:
+                    continue
+                if not excerpt.strip() or excerpt not in source:
                     raise ValueError(f"Comparison returned a non-verbatim excerpt for {label}.")
+                if page is not None and pages and excerpt not in pages.get(page, ""):
+                    raise ValueError(f"Comparison cited the wrong page for {label}.")
 
 
 def compare_transcriptions(
@@ -36,7 +49,8 @@ def compare_transcriptions(
         retry_prompt = (
             prompt + "\n\nThe previous response failed evidence validation. "
             "Use the shortest exact excerpts that show the issue. "
-            "Keep spaces and line breaks unchanged inside each excerpt."
+            "Keep spaces and line breaks unchanged inside each excerpt. "
+            "Verify the page for each excerpt, or use null when the readings place it on different pages."
         )
         result = _structured_response(
             openai, retry_prompt, schema, "transcription_comparison", transcriptions

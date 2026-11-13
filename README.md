@@ -1,15 +1,26 @@
 # Finlyt Cookbook Challenge
 
-The OCR command sends the same recipe to Gemini 3.1 Flash-Lite and GPT-6 Luna in parallel. It then sends both text transcriptions to GPT-6 Luna under the labels A and B. The [comparison prompt](prompts/compare_transcriptions.system.txt) and [JSON schema](prompts/compare_transcriptions.schema.json) define the review report.
+The OCR command sends the original PDF to Gemini 3.1 Flash-Lite and renders its pages for GPT-6 Luna in parallel. The Luna request contains the pages in order as lossless RGB PNGs. PyMuPDF renders each page and Pillow encodes it with PNG compression level 3. The command then sends both text transcriptions to GPT-6 Luna under the labels A and B. The [comparison prompt](prompts/compare_transcriptions.system.txt) and [JSON schema](prompts/compare_transcriptions.schema.json) define the review report.
 
-Use Python 3.10 or later. Copy `.env.example` to `.env` in the project root and fill in the two `KEY=value` entries. You can also set those variables in the process environment, which takes precedence. Keep the supplied `Recipe.pdf` locally in the project root or pass its full path.
+Copy `.env.example` to `.env` and fill in the two `KEY=value` entries. Run these commands from the project root with Docker running and a local copy of `Recipe.pdf` in that directory.
 
 ```powershell
 Copy-Item .env.example .env
+docker build -t finlyt-cookbook .
+New-Item -ItemType Directory -Force outputs | Out-Null
+docker run --rm --env-file .env --mount "type=bind,source=$PWD/Recipe.pdf,target=/input/Recipe.pdf,readonly" --mount "type=bind,source=$PWD/outputs,target=/output" finlyt-cookbook /input/Recipe.pdf --output /output/recipe-review.json
+```
+
+The container reads the recipe and writes its JSON report through the bind mount. The build context includes only code, prompts, and dependency declarations.
+
+For a local run, use Python 3.10 or later and the same `.env`. Environment variables take precedence. Pass the full input path if the file is outside the project.
+
+```powershell
+python -m pip install -r requirements.txt
 python -m cookbook_ocr Recipe.pdf --output outputs/recipe-review.json
 ```
 
-The command accepts PDF, PNG, and JPEG. Omit `--output` to write JSON to standard output.
+The command accepts PDF, PNG, and JPEG. Password-protected PDFs need to be unlocked first. Luna falls back to direct PDF input if a file exceeds the local raster budget of 32 pages or 36 MB of PNG data. Omit `--output` to write JSON to standard output.
 
 The `recipe` object contains the title, servings, ingredients, utensils, and ordered steps. Ingredients have quantities, units, preparation notes, and any explicitly stated optionality. Steps reference ingredient and utensil IDs and preserve stated durations and conditions.
 
@@ -34,6 +45,8 @@ python -m cookbook_ocr outputs/recipe-review.json --servings 6 --original-servin
 Omit `--original-servings` if the recipe states a single positive whole number of servings. The Sauerbraten gives no yield. The examples use four only as a user-provided baseline for the calculation.
 
 Scaling uses exact fractions for numeric measures and ranges. It converts between g and kg or mL and L when doing so makes a measure easier to use. Household units retain their scale and volume stays separate from mass. Unstated quantities remain empty. Vague measures, ambiguous separators, and conflicting step measures can require review. Steps are updated where a measure matches the linked ingredient or a portioning instruction matches the original yield. Cooking times and temperatures are kept during scaling.
+
+Python applies the serving factor after extraction. It keeps the source amounts for recognized salt and pepper names and for oil explicitly used to fry or grease a pan, and flags these amounts for review. The appropriate amount can depend on taste or on the cooking vessel. Step rewrites require a match to the linked ingredient, so split amounts and amounts spelled out in prose can need manual reconciliation. A larger batch can also require a different pan or separate batches.
 
 Vegan adaptation runs after scaling. Python rules cover a limited set of ingredient names and cooking methods in German, English, and Portuguese. For Sauerbraten, the rules substitute seitan, smoked tofu, vegan butter and vegan-labelled wine, and adapt marinating, browning and making the sauce. Known animal-derived ingredients without a matching rule are flagged for review. Check ingredient labels and any unsupported terms before relying on the vegan result.
 

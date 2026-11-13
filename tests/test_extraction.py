@@ -1,6 +1,7 @@
 import unittest
 
 from cookbook_ocr.extraction import build_recipe
+from cookbook_ocr.pipeline import validate_comparison
 
 
 TRANSCRIPTIONS = {
@@ -62,6 +63,19 @@ def porridge():
 
 
 class ExtractionTests(unittest.TestCase):
+    def test_rejects_conflict_evidence_attributed_to_the_wrong_page(self):
+        review = {
+            "kind": "conflict", "page": "2", "a_excerpt": "2 cups water",
+            "b_excerpt": "3 cups water",
+        }
+        comparison = {"review_items": [review], "equivalent_variations": []}
+        with self.assertRaisesRegex(ValueError, "wrong page"):
+            validate_comparison(comparison, TRANSCRIPTIONS["A"], TRANSCRIPTIONS["B"])
+        review["page"] = "1"
+        validate_comparison(comparison, TRANSCRIPTIONS["A"], TRANSCRIPTIONS["B"])
+        recipe = build_recipe(porridge(), TRANSCRIPTIONS, comparison["review_items"])
+        self.assertEqual(recipe["ingredients"][0]["quantity"]["status"], "needs_review")
+
     def test_preserves_explicit_quantities_and_links_steps_to_entities(self):
         consistent_readings = {"A": TRANSCRIPTIONS["A"], "B": TRANSCRIPTIONS["A"]}
         recipe = build_recipe(porridge(), consistent_readings, [])

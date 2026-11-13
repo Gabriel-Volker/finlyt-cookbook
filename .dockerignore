@@ -1,0 +1,8 @@
+**
+!Dockerfile
+!requirements.txt
+!cookbook_ocr/
+!cookbook_ocr/*.py
+!prompts/
+!prompts/*.txt
+!prompts/*.json
