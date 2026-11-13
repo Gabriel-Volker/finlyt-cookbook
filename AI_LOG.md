@@ -243,3 +243,7 @@ Gabriel asked Luna to specify how each ingredient scales and asked whether Gemin
 In a live flatbread control, Luna used proportional flour, fixed salt, oil per batch, and pepper to taste for review. Changing four servings to ten gave 500 g flour, 1 tsp salt, and 6 tbsp oil for three batches at 2 tbsp per batch. Luna also generated both Sauerbraten demo plans. They yielded 750 mL each of vinegar and water and six onions at six servings, with unspecified and qualitative quantities left for review. Both demo plans replayed offline via the CLI. All 74 Python tests and the simulated UI flows passed.
 
 Codex recommended evaluating Gemini as a second reader for ingredient rules, with its own access to the recipe and evidence. Compare the classifications by ingredient ID and send disagreements to review. Model agreement can still contain correlated errors. The verifier was discussed and was not implemented. See [Kim et al., Correlated Errors in Large Language Models](https://arxiv.org/abs/2506.07962).
+
+## 2026-11-13 16:45 · Check vegan substitutions against the recipe
+
+Gabriel noted that independent vegan plans can recommend different substitutes that both work. Codex refined the proposal to have Gemini assess whether Luna's substitution fits the ingredient's role, quantity, and revised steps. A different preference alone does not warrant review. For scaling, compare the rules' effects across serving counts and flag materially different quantities or batch requirements. This discussion produced no verifier or model calls.

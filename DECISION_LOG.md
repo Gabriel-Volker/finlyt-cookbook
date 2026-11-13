@@ -108,3 +108,7 @@ Gabriel asked to reject unreadable blur while preserving legible recipes. Requir
 ## 2026-11-13 16:41 · Use explicit ingredient scaling rules
 
 Gabriel chose Luna to classify each ingredient and deterministic Python to calculate target quantities. Save the rules by ingredient and recipe variant. Require explicit evidence for fixed amounts and documented batch sizes. Preserve uncertain quantities for review. Gabriel is considering a Gemini verification pass. Evaluate independent classifications on manually checked recipes before deciding whether to add the call. Track material disagreements and shared errors as well as latency and cost.
+
+## 2026-11-13 16:45 · Treat viable vegan alternatives as valid
+
+Gabriel raised the risk of unnecessary human review when two different vegan substitutions both work. If a verifier is added, ask it to assess the proposed ingredient and preparation against the recipe and cite any concrete incompatibility or missing information. Reserve review for issues that affect the adapted recipe. Include recipes with multiple viable substitutes when measuring unnecessary reviews.
