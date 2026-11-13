@@ -1,4 +1,4 @@
-"""Render PDFs as ordered, lossless page images for the Luna reader."""
+"""Read native PDF text or render ordered, lossless page images."""
 
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -24,6 +24,7 @@ _Result = TypeVar("_Result")
 class PreparedPdf:
     pages: list[bytes] | None
     has_text_layer: bool = False
+    native_pages: list[str] | None = None
 
 
 def run_pdf_task(task: Callable[..., _Result], *args) -> _Result:
@@ -36,11 +37,11 @@ def rasterize_pdf(document: bytes) -> list[bytes] | None:
     return prepare_pdf(document).pages
 
 
-def prepare_pdf(document: bytes) -> PreparedPdf:
-    return run_pdf_task(_prepare_pdf, document)
+def prepare_pdf(document: bytes, *, prefer_native_text: bool = False) -> PreparedPdf:
+    return run_pdf_task(_prepare_pdf, document, prefer_native_text)
 
 
-def _prepare_pdf(document: bytes) -> PreparedPdf:
+def _prepare_pdf(document: bytes, prefer_native_text: bool) -> PreparedPdf:
     try:
         with pymupdf.open(stream=document, filetype="pdf") as pdf:
             if not pdf.is_pdf:
@@ -51,6 +52,11 @@ def _prepare_pdf(document: bytes) -> PreparedPdf:
                 raise ValueError("The PDF has no pages.")
             if pdf.page_count > MAX_RASTER_PAGES:
                 return PreparedPdf(None)
+
+            if prefer_native_text:
+                native = _native_text(pdf)
+                if native is not None:
+                    return PreparedPdf(None, has_text_layer=True, native_pages=native)
 
             pages = []
             png_bytes = 0
@@ -76,3 +82,15 @@ def _prepare_pdf(document: bytes) -> PreparedPdf:
             return PreparedPdf(pages, has_text_layer)
     except (RuntimeError, OSError) as error:
         raise ValueError("Could not render the PDF pages. Check that the file is readable.") from error
+
+
+def _native_text(pdf) -> list[str] | None:
+    pages = []
+    for page in pdf:
+        text = page.get_text(sort=True)
+        # Sparse labels and damaged text layers are unreliable. Scans with
+        # embedded text still need vision when their page contains raster content.
+        if sum(word.isalpha() for word in text.split()) < 4 or "\ufffd" in text or page.get_image_info():
+            return None
+        pages.append(text)
+    return pages

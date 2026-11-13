@@ -25,6 +25,7 @@ from .capacity import VESSEL_DISPLAY_TEXTS
 from .pipeline import UnreadableRecipeError, plan_vegan_recipe, refresh_scaling_plans, run_pipeline
 from .providers import GeminiClient, MIME_TYPES, OpenAIClient, ProviderError
 from .raster import run_pdf_task
+from .recipe_text import decode_recipe_text
 from .review import review_recipe, reviewed_step_links
 from .scaling_plan import SCALING_RULE_DISPLAY_TEXTS, rebase_scaling_plan, rebind_scaling_plan
 from .translation import TranslationError, prepare_bilingual_output, translate_output
@@ -166,9 +167,12 @@ class RequestError(ValueError):
 
 
 def _media_type(filename: str, document: bytes) -> str:
-    mime_type = MIME_TYPES.get(Path(filename).suffix.lower())
+    suffix = Path(filename).suffix.lower()
+    if suffix == ".txt":
+        return "text/plain"
+    mime_type = MIME_TYPES.get(suffix)
     if mime_type is None:
-        raise RequestError("Choose a PDF, PNG or JPEG file.", HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
+        raise RequestError("Choose a PDF, PNG, JPEG or UTF-8 text file.", HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
     signatures = {
         "application/pdf": b"%PDF-",
         "image/png": b"\x89PNG\r\n\x1a\n",
@@ -200,6 +204,10 @@ def _preview_pdf(document: bytes, page_number: int) -> tuple[int, bytes]:
 def _preview(document: bytes, mime_type: str, page_number: int) -> dict:
     if page_number < 1:
         raise RequestError("Choose an existing page.")
+    if mime_type == "text/plain":
+        if page_number != 1:
+            raise RequestError("Choose an existing page.")
+        return {"page_count": 1, "text": decode_recipe_text(document)}
     try:
         if mime_type == "application/pdf":
             page_count, png = run_pdf_task(_preview_pdf, document, page_number)

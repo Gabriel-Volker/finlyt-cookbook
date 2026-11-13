@@ -1,47 +1,50 @@
 # Finlyt Cookbook Challenge
 
-The OCR command sends the original PDF to Gemini 3.1 Flash-Lite and renders its pages for GPT-6.1 Terra in parallel. The Terra request contains the pages in order as lossless RGB PNGs. PyMuPDF renders each page and Pillow encodes it with PNG compression level 3. The command then sends both text transcriptions to GPT-6 Luna under the labels A and B. The [comparison prompt](prompts/compare_transcriptions.system.txt) and [JSON schema](prompts/compare_transcriptions.schema.json) define the review report. See [Known problems](PROBLEMS.md) for observed failures and their status.
+Cookbook turns a recipe into a reviewable ingredient list and method, then applies serving changes and optional vegan substitutions. Each accepted source value links to a reading and quote. The web workspace and CLI share the same Python pipeline.
 
-Copy `.env.example` to `.env` and fill in the two `KEY=value` entries. Run these commands from the project root with Docker running and a local copy of `Recipe.pdf` in that directory.
+## Run the workspace
+
+Run these three commands from the repository root with Docker running. The bundled example works with the blank `.env` file. For a live import, fill in `GEMINI_API_KEY` and `OPENAI_API_KEY` before starting the container. If you already have a `.env`, start at the build command.
 
 ```powershell
 Copy-Item .env.example .env
 docker build -t finlyt-cookbook .
-New-Item -ItemType Directory -Force outputs | Out-Null
-docker run --rm --env-file .env --mount "type=bind,source=$PWD/Recipe.pdf,target=/input/Recipe.pdf,readonly" --mount "type=bind,source=$PWD/outputs,target=/output" finlyt-cookbook /input/Recipe.pdf --output /output/recipe-review.json
-```
-
-The container reads the recipe and writes its JSON report through the bind mount. The build context includes only code, prompts, and dependency declarations.
-
-The comparison uses a model for differing transcriptions. Exact matches still go through local checks for unreadable text. The web service keeps up to eight recent import reports in memory and reuses a report for an identical upload, even when the filename changes.
-
-## Recipe workspace
-
-Start the web workspace in Docker and open `http://localhost:8000`.
-
-```powershell
-docker build -t finlyt-cookbook .
 docker run --rm --env-file .env -p 127.0.0.1:8000:8000 --entrypoint python finlyt-cookbook -m cookbook_ocr.web --host 0.0.0.0
 ```
 
-To run it directly after installing the Python dependencies, use `python -m cookbook_ocr.web`. Upload a PDF, PNG, or JPEG up to 14 MB. Review the extracted ingredients and steps with their source excerpts, then adjust servings, apply vegan substitutions, and export the JSON report. **Try example** opens a bundled Sauerbraten example. The example and its adaptations work without API keys. Imported files and results are held for the current browser session.
+Select **Try example** in the workspace. Use **Review** to inspect a source excerpt. In **Adapt**, turn on **Make vegan**, select six servings, and export the result. For the live test, place your local copy of `Recipe.pdf` at the repository root or upload it from its existing location. `Recipe.pdf` and `.env` are excluded from Git and the Docker build. [Local workspace](http://127.0.0.1:8000/)
 
-In **Review**, click a value, step, or utensil to open its editor with the source evidence. The field selector shows only fields for that item. Use **Confirm value** to accept a reading or **Save correction** to supply a corrected value. You can also edit which ingredients and utensils a step uses. The report retains the original `recipe`, OCR texts, and comparison. The `review` section contains the reviewed recipe, the decisions, and paths still awaiting review. Changes save immediately. Opening **Adapt** refreshes plans for the reviewed values while the recipe remains available. If a plan identifies a field that needs attention, use the link in Adapt to open that field. The [activity diagram](docs/activity-diagram.md) shows these steps.
-
-**English output** is checked by default on the Import screen. Uncheck it to display the original recipe language. The choice applies to Review, Adapt, and JSON export. Import prepares both output languages in one batch, including the available vegan recipe. If a field fails validation, a retry reuses the validated fields from that batch. Switching languages reuses the prepared outputs. Serving changes run the scaling calculation in Python and insert the current measures into the validated translations without calling a model. New or corrected text is prepared in both languages when the recipe or plans change. The web export stores the selected result in `output.recipe`, the display notes in `output.texts`, and the choice in `output.language`. Review edits the source values, and the original recipe, OCR excerpts, and adaptation data retain their source wording. The app checks translated numbers, explicit negations, and common limit phrases in English, German, and Portuguese. The bundled English example works offline.
-
-For a local run, use Python 3.10 or later and the same `.env`. Environment variables take precedence. Pass the full input path if the file is outside the project.
+Run locally with Python 3.10 or later after installing the dependencies. The CLI reads the same `.env`, with environment variables taking precedence. Pass the full input path if the file is outside the project.
 
 ```powershell
 python -m pip install -r requirements.txt
 python -m cookbook_ocr Recipe.pdf --output outputs/recipe-review.json
 ```
 
-The command accepts PDF, PNG, and JPEG. Password-protected PDFs need to be unlocked first. Terra falls back to direct PDF input if a file exceeds the local raster budget of 32 pages or 36 MB of PNG data. Omit `--output` to write JSON to standard output.
+Use `python -m cookbook_ocr.web` to run the browser workspace without Docker. Omit the CLI's `--output` option to write the report to standard output. To pipe UTF-8 JSON on Windows, run Python with `-X utf8`.
+
+## Architecture and trade-offs
+
+| Stage | Challenge and design decision | Alternative considered |
+| --- | --- | --- |
+| **Ingest** | The photographed Sauerbraten pages have no text layer. The recipe continues across the page break, and the drawings contain labels. Gemini 3.1 Flash-Lite reads the source PDF and GPT-6.1 Terra reads lossless rendered pages. Preserve physical page indices and the readable header and labels for review. One earlier Luna reading produced `Bratenstand` where the manuscript says `Bratenfond`. A disagreement can affect the associated ingredient and sauce step. | Conventional OCR missed complete quantity–ingredient pairs and much of the preparation on this scan. Rasterizing for the OpenAI reader offered a useful second input route. The recorded Gemini benchmark favored its direct PDF input on cost. |
+| **Extract** | Luna compares differing readings under the anonymous labels A and B, then extracts a structured recipe. Python checks each source quote and its page, checks ingredient–measure associations, validates references and deduplicates equivalent detections. For example, four belongs to the onions in Sauerbraten. The recipe gives no meat weight or original yield, so those values stay unknown. | A single prompt that reads the photo and emits final JSON would be shorter to implement. Separate readings and extraction make it possible to tell where a disagreement entered the report. Guessing a yield would turn the scaling factor into an unmarked assumption. |
+| **Manipulate** | Luna proposes a vegan variant, Gemini checks the full recipe and method, and Python applies the accepted changes. The system then scales the selected variant with stored rules and exact fractions. Replacing the roast can affect both the marinade and sauce, so an ingredient swap alone cannot preserve the method. Batch size and vessel capacity can warrant review. | Blind proportional scaling would also change fixed or per-batch amounts. A list of preset vegan replacements would miss the culinary function of each ingredient. An LLM rewrite on every serving change would make arithmetic and replay harder to verify. |
+| **Output** | Review shows original evidence, disagreements, and any human corrections. Adapt shows ingredients, instructions, and why each value changed or needs review. Prepared translations reuse the currently calculated numbers. Export stores the source, review decisions, and selected output. | A polished recipe card alone would hide missing quantities and the source of a correction. Translation is a display layer because scaling from rewritten text can lose the original quantity and evidence. |
+
+The web service keeps up to eight recent successful reports in memory and reuses a report for an identical upload. The collaboration log records where I steered Codex, reviewed code, found failures, and changed the approach. [Activity diagram](docs/activity-diagram.md) · [Known problems](PROBLEMS.md) · [AI collaboration log](AI_LOG.md) · [Decision log](DECISION_LOG.md)
+
+## Review and adaptation
+
+In **Review**, click a value, step, or utensil to open its editor with the source evidence. The field selector shows only fields for that item. Use **Confirm value** to accept a reading or **Save correction** to supply a corrected value. You can also edit which ingredients and utensils a step uses. The report retains the original `recipe`, readings, and comparison. The `review` section contains the reviewed recipe, the decisions, and paths still awaiting review. Changes save immediately. Opening **Adapt** refreshes plans for the reviewed values while the recipe remains available. If a plan identifies a field that needs attention, use the link in Adapt to open that field.
+
+**English output** is checked by default on the Import screen. Uncheck it to display the original recipe language. The choice applies to Review, Adapt, and JSON export. Import prepares both output languages in one batch, including the available vegan recipe. If a field fails validation, a retry reuses the validated fields from that batch. Switching languages reuses the prepared outputs. Serving changes run the scaling calculation in Python and insert the current measures into the validated translations without calling a model. New or corrected text is prepared in both languages when the recipe or plans change. The web export stores the selected result in `output.recipe`, the display notes in `output.texts`, and the choice in `output.language`. Review edits the source values, and the original recipe, OCR excerpts, and adaptation data retain their source wording. The app checks translated numbers, explicit negations, and common limit phrases in English, German, and Portuguese. The bundled English example works offline.
+
+The web workspace accepts PDF, PNG, JPEG, and UTF-8 plain text (`.txt`) up to 14 MB. Plain text bypasses visual OCR. Digital PDFs of up to 32 pages do the same when every page has usable native text and no displayed raster images. The pipeline uses an LLM to extract the structured recipe and checks its citations against that text. Mixed PDFs and scans use the visual route, where page layout matters. On that route, PyMuPDF renders the pages and Pillow encodes them. Terra receives the original PDF if the file exceeds the local raster budget of 32 pages or 36 MB of PNG data. Unlock password-protected PDFs before import.
 
 The import rejects a severely blurred file only when the image check finds strong blur on every page and both OCR readers explicitly report that they recovered no text on any page. Any recovered text, a PDF text layer, or incomplete evidence keeps the file out of the blur rejection path. The web app asks for a sharper copy, and the CLI exits with an error before writing a recipe report. This conservative check can let some unreadable files through.
 
-The `recipe` object contains the title, servings, ingredients, utensils, and ordered steps. Ingredients have quantities, units, preparation notes, and any explicitly stated optionality. Steps reference ingredient and utensil IDs and preserve stated durations and conditions.
+The `recipe` object contains the title, servings, ingredients, utensils, and ordered steps. Ingredients have quantities, units, preparation notes, and any explicitly stated optionality. Steps reference ingredient and utensil IDs and preserve stated durations and conditions. The extraction may suggest a tool implied by an action in a linked step. The report marks it `inferred` and cites the action as evidence. Missing yields stay unknown until the cook supplies a baseline.
 
 Each extracted field carries a value, status, and evidence with its transcription label, page index when identifiable, and verbatim quote. A `missing` field has a null value. When a flagged discrepancy overlaps an extracted field, the field has status `needs_review` and a null value, with the evidence and one-based review item indices retained. Review items for passages outside the recipe, such as the cookbook attribution, remain visible in `comparison.review_items`.
 
@@ -53,12 +56,12 @@ The OCR providers receive fixed system instructions separately from the attachme
 
 ## Adjust the recipe
 
-The same command accepts a saved extraction report. A current plan in the report can be replayed without API keys. You can also pass the adaptation options directly with a PDF or image.
+The same command accepts a saved extraction report. A current plan in the report can be replayed without API keys. Use the bundled extraction report below or replace its path with your own. The adaptation options also work when importing a recipe.
 
 ```powershell
-python -m cookbook_ocr outputs/recipe-review.json --servings 6 --original-servings 4 --output outputs/recipe-6.json
-python -m cookbook_ocr outputs/recipe-review.json --vegan --output outputs/recipe-vegan.json
-python -m cookbook_ocr outputs/recipe-review.json --servings 6 --original-servings 4 --vegan --output outputs/recipe-vegan-6.json
+python -m cookbook_ocr examples/sauerbraten-extraction.json --servings 6 --original-servings 4 --output outputs/recipe-6.json
+python -m cookbook_ocr examples/sauerbraten-extraction.json --vegan --output outputs/recipe-vegan.json
+python -m cookbook_ocr examples/sauerbraten-extraction.json --servings 6 --original-servings 4 --vegan --output outputs/recipe-vegan-6.json
 ```
 
 Omit `--original-servings` if the recipe states a single positive whole number of servings or the reviewer supplied one. The Sauerbraten gives no yield. The examples use four as a user-provided baseline for the calculation.
@@ -74,6 +77,32 @@ When the evidence is insufficient, the models abstain. OCR uses `[unreadable]` f
 For a vegan plan, `needs_review` indicates missing or ambiguous information that prevents establishing a viable replacement or technique. `unavailable` covers cases such as `no_viable_substitute`, a rejected proposal, or an unavailable verifier. Both states have empty `changes`. Adapt disables the vegan option and explains the reason while keeping original scaling available. The API returns HTTP 422 with the status and reason. The CLI saves the report with the blocked plan, omits `adaptation`, and exits with code 1. If the planner returns invalid output, the application retries once and logs the validation error.
 
 The original `recipe` and OCR evidence remain in the report. Read the result in `adaptation.recipe`, the before and after values and reasons in `adaptation.changes`, and any open questions in `adaptation.review_items`. Adapting an exported report reapplies the saved review decisions to the original `recipe` before running the adaptation.
+
+## Reliability, cost, and latency
+
+**Hallucination and trust.** A syntactically valid JSON response can still be wrong. Literal evidence helps detect invented text. The quantity checks tie numbers to specific ingredient occurrences, and Python can restore an omitted unreadable marker to the review list. Two readers can still misread the same word. Source quotes establish traceability, while statuses such as `stated`, `missing`, and `needs_review` describe how to treat a field. These statuses are evidence and review signals. The application has no calibrated probability of correctness.
+
+**Non-determinism and reproducibility.** OCR and judgments about preparation or substitutions can vary between live runs. The export records both readings, the validated recipes and plans, and human review decisions. Replay uses that snapshot and performs calculations in Python. Tests exercise exact fractions, metric units, split amounts, duplicates, evidence checks, and ambiguous fields using supplied provider responses. Live examples exercise the same pipeline with real model output.
+
+**Validation without ground truth.** Agreement measures consistency and gives the reviewer places to inspect. To estimate accuracy, manually annotate a small set of handwritten scans, clean digital PDFs, and plain-text recipes across languages. Label each ingredient, amount, unit, source span, and preparation link, plus items a reviewer would withhold. Run each sample repeatedly and compare field accuracy, errors accepted without a flag, review rate, and stability across runs. Keep separate measurements for clean and poor inputs. The three Portuguese scans below broaden the sample across languages and layouts. This sample is too small for an accuracy estimate.
+
+**Model and code responsibilities.** The models interpret handwriting, align differing readings, extract fields, and reason about the cooking function of substitutions or scaling rules. Python owns file routing, quote and schema validation, exact arithmetic, deterministic application of saved changes, and export. In production I would benchmark Claude Sonnet as the second visual reader, evaluate conventional OCR on printed scans, and move checks for explicit document invariants into code. In financial statements that includes validating units such as EUR and TEUR and reconciling totals before publishing an analysis.
+
+| Measurement on the two-page Sauerbraten, 13 Nov 2026 | Time | Estimated API cost |
+| --- | --- | --- |
+| Earlier dual-reading, comparison, and extraction using Gemini and Luna | 67.54 s | USD 0.00467 with observed cache reads, or USD 0.00550 pricing those reads as cache writes |
+| Separate Terra direct-PDF transcription benchmark | 18.09 s | USD 0.03789 for that single call |
+| Current Terra-based full pipeline, including preparation of adaptation plans | About 4 min in one observed run | Full-run cost unmeasured |
+| Local serving change after import | About 110 ms in a Chromium test | Zero model calls |
+
+The historical costs describe different stages and model configurations. The current pipeline can also incur verification and translation costs. It batches bilingual fields into one request and reuses validated plans and translations. [Benchmark scope and token counts](AI_LOG.md)
+
+## With another week
+
+1. Build the annotated evaluation set above, then use reviewed failures as regression tests. Measure silent quantity and ingredient-link errors before adding more model calls.
+2. Add page batching and resumable retries for large imports. Validate page coverage against the source on each route. Record wall time and provider token usage by stage, including retries and cache hits, to compare model and routing choices.
+3. Strengthen links between ingredients, individual measures, and preparation clauses. Preserve uncertainty when translating or scaling a compound line, and make unresolved contradictions prominent in the cooking view and export.
+4. Evaluate conservative inferred tools and yields against the annotations. Keep inferred suggestions distinct from statements in the source and require human acceptance before using them in a consequential calculation.
 
 ## Example outputs
 

@@ -101,6 +101,50 @@ class ExtractionTests(unittest.TestCase):
         )
         self.assertEqual(recipe["steps"][0]["duration"]["evidence"]["page"], "2")
 
+    def test_labels_implied_tools_and_keeps_the_linked_action_as_evidence(self):
+        candidate = porridge()
+        action = "Bake at 180 °C until golden."
+        transcriptions = {source: text + "\n" + action for source, text in TRANSCRIPTIONS.items()}
+        candidate["tools"].append({"id": "oven", "name": span("oven", action), "inferred": True})
+        candidate["steps"].append({
+            "instruction": span(action), "ingredient_ids": [], "tool_ids": ["oven"],
+            "duration": None, "condition": None,
+        })
+        result = build_recipe(candidate, transcriptions, [])
+        self.assertEqual(result["tools"][0]["name"]["status"], "stated")
+        self.assertEqual(result["tools"][1]["name"], {
+            "value": "oven", "status": "inferred",
+            "evidence": {"source": "A", "page": "2", "quote": action}, "review_item_ids": [],
+        })
+        self.assertEqual(result["steps"][-1]["tool_ids"], ["oven"])
+
+        candidate["steps"][-1]["tool_ids"] = []
+        issues = []
+        unresolved = build_recipe(candidate, transcriptions, [], extraction_issues=issues)
+        self.assertIsNone(unresolved["tools"][1]["name"]["value"])
+        self.assertEqual(unresolved["tools"][1]["name"]["status"], "needs_review")
+        self.assertEqual(issues[0]["field"], "/tools/1/name")
+
+    def test_withholds_an_implied_tool_with_disputed_action_evidence(self):
+        candidate = porridge()
+        cook = "Bake until golden."
+        alternative = "Fry until golden."
+        transcriptions = {
+            "A": TRANSCRIPTIONS["A"] + "\n" + cook,
+            "B": TRANSCRIPTIONS["B"] + "\n" + alternative,
+        }
+        candidate["tools"].append({"id": "oven", "name": span("oven", cook), "inferred": True})
+        candidate["steps"].append({
+            "instruction": span(cook), "ingredient_ids": [], "tool_ids": ["oven"],
+            "duration": None, "condition": None,
+        })
+        review = [{"kind": "conflict", "page": "2", "a_excerpt": cook, "b_excerpt": alternative}]
+        name = build_recipe(candidate, transcriptions, review)["tools"][1]["name"]
+        self.assertEqual(name["status"], "needs_review")
+        self.assertIsNone(name["value"])
+        self.assertEqual(name["evidence"], {"source": "A", "page": "2", "quote": cook})
+        self.assertEqual(name["review_item_ids"], [1])
+
     def test_leaves_missing_servings_and_ingredient_quantities_unknown(self):
         recipe = build_recipe(porridge(), TRANSCRIPTIONS, [])
 

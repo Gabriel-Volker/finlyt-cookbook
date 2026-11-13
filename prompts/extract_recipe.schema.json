@@ -26,10 +26,11 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "name"],
+        "required": ["id", "name", "inferred"],
         "properties": {
           "id": {"type": "string"},
-          "name": {"$ref": "#/$defs/span"}
+          "name": {"$ref": "#/$defs/span"},
+          "inferred": {"type": "boolean"}
         }
       }
     },

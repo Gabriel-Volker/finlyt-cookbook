@@ -149,8 +149,8 @@ function updateOriginalServings(reset = false) {
 
 async function importRecipe(file) {
   if (!file || state.busy) return;
-  if (!/\.(pdf|png|jpe?g)$/i.test(file.name)) {
-    message("#import-status", "Choose a PDF, PNG or JPEG file.", true);
+  if (!/\.(pdf|png|jpe?g|txt)$/i.test(file.name)) {
+    message("#import-status", "Choose a PDF, PNG, JPEG or UTF-8 text file.", true);
     return;
   }
   if (!file.size || file.size > 14_000_000) {
@@ -244,7 +244,8 @@ function renderReview() {
   status.classList.toggle("warning", reviewNeeded);
   status.classList.toggle("info", !reviewNeeded);
   const label = pendingFields || documentIssues ? "Needs review" : documentFindings.length ? "Document findings"
-    : reviewNeeded ? "Needs review" : state.review?.decisions.length ? "Review updated" : "No discrepancies detected";
+    : reviewNeeded ? "Needs review" : state.review?.decisions.length ? "Review updated"
+      : report.transcriptions?.B === undefined ? "Source text extracted" : "No discrepancies detected";
   status.innerHTML = `${reviewNeeded ? icon("warning") : icon("check", 12)} ${label}`;
   const readings = Object.keys(report.transcriptions || {});
   $("#reading-count").textContent = countLabel(readings.length, "reading");
@@ -292,7 +293,8 @@ function renderReview() {
   } else {
     const rows = recipe.tools.map((tool, index) => {
       const name = editableText(tool.name, `Utensil ${index + 1}`);
-      return `<tr><th scope="row">${editValue(`/tools/${index}/name`, `Edit ${name}`, escape(name))}</th></tr>`;
+      const label = tool.name.status === "inferred" ? `${name} (inferred)` : name;
+      return `<tr><th scope="row">${editValue(`/tools/${index}/name`, `Edit ${name}`, escape(label))}</th></tr>`;
     }).join("");
     $("#review-list").innerHTML = `<div class="section-head"><h2>Utensils</h2></div>
       ${rows ? table(["Name"], rows) : '<p class="empty">No utensils were extracted.</p>'}`;
@@ -319,7 +321,8 @@ function renderComparison() {
     ? `${countLabel(reviews.length + issues.length, "original finding")}.`
     : (state.review?.status ?? state.report.status) === "needs_review" ? "Some extracted fields need review."
       : state.review?.decisions.length ? "Review decisions saved."
-      : `No discrepancies were detected.${variations.length ? ` ${countLabel(variations.length, "difference")} treated as equivalent.` : ""}`;
+      : state.report.transcriptions?.B === undefined ? "Read the embedded or uploaded source text directly."
+        : `No discrepancies were detected.${variations.length ? ` ${countLabel(variations.length, "difference")} treated as equivalent.` : ""}`;
   const list = [...reviews, ...issues].map((item, index) => {
     const page = item.page ?? item.evidence?.page;
     const key = index < reviews.length ? `comparison:${index}` : `extraction:${index - reviews.length}`;
@@ -439,6 +442,7 @@ function renderFieldReview() {
   const translated = state.reviewOutput?.language === "english"
     ? value(selected.path.split("/").slice(1).reduce((node, key) => node?.[key], state.reviewOutput.recipe)) : "";
   hint.textContent = selected.path === "/servings" ? "Enter the original serving count as a positive whole number."
+    : selected.field.status === "inferred" && !decision ? "The utensil was inferred from the action quoted below."
     : translated && translated !== reviewedValue ? "Enter the correction in the source language." : "";
   hint.hidden = !hint.textContent;
 
@@ -1072,7 +1076,10 @@ function renderRecipeOutput({language, recipe}) {
   </tr>`).join("");
   $("#output-ingredients").innerHTML = rows ? table(["Ingredient", "Amount", "Preparation"], rows)
     : '<p class="empty">No ingredients were extracted.</p>';
-  const tools = recipe.tools.map((tool) => clean(value(tool.name)) || "Needs review");
+  const tools = recipe.tools.map((tool) => {
+    const name = clean(value(tool.name)) || "Needs review";
+    return tool.name.status === "inferred" ? `${name} (inferred)` : name;
+  });
   $("#output-utensils").hidden = !tools.length;
   $("#output-tools").textContent = tools.join(", ");
   $("#output-steps").innerHTML = recipe.steps.map((step) => `<li>${escape(stepDescription(step))}</li>`).join("");
@@ -1141,6 +1148,13 @@ async function openPage(page, reading = state.previewReading) {
     }
     state.pages = result.page_count;
     updateControls();
+    if (typeof result.text === "string") {
+      const preview = document.createElement("pre");
+      preview.className = "preview-text";
+      preview.textContent = result.text;
+      content.replaceChildren(preview);
+      return;
+    }
     const image = document.createElement("img");
     image.className = "preview-image";
     image.src = result.image;

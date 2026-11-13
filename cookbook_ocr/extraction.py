@@ -289,7 +289,7 @@ def _deduplicate_entities(items, anchors):
 
 
 def _omitted_ingredient_lines(transcriptions, names):
-    """Report agreed measured lines under explicit ingredient headings."""
+    """Report agreed or native measured lines under explicit ingredient headings."""
     def measured_lines(source):
         in_ingredients = False
         page = None
@@ -304,9 +304,9 @@ def _omitted_ingredient_lines(transcriptions, names):
             elif in_ingredients and MEASURED_LINE.match(line) and not UNREADABLE.search(line):
                 yield page, line.strip()
 
-    second_reading = set(measured_lines("B"))
+    second_reading = set(measured_lines("B")) if "B" in transcriptions else None
     for page, line in dict.fromkeys(measured_lines("A")):
-        if (page, line) in second_reading and not any(name.search(line) for name in names):
+        if (second_reading is None or (page, line) in second_reading) and not any(name.search(line) for name in names):
             yield {"source": "A", "page": page, "quote": line}
 
 
@@ -323,15 +323,51 @@ def build_recipe(
         source: _measure_cut_offsets(text, pages[source]) for source, text in transcriptions.items()
     }
 
+    def invalid_field(path, error):
+        if extraction_issues is None:
+            raise error
+        extraction_issues.append({"field": path, "reason": str(error)})
+        return {"value": None, "status": "needs_review", "evidence": None, "review_item_ids": []}
+
     def field(record, name, path, anchors=None):
         try:
             return _field(record[name], name, transcriptions, pages, ranges, measure_cuts,
                           anchors if anchors is not None else [])
         except ValueError as error:
-            if extraction_issues is None:
-                raise
-            extraction_issues.append({"field": f"{path}/{name}", "reason": str(error)})
-            return {"value": None, "status": "needs_review", "evidence": None, "review_item_ids": []}
+            return invalid_field(f"{path}/{name}", error)
+
+    def resolve_tool(item, index, anchors):
+        path = f"/tools/{index}"
+        inferred = item.get("inferred", False)
+        if type(inferred) is not bool:
+            return invalid_field(f"{path}/name", ValueError("Tool inference must be explicitly marked."))
+        if not inferred:
+            return field(item, "name", path, anchors)
+
+        source, quote, name = (item["name"][key] for key in ("source", "quote", "text"))
+        try:
+            # Exact action evidence is validated independently of the inferred label.
+            support = _field(
+                {"source": source, "quote": quote, "text": quote}, "inferred tool action",
+                transcriptions, pages, ranges, measure_cuts, anchors,
+            )
+            if (not any(char.isalpha() for char in name) or any(char.isnumeric() for char in name)
+                    or UNREADABLE.search(name)):
+                raise ValueError("An inferred tool needs a name without invented measurements.")
+            if len(anchors) != 1 or not any(
+                item["id"] in step["tool_ids"] and step["instruction"]["source"] == source
+                and _source_quotes(step["instruction"]["text"], quote)
+                and _field(step["instruction"], "instruction", transcriptions,
+                           pages, ranges, measure_cuts, [])["evidence"]
+                for step in candidate["steps"]
+            ):
+                raise ValueError("An inferred tool needs a unique source action in a linked step.")
+            if support["status"] == "needs_review":
+                return support
+            return {**support, "value": name.strip(), "status": "inferred"}
+        except ValueError as error:
+            anchors.clear()
+            return invalid_field(f"{path}/name", error)
 
     def resolve_ingredient(index, item, names):
         path = f"/ingredients/{index}"
@@ -397,7 +433,7 @@ def build_recipe(
     tools, tool_anchors = [], []
     for index, item in enumerate(candidate["tools"]):
         anchors = []
-        tools.append({"id": item["id"], "name": field(item, "name", f"/tools/{index}", anchors)})
+        tools.append({"id": item["id"], "name": resolve_tool(item, index, anchors)})
         tool_anchors.append((item["name"]["source"], anchors[0].start, anchors[0].end) if len(anchors) == 1 else None)
     ingredient_ids = {item["id"] for item in ingredients}
     tool_ids = {item["id"] for item in tools}

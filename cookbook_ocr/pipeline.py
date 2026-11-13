@@ -10,6 +10,7 @@ from .providers import GeminiClient, OpenAIClient, ProviderError
 from .quality import assess_blur
 from .quantities import QUANTITY_PATTERN, known_units, quantity_matches
 from .raster import prepare_pdf
+from .recipe_text import decode_recipe_text, page_transcription
 from .scaling_plan import rebind_scaling_plan, recover_scaling_plan, scaling_plan_matches, validate_scaling_plan
 from .vegan import unavailable_vegan_plan, validate_vegan_plan, vegan_plan_usable, vegan_source_review
 from .vegan_verification import verify_vegan_plan
@@ -390,9 +391,14 @@ def refresh_scaling_plans(
     return plans
 
 
-def run_pipeline(
-    document: bytes, filename: str, gemini: GeminiClient, openai: OpenAIClient
-) -> dict:
+def _read_document(document: bytes, filename: str, gemini: GeminiClient, openai: OpenAIClient) -> tuple[dict, dict, bool]:
+    suffix = Path(filename).suffix.lower()
+    prepared = prepare_pdf(document, prefer_native_text=True) if suffix == ".pdf" else None
+    if suffix == ".txt" or (prepared is not None and prepared.native_pages is not None):
+        native = [decode_recipe_text(document)] if suffix == ".txt" else prepared.native_pages
+        reading = page_transcription(native)
+        return {"A": reading}, {"review_items": [], "equivalent_variations": []}, False
+
     transcription_prompt = (PROMPTS_DIR / "transcribe_recipe.txt").read_text(encoding="utf-8")
     comparison_prompt = (PROMPTS_DIR / "compare_transcriptions.system.txt").read_text(
         encoding="utf-8"
@@ -401,7 +407,6 @@ def run_pipeline(
         (PROMPTS_DIR / "compare_transcriptions.schema.json").read_text(encoding="utf-8")
     )
 
-    prepared = prepare_pdf(document) if Path(filename).suffix.lower() == ".pdf" else None
     with ThreadPoolExecutor(max_workers=2) as executor:
         gemini_reading = executor.submit(gemini.transcribe, document, filename, transcription_prompt)
         options = {"prepared_pdf": prepared} if prepared is not None else {}
@@ -420,7 +425,13 @@ def run_pipeline(
             )
 
     comparison = compare_transcriptions(openai, comparison_prompt, schema, a, b)
-    transcriptions = {"A": a, "B": b}
+    return {"A": a, "B": b}, comparison, no_readable_text
+
+
+def run_pipeline(
+    document: bytes, filename: str, gemini: GeminiClient, openai: OpenAIClient
+) -> dict:
+    transcriptions, comparison, no_readable_text = _read_document(document, filename, gemini, openai)
     extraction_prompt = (PROMPTS_DIR / "extract_recipe.system.txt").read_text(encoding="utf-8")
     extraction_schema = json.loads(
         (PROMPTS_DIR / "extract_recipe.schema.json").read_text(encoding="utf-8")

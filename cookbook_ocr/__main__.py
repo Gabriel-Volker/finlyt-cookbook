@@ -62,7 +62,7 @@ def positive_servings(value: str) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Extract or adapt a recipe.")
-    parser.add_argument("recipe", type=Path, help="PDF, PNG, JPEG or a saved JSON extraction report")
+    parser.add_argument("recipe", type=Path, help="PDF, PNG, JPEG, UTF-8 text or a saved JSON extraction report")
     parser.add_argument("--output", type=Path, help="Write the JSON report to this file")
     parser.add_argument("--servings", type=positive_servings, help="Scale to this number of servings")
     parser.add_argument("--original-servings", type=positive_servings, help="Provide the original serving count")
