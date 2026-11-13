@@ -217,3 +217,7 @@ Gabriel asked for the diagram in English and for Review to confirm or correct fl
 The browser shows the source evidence and related excerpts for a flagged field and records a confirmation or correction. Reopening a field removes its active decision. The original recipe, transcriptions, and comparison remain in the export alongside the reviewed recipe and its decisions. Both the web backend and CLI reapply those decisions to the original extraction before adapting it. A reviewed serving count can supply the scaling baseline. Document findings without a linked recipe field remain visible.
 
 The 52 Python tests passed. An offline HTTP regression checked that the original evidence survived and that scaling and vegan substitution both used reviewed fields. A CLI replay from exported decisions also passed. A Node test with a simulated DOM and the Python backend checked confirmation, correction, reopening, and JSON export. The sandbox denied the live local browser connection. No provider calls were made.
+
+## 2026-11-13 16:06 · How vegan substitutions are chosen
+
+Gabriel asked how the project picks vegan substitutes and whether Luna defines them in advance. Codex traced the fixed ingredient and cooking rules in `vegan.py`. Luna extracts the original recipe. At adaptation time, Python matches ingredient names against predefined rules, updates supported step wording, and flags some recognized animal ingredients without substitutions. The rules do not assess the culinary role of every ingredient and can miss unrecognized names. No application code changed.
