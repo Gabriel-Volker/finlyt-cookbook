@@ -351,3 +351,7 @@ Gabriel asked whether Luna caused the OCR error and asked that the implementatio
 ## 2026-11-13 19:09–19:14 · Record known problems and switch OCR to Terra
 
 Gabriel asked to collect the problems found, including OCR mistakes, and make GPT-6.1 Terra the default for OpenAI OCR. Codex added [PROBLEMS.md](PROBLEMS.md) with the observed readings, regression cases, fixes, mitigations, and open limitations. The OpenAI OCR adapter now uses Terra for images and PDFs. Luna continues to compare and process text. Terra recovered `Josefines` and `Bratenfond` in a live test using the rasterized original PDF. All 154 tests passed in Docker. The local container reported the intended model IDs and returned HTTP 200.
+
+## 2026-11-13 19:15 · Verify Docker and record the production OCR preference
+
+Gabriel asked whether the local Docker service was current and explained his preference for Claude Sonnet in production and GPT-6.1 Terra in the demonstration. Codex recorded his reasoning in the [decision log](DECISION_LOG.md). The running container matched the latest local image, used GPT-6.1 Terra and Gemini 3.1 Flash-Lite for OCR and GPT-6 Luna for text tasks, and returned HTTP 200.

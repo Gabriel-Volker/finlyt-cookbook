@@ -132,3 +132,7 @@ Gabriel asked that fixes apply to recipes generally. Treat specific OCR failures
 ## 2026-11-13 19:09 · Use GPT-6.1 Terra for OpenAI OCR
 
 Gabriel selected GPT-6.1 Terra as the default OpenAI transcription model. Send rasterized PDF pages and uploaded images to Terra. Send the original PDF if the document exceeds the raster budget. Gemini 3.1 Flash-Lite supplies the other transcription, and Luna compares the anonymous texts and handles the downstream text tasks. Record observed failures and their status in [Known problems](PROBLEMS.md).
+
+## 2026-11-13 19:15 · Prefer Claude Sonnet for production OCR
+
+Gabriel would use Claude Sonnet in Terra's OCR role in production. He chose GPT-6.1 Terra for the demonstration because his ChatGPT plan made it more convenient for him to use.
