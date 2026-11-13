@@ -62,3 +62,9 @@ Gabriel asked for a Python extraction stage that returns ingredients, quantities
 An unstated field stays null. When a discrepancy affects a field, the report withholds the value and links the source evidence to its review item. If evidence fails validation, extraction gets one retry. Any field that still lacks a valid quote stays null and receives a review entry at its JSON path.
 
 Both OCR providers receive the fixed prompt separately from the attachment. The comparison and extraction models receive the readings as untrusted source material, use strict schemas, and run without tools. Exact evidence supports inspection of the output. It cannot establish that two OCR readings are accurate when both make the same mistake.
+
+## 2026-11-13 14:36 · Deterministic recipe changes
+
+Gabriel chose to require an original serving count whenever the recipe does not give a single reliable yield. Codex used exact rational arithmetic and limited unit conversions to g/kg and mL/L. Quantities in steps are changed when they can be tied to the same ingredient measure. Cooking temperatures and times are independent of the serving factor. Household units are kept in their original system, and unquantified ingredients stay unquantified.
+
+Apply scaling first and then vegan rules. The rules preserve ingredient IDs and update references and techniques in the steps. For Sauerbraten, that includes sautéing smoked tofu and removing the original meat-only marinating and resting times. The vegan vocabulary is limited. Recognized unsupported animal ingredients are sent for review. The adapted report records each changed field and keeps the original recipe and evidence for comparison.

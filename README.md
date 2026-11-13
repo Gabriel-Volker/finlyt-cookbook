@@ -21,4 +21,22 @@ When the report status is `needs_review`, inspect the flagged fields, `extractio
 
 The OCR providers receive fixed system instructions separately from the attachment. The comparison and extraction calls receive the transcriptions as source data in a user message. They use strict output schemas and run without tools. The CLI verifies excerpts and step references before it writes a report. These checks reduce the risk of document instructions affecting the output. Review the original page when a value is in doubt.
 
+## Adjust the recipe
+
+The same command accepts a saved extraction report and adapts it locally without API keys. You can also pass the adaptation options directly with a PDF or image.
+
+```powershell
+python -m cookbook_ocr outputs/recipe-review.json --servings 6 --original-servings 4 --output outputs/recipe-6.json
+python -m cookbook_ocr outputs/recipe-review.json --vegan --output outputs/recipe-vegan.json
+python -m cookbook_ocr outputs/recipe-review.json --servings 6 --original-servings 4 --vegan --output outputs/recipe-vegan-6.json
+```
+
+Omit `--original-servings` if the recipe states a single positive whole number of servings. The Sauerbraten gives no yield. The examples use four only as a user-provided baseline for the calculation.
+
+Scaling uses exact fractions for numeric measures and ranges. It converts between g and kg or mL and L when doing so makes a measure easier to use. Household units retain their scale and volume stays separate from mass. Unstated quantities remain empty. Vague measures, ambiguous separators, and conflicting step measures can require review. Steps are updated where a measure matches the linked ingredient or a portioning instruction matches the original yield. Cooking times and temperatures are kept during scaling.
+
+Vegan adaptation runs after scaling. Python rules cover a limited set of ingredient names and cooking methods in German, English, and Portuguese. For Sauerbraten, the rules substitute seitan, smoked tofu, vegan butter and vegan-labelled wine, and adapt marinating, browning and making the sauce. Known animal-derived ingredients without a matching rule are flagged for review. Check ingredient labels and any unsupported terms before relying on the vegan result.
+
+The original `recipe` and OCR evidence remain in the report. Read the result in `adaptation.recipe`, the before and after values and reasons in `adaptation.changes`, and any open questions in `adaptation.review_items`. Adapting a report again starts from its original `recipe`.
+
 Run the local tests with `python -m unittest discover -s tests -v`.
