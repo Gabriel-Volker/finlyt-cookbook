@@ -8,10 +8,10 @@ from .extraction import UNREADABLE
 from .providers import GeminiClient, ProviderError
 from .review import REVIEW_FIELDS
 from .vegan import (
-    proposed_vegan_substitutions,
     unavailable_vegan_plan,
     validate_vegan_plan,
     vegan_animal_review,
+    vegan_approval_entries,
     vegan_ingredient_names,
     vegan_plan_matches,
     vegan_plan_usable,
@@ -129,7 +129,7 @@ def verify_vegan_plan(gemini: GeminiClient | None, recipe: dict, plan: dict) -> 
         return unavailable("Gemini needs a valid vegan plan to verify.")
     if plan["status"] != "ready":
         return plan
-    replacements = proposed_vegan_substitutions(plan["changes"])
+    approvals = vegan_approval_entries(plan["changes"])
     ingredient_names = vegan_ingredient_names(recipe, plan["changes"])
     if review_items := vegan_animal_review(ingredient_names):
         return unavailable_vegan_plan(
@@ -138,6 +138,10 @@ def verify_vegan_plan(gemini: GeminiClient | None, recipe: dict, plan: dict) -> 
     if gemini is None:
         return unavailable("Set GEMINI_API_KEY to verify the vegan plan.")
     changes = {change["path"]: change["after"] for change in plan["changes"]}
+    for approval in approvals:
+        if measure := approval.get("replacement_measure"):
+            base = approval["path"].rsplit("/", 1)[0]
+            changes.update({f"{base}/{key}": measure[key] for key in ("quantity", "unit")})
     steps_to_check = {}
     for index, step in enumerate(recipe["steps"]):
         for name in REVIEW_FIELDS["steps"]:
@@ -146,15 +150,13 @@ def verify_vegan_plan(gemini: GeminiClient | None, recipe: dict, plan: dict) -> 
     prompt = (PROMPTS_DIR / "verify_vegan.system.txt").read_text(encoding="utf-8")
     schema = json.loads((PROMPTS_DIR / "verify_vegan.schema.json").read_text(encoding="utf-8"))
     approvals_schema = schema["properties"]["approved_substitutions"]
-    approvals_schema["maxItems"] = len(replacements)
-    if replacements:
-        approvals_schema["items"]["properties"]["path"]["enum"] = list(replacements)
+    approvals_schema["maxItems"] = len(approvals)
+    if approvals:
+        approvals_schema["items"]["properties"]["path"]["enum"] = [approval["path"] for approval in approvals]
     try:
         result = gemini.respond_structured(prompt, schema, {
             "recipe": recipe, "changes": plan["changes"], "review_items": plan["review_items"],
-            "substitutions_to_approve": [
-                {"path": path, "ingredient": name} for path, name in replacements.items()
-            ],
+            "substitutions_to_approve": approvals,
             "ingredients_to_check": [
                 {"path": path, "ingredient": name} for path, name in ingredient_names.items()
             ],
@@ -179,7 +181,7 @@ def verify_vegan_plan(gemini: GeminiClient | None, recipe: dict, plan: dict) -> 
             reason_code is not None or reason is not None or result["findings"]
             or not vegan_substitutions_approved(plan["changes"], result["approved_substitutions"])
         ):
-            return unavailable("Gemini did not explicitly approve every vegan substitution.")
+            return unavailable("Gemini did not explicitly approve every vegan substitution and its proposed measure.")
         return {**plan, "verification": {
             "provider": "gemini", "status": status, "reason_code": None, "reason": None,
             "findings": [], "approved_substitutions": result["approved_substitutions"],

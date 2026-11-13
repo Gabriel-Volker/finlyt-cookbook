@@ -452,3 +452,11 @@ Every upload now runs the pipeline and receives a fresh translation session. The
 ## 2026-11-13 20:36–20:39 · Remove the standalone negation block
 
 Gabriel clarified that he wanted the rule counting negation words removed. The translation prompt still requires preserving prohibitions, conditions and absence. Python retains placeholder and numeric-limit validation. The recorded `seedless raisins` response produced both languages, and the ten-minute limit inversion was still rejected. All 185 tests passed locally and in Docker. Codex restarted the local app with the updated image and verified HTTP 200 and the new import and translation code in the running container.
+
+## 2026-11-13 20:42–20:49 · Verify and fix the vegan equivalence decision
+
+Gabriel asked to determine whether the Pastèizinhos abstention was warranted, fix a general defect if found, and update the local Docker app. The saved plan cited the rule requiring the same number and unit even when the replacement uses a different measure. Documented commercial egg substitutes offer equivalents for whole eggs, including use in a different rolled dough. [Manufacturer preparation instructions](https://www.bobsredmill.com/recipes/how-to-make/basic-preparation-instructions-egg-replacer) · [Related dough recipe](https://www.bobsredmill.com/recipes/how-to-make/easy-gluten-free-pizza-dough)
+
+The revised planner accepts an equivalent derived amount for a confirmed numeric source amount. Python checks the links and arithmetic in explicitly measured steps, and Gemini approves the exact replacement, amount, unit and basis. When no workable substitute can be established, Adapt states that it could not prepare a vegan version and shows the specific reason.
+
+Luna proposed six tablespoons of aquafaba for the two eggs in the previously extracted Pastèizinhos recipe. Gemini approved the plan. The frying oil and coating sugar quantities remained flagged because the source did not state them. The recipe was not cooked. All 187 tests passed in Docker, and the running app applied the approved conversion through `/api/adapt`. [Aquafaba substitution guidance](https://www.vegansociety.com/news/blog/what-is-aquafaba)

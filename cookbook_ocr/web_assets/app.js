@@ -555,9 +555,12 @@ function renderVeganOption() {
   const control = $("#vegan");
   const available = hasVeganPlan();
   control.disabled = !available;
+  const reason = localizedText(state.output, "vegan:reason", state.veganPlan?.reason);
   const hint = available ? "The vegan plan is verified and ready to apply."
     : state.plansStatus !== "current" ? "A current vegan plan is needed for the reviewed recipe."
-      : localizedText(state.output, "vegan:reason", state.veganPlan?.reason) || "No verified vegan plan is available for this recipe.";
+      : state.veganPlan?.reason_code === "no_viable_substitute"
+        ? `A vegan version could not be prepared for this recipe. ${reason || "A suitable substitution could not be established."}`
+        : reason || "No verified vegan plan is available for this recipe.";
   message("#vegan-plan-status", hint);
   const review = available || state.plansStatus !== "current" ? [] : state.veganPlan?.review_items || [];
   const details = $("#vegan-plan-review");

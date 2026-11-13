@@ -307,6 +307,42 @@ class AdaptationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Check how the eggs function"):
             adapt_recipe(source, vegan=True, vegan_plan=plan)
 
+    def test_verified_vegan_measure_scales_the_list_and_linked_step(self):
+        source = recipe("2", [ingredient("eggs", "eggs", "2")], [
+            step("Whisk 2 eggs into the batter. Bake for 20 minutes.", "eggs", duration="20 minutes"),
+        ])
+        original = deepcopy(source)
+        measure = {"quantity": "6", "unit": "tablespoons",
+                   "basis": "Use 3 tablespoons of prepared egg replacer per whole egg."}
+        path = "/ingredients/0/name"
+        substitute = "prepared egg replacer"
+        plan = validate_vegan_plan(source, {
+            "status": "ready", "reason_code": None, "reason": None, "review_items": [],
+            "changes": [
+                {"path": path, "before": "eggs", "after": substitute,
+                 "reason": "Use the prepared binder.", "replacement_measure": measure},
+                {"path": "/steps/0/instruction", "before": source["steps"][0]["instruction"]["value"],
+                 "after": "Whisk 6 tablespoons of prepared egg replacer into the batter. Bake for 20 minutes.",
+                 "reason": "Add the prepared binder to the batter."},
+            ],
+        })
+        self.assertEqual(plan["status"], "ready", plan)
+        plan["verification"] = {
+            "provider": "gemini", "status": "clear", "reason_code": None, "reason": None, "findings": [],
+            "approved_substitutions": [{"path": path, "ingredient": substitute, "replacement_measure": measure}],
+        }
+        base = adapt_recipe(source, vegan=True, vegan_plan=plan)["recipe"]
+        scale = scaling_plan(base, scaling_rule("eggs"), variant="vegan")
+        doubled = adapt_recipe(source, servings=4, vegan=True, vegan_plan=plan, scaling_plan=scale)
+
+        amount = doubled["recipe"]["ingredients"][0]["quantity"]
+        self.assertEqual((amount["value"], amount["status"], amount["evidence"]), ("12", "derived", None))
+        self.assertEqual(doubled["recipe"]["ingredients"][0]["unit"]["value"], "tablespoons")
+        self.assertEqual(doubled["recipe"]["steps"][0]["instruction"]["value"],
+                         "Whisk 12 tablespoons of prepared egg replacer into the batter. Bake for 20 minutes.")
+        self.assertEqual(doubled["status"], "applied")
+        self.assertEqual(source, original)
+
     def test_vegan_sauerbraten_in_english_keeps_substitutions_consistent(self):
         source = recipe(None, [
             ingredient("fat", "butter"),

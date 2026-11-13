@@ -8,7 +8,7 @@ from collections.abc import Callable
 from hashlib import sha256
 
 from .extraction import UNREADABLE
-from .quantities import QUANTITY_PATTERN, known_units
+from .quantities import QUANTITY_PATTERN, known_units, normalized_amount, parse_number
 from .review import REVIEW_FIELDS, same_recipe_inputs
 
 
@@ -47,6 +47,9 @@ OTHER_UNITS = frozenset(
     "packung packungen pacote pacotes can cans dose dosen lata latas "
     "bunch bunches bund maço maços pinches pinch prise prisen pitada pitadas".split()
 )
+REPLACEMENT_UNITS = frozenset(unit.rstrip(".") for unit in (*known_units(), *OTHER_UNITS)) - {
+    "°c", "°f", "°", "celsius", "fahrenheit", "c", "f",
+}
 
 
 def _fingerprint(recipe: dict) -> str:
@@ -77,10 +80,33 @@ def proposed_vegan_substitutions(changes: list) -> dict[str, str]:
     return replacements
 
 
+def proposed_vegan_measures(changes: list) -> dict[str, dict]:
+    """Collect the exact replacement amounts that need independent approval."""
+    measures = {}
+    for edit in changes:
+        measure = edit.get("replacement_measure")
+        if measure is None:
+            continue
+        path = edit["path"]
+        if not re.fullmatch(r"/ingredients/[0-9]+/name", path) or not _valid_replacement_measure(measure):
+            raise ValueError("A replacement measure must specify a positive amount, culinary unit and equivalence basis.")
+        measures[path] = measure
+    return measures
+
+
+def vegan_approval_entries(changes: list) -> list[dict]:
+    replacements = proposed_vegan_substitutions(changes)
+    measures = proposed_vegan_measures(changes)
+    return [
+        {"path": path, "ingredient": name, **({"replacement_measure": measures[path]} if path in measures else {})}
+        for path, name in replacements.items()
+    ]
+
+
 def vegan_substitutions_approved(changes: list, approvals) -> bool:
     """Require one exact approval for every proposed ingredient replacement."""
     try:
-        expected = proposed_vegan_substitutions(changes)
+        expected = {entry["path"]: entry for entry in vegan_approval_entries(changes)}
     except ValueError:
         return False
     if not isinstance(approvals, list) or len(approvals) != len(expected):
@@ -89,8 +115,11 @@ def vegan_substitutions_approved(changes: list, approvals) -> bool:
     for entry in approvals:
         if not isinstance(entry, dict):
             return False
-        path, ingredient = entry.get("path"), entry.get("ingredient")
-        if not isinstance(path, str) or path in approved or path not in expected or ingredient != expected[path]:
+        path = entry.get("path")
+        if not isinstance(path, str) or path in approved or path not in expected:
+            return False
+        if (entry.get("ingredient") != expected[path]["ingredient"]
+                or entry.get("replacement_measure") != expected[path].get("replacement_measure")):
             return False
         approved.add(path)
     return True
@@ -194,9 +223,10 @@ def _phrase(text: str) -> str:
     return r"\s+".join(re.escape(word) for word in text.split())
 
 
-def _measure_pattern(recipe: dict) -> re.Pattern:
+def _measure_pattern(recipe: dict, replacement_measures=()) -> re.Pattern:
     units = set(known_units()) | TIME_UNITS | OTHER_UNITS
     units.update(item["unit"]["value"] for item in recipe["ingredients"] if item["unit"]["value"])
+    units.update(measure["unit"] for measure in replacement_measures if measure["unit"])
     unit_pattern = "|".join(_phrase(unit) for unit in sorted(units, key=lambda unit: (-len(unit), unit)))
     time_pattern = "|".join(sorted(TIME_UNITS, key=lambda unit: (-len(unit), unit)))
     return re.compile(
@@ -227,13 +257,13 @@ def _preserves_measures(before: list, after: list, removals: Counter) -> bool:
     return expected is None
 
 
-def _ingredient_measures(pattern: re.Pattern, text: str, name: str, prep: str | None) -> list:
+def _ingredient_measure_matches(pattern: re.Pattern, text: str, name: str, prep: str | None) -> list[re.Match]:
     """Recognize explicit measures beside an ingredient's source or replacement name."""
     modifier = rf"(?:{_phrase(prep)}\s+)?" if prep else ""
     following = re.compile(rf"\s+(?:(?:of|de)\s+)?{modifier}{_phrase(name)}(?!\w)", re.I)
     preceding = re.compile(rf"(?<!\w){_phrase(name)}\s*\(\s*$", re.I)
     return [
-        _measure(match) for match in pattern.finditer(text)
+        match for match in pattern.finditer(text)
         if following.match(text, match.end()) or preceding.search(text, 0, match.start())
     ]
 
@@ -248,10 +278,13 @@ def _preserves_ingredient_measures(pattern: re.Pattern, recipe: dict, edits: dic
             continue
         base = f"/ingredients/{index}"
         prep = ingredient["preparation"]["value"]
-        new_name = edits.get(f"{base}/name", {}).get("after", name)
+        replacement = edits.get(f"{base}/name", {})
+        if replacement.get("replacement_measure"):
+            continue
+        new_name = replacement.get("after", name)
         new_prep = edits.get(f"{base}/preparation", {}).get("after", prep)
-        amounts = _ingredient_measures(pattern, before, name, prep)
-        matched = _ingredient_measures(pattern, after, new_name, new_prep)
+        amounts = [_measure(match) for match in _ingredient_measure_matches(pattern, before, name, prep)]
+        matched = [_measure(match) for match in _ingredient_measure_matches(pattern, after, new_name, new_prep)]
         # A literal match can prove a conflict. Contextual verification handles
         # names with different inflections, shorthand, or word order.
         if amounts and Counter(matched) - Counter(amounts):
@@ -263,8 +296,54 @@ def _text(value) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
+def _valid_replacement_measure(measure) -> bool:
+    if not isinstance(measure, dict) or set(measure) != {"quantity", "unit", "basis"}:
+        return False
+    quantity, unit, basis = (measure[key] for key in ("quantity", "unit", "basis"))
+    if not _text(quantity) or (parse_number(quantity) or 0) <= 0 or not _text(basis):
+        return False
+    return unit is None or (_text(unit) and unit.strip().casefold().rstrip(".") in REPLACEMENT_UNITS)
+
+
+def _converted_step_measures(pattern: re.Pattern, recipe: dict, edits: dict, change: dict) -> list | None:
+    """Replace validated new measures with their old equivalents for comparison."""
+    before, after = change["before"], change["after"] or ""
+    index = int(change["path"].split("/")[2])
+    linked_ids = set(recipe["steps"][index]["ingredient_ids"])
+    matched = {}
+    for ingredient_index, ingredient in enumerate(recipe["ingredients"]):
+        base = f"/ingredients/{ingredient_index}"
+        replacement = edits.get(f"{base}/name", {})
+        measure = replacement.get("replacement_measure")
+        if measure is None:
+            continue
+        name = ingredient["name"]["value"]
+        prep = ingredient["preparation"]["value"]
+        new_name = replacement["after"]
+        new_prep = edits.get(f"{base}/preparation", {}).get("after", prep)
+        original_matches = _ingredient_measure_matches(pattern, before, name, prep)
+        converted_matches = _ingredient_measure_matches(pattern, after, new_name, new_prep)
+        if not original_matches and not converted_matches:
+            continue
+        if ingredient["id"] not in linked_ids or len(original_matches) != len(converted_matches):
+            return None
+        source = normalized_amount(ingredient["quantity"]["value"], ingredient["unit"]["value"])
+        target = normalized_amount(measure["quantity"], measure["unit"])
+        for old, new in zip(original_matches, converted_matches):
+            old_quantity, old_unit = _measure(old)
+            new_quantity, new_unit = _measure(new)
+            old_value = normalized_amount(old_quantity, old_unit or None)
+            new_value = normalized_amount(new_quantity, new_unit or None)
+            if (new.start() in matched or old_value is None or new_value is None
+                    or old_value[0] != source[0] or new_value[0] != target[0]
+                    or old_value[1] > source[1] or old_value[1] / source[1] * target[1] != new_value[1]):
+                return None
+            matched[new.start()] = _measure(old)
+    return [matched.get(match.start(), _measure(match)) for match in pattern.finditer(after)]
+
+
 def validate_vegan_plan(recipe: dict, proposal: dict) -> dict:
-    """Normalize an anchored proposal and withhold edits that change recipe measures."""
+    """Normalize anchored edits and validate replacement measures against the source."""
     if not isinstance(proposal, dict) or not all(
         isinstance(proposal.get(key), list) for key in ("changes", "review_items")
     ):
@@ -337,19 +416,40 @@ def validate_vegan_plan(recipe: dict, proposal: dict) -> dict:
         elif before != field["value"]:
             raise ValueError("The vegan plan change does not match the original recipe field.")
         elif before != after:
-            edits[path] = {"path": path, "before": before, "after": after, "reason": reason}
+            edit = {"path": path, "before": before, "after": after, "reason": reason}
+            replacement_measure = item.get("replacement_measure")
+            if replacement_measure is not None:
+                if not re.fullmatch(r"/ingredients/[0-9]+/name", path) or not _valid_replacement_measure(replacement_measure):
+                    raise ValueError("A replacement measure must specify a positive amount, culinary unit and equivalence basis.")
+                base = path.removesuffix("/name")
+                quantity, unit = (fields[f"{base}/{part}"] for part in ("quantity", "unit"))
+                value = quantity["value"]
+                if (quantity["status"] == "needs_review" or unit["status"] == "needs_review"
+                        or not _text(value) or (parse_number(value) or 0) <= 0):
+                    warn(path, "A replacement measure needs a confirmed numeric quantity and its unit or count.")
+                else:
+                    edit["replacement_measure"] = dict(replacement_measure)
+            edits[path] = edit
+        elif item.get("replacement_measure") is not None:
+            raise ValueError("A new measure requires an ingredient replacement.")
 
-    pattern = _measure_pattern(recipe)
+    measures = proposed_vegan_measures(list(edits.values()))
+    pattern = _measure_pattern(recipe, measures.values())
     removed_timings = {}
     for path, item in list(edits.items()):
         field_name = path.rsplit("/", 1)[-1]
         if field_name == "instruction":
             continue
-        before, after = (_measures(pattern, item[key]) for key in ("before", "after"))
+        before = _measures(pattern, item["before"])
+        after = (
+            _converted_step_measures(pattern, recipe, edits, item)
+            if measures and field_name == "condition"
+            else _measures(pattern, item["after"])
+        )
         allowed = Counter(measure for measure in before if measure[1] in TIME_UNITS) if (
             field_name in {"duration", "condition"}
         ) else Counter()
-        if not _preserves_measures(before, after, allowed.copy()):
+        if after is None or not _preserves_measures(before, after, allowed.copy()):
             del edits[path]
             warn(path, "Check the proposed vegan change. It would change a measure or add a number.")
         elif allowed:
@@ -359,15 +459,32 @@ def validate_vegan_plan(recipe: dict, proposal: dict) -> dict:
         if not path.startswith("/steps/") or not path.endswith(("/instruction", "/condition")):
             continue
         base = path.rsplit("/", 1)[0]
-        before, after = (_measures(pattern, item[key]) for key in ("before", "after"))
+        before = _measures(pattern, item["before"])
+        after = (
+            _converted_step_measures(pattern, recipe, edits, item)
+            if measures
+            else _measures(pattern, item["after"])
+        )
         allowed = removed_timings.get(f"{base}/duration", Counter()) | removed_timings.get(
             f"{base}/condition", Counter()
         )
-        if not _preserves_measures(before, after, allowed) or not _preserves_ingredient_measures(
+        if after is None or not _preserves_measures(before, after, allowed) or not _preserves_ingredient_measures(
             pattern, recipe, edits, item
         ):
             del edits[path]
             warn(path, "Check the proposed vegan change. It would change a measure or add a number.")
+
+    if measures:
+        for index, step in enumerate(recipe["steps"]):
+            for field in ("instruction", "condition"):
+                path = f"/steps/{index}/{field}"
+                value = step[field]["value"]
+                if path in edits or not value or any(item["path"] == path for item in warnings):
+                    continue
+                if _converted_step_measures(
+                    pattern, recipe, edits, {"path": path, "before": value, "after": value},
+                ) is None:
+                    warn(path, "Update the ingredient measure in its linked preparation step.")
 
     if warnings:
         return _vegan_plan(recipe, "needs_review", "insufficient_information", warnings[0]["reason"], [], warnings)
@@ -404,3 +521,7 @@ def veganize(
                 if unit["status"] == "needs_review":
                     warn(path.removesuffix("/name") + "/unit", VEGAN_UNIT_WARNING)
         change(path, field, item["after"], item["reason"])
+        if measure := item.get("replacement_measure"):
+            base = path.removesuffix("/name")
+            for key in ("quantity", "unit"):
+                change(f"{base}/{key}", record[key], measure[key], measure["basis"])

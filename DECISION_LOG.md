@@ -152,3 +152,7 @@ Gabriel chose to process each uploaded file independently, including repeated up
 ## 2026-11-13 20:36 · Remove word-based negation blocking from translation
 
 Gabriel chose to remove the standalone negation check after it rejected correct culinary wording. Keep the requirement to preserve negations in the translation prompt and continue checking numeric measures and their limits in Python.
+
+## 2026-11-13 20:43 · Allow equivalent measures for vegan substitutions
+
+Gabriel asked to distinguish a recipe with a concrete culinary blocker from a planner restriction. A verified substitute can use a new measure when the original amount is known. Luna proposes the equivalent and Gemini checks it in the recipe's context. Preserve the source amount and record the adapted amount as a derived change.

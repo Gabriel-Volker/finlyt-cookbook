@@ -17,7 +17,17 @@
         "required": ["path", "ingredient"],
         "properties": {
           "path": {"type": "string"},
-          "ingredient": {"type": "string"}
+          "ingredient": {"type": "string"},
+          "replacement_measure": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["quantity", "unit", "basis"],
+            "properties": {
+              "quantity": {"type": "string"},
+              "unit": {"type": ["string", "null"]},
+              "basis": {"type": "string"}
+            }
+          }
         }
       }
     },

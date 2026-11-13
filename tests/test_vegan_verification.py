@@ -378,6 +378,49 @@ class VeganVerificationTests(unittest.TestCase):
                 self.assertEqual(verified["status"], "unavailable")
                 self.assertEqual(verified["changes"], [])
 
+    def test_independent_verification_binds_the_converted_quantity_and_unit(self):
+        source = recipe("4", [ingredient("egg", "eggs", "2")], [step("Mix the eggs into the batter.", "egg")])
+        replacement = "aquafaba"
+        measure = {"quantity": "6", "unit": "tablespoons", "basis": "3 tablespoons per egg in this batter."}
+        plan = validate_vegan_plan(source, proposal([
+            {"path": "/ingredients/0/name", "before": "eggs", "after": replacement,
+             "reason": "Use aquafaba as the binding liquid.", "replacement_measure": measure},
+            {"path": "/steps/0/instruction", "before": "Mix the eggs into the batter.",
+             "after": "Mix the aquafaba into the batter.", "reason": "Use the replacement in the batter."},
+        ]))
+        self.assertEqual(plan["status"], "ready")
+
+        for review_measure in (
+            None, {**measure, "quantity": "3"}, {**measure, "unit": "teaspoons"},
+            {**measure, "basis": "Unidentified product label."}, measure,
+        ):
+            with self.subTest(review_measure=review_measure):
+                verdict = clear_verdict(replacement)
+                if review_measure is not None:
+                    verdict["approved_substitutions"][0]["replacement_measure"] = review_measure
+                self.gemini.respond_structured.return_value = verdict
+
+                verified = verify_vegan_plan(self.gemini, source, plan)
+
+                _, schema, sent = self.gemini.respond_structured.call_args.args
+                self.assertEqual(sent["substitutions_to_approve"], [
+                    {"path": "/ingredients/0/name", "ingredient": replacement, "replacement_measure": measure},
+                ])
+                self.assertEqual(sent["steps_to_check"]["/steps/0/instruction"], "Mix the aquafaba into the batter.")
+                self.assertIn("replacement_measure", schema["properties"]["approved_substitutions"]["items"]["properties"])
+                self.assertEqual(vegan_plan_usable(source, verified), review_measure == measure)
+
+        finding = {
+            "path": "/ingredients/0/quantity", "kind": "quantity_or_unit",
+            "reason": "The proposed substitute amount is too high for the batter.",
+            "evidence": [{"path": "/ingredients/0/quantity", "quote": "2"},
+                         {"path": "/ingredients/0/quantity", "quote": "6"}],
+        }
+        self.gemini.respond_structured.return_value = finding_verdict(finding)
+        rejected = verify_vegan_plan(self.gemini, source, plan)
+        self.assertEqual(rejected["verification"]["findings"], [finding])
+        self.assertFalse(vegan_plan_usable(source, rejected))
+
     def test_explicit_verifier_uncertainty_withholds_an_unverified_ingredient(self):
         source = self.plan("Floravel crystal cream")
         self.gemini.respond_structured.return_value = {

@@ -14,12 +14,27 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["path", "before", "after", "reason"],
+        "required": ["path", "before", "after", "reason", "replacement_measure"],
         "properties": {
           "path": {"type": "string"},
           "before": {"type": "string"},
           "after": {"type": ["string", "null"]},
-          "reason": {"type": "string"}
+          "reason": {"type": "string"},
+          "replacement_measure": {
+            "anyOf": [
+              {"type": "null"},
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["quantity", "unit", "basis"],
+                "properties": {
+                  "quantity": {"type": "string"},
+                  "unit": {"type": ["string", "null"]},
+                  "basis": {"type": "string"}
+                }
+              }
+            ]
+          }
         }
       }
     },
