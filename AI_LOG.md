@@ -389,3 +389,20 @@ Gabriel asked to make the repository public. Codex updated its visibility on Git
 ## 2026-11-13 20:00 · Edit the README for submission
 
 Gabriel asked for a more focused README and an updated activity diagram. Codex aligned the README with the brief, retaining concrete trade-offs, evaluation limits, measurements, replay instructions, and example outputs. The English activity diagram now reflects the native text and OCR routes, import reuse, plan verification, human review, and local adaptation with prepared translations.
+
+## 2026-11-13 20:04–20:09 · Measure current import latency and cost
+
+Gabriel asked what makes the current upload take minutes and how much it costs. Codex passed the original two-page, 3,716,818-byte `Recipe.pdf` through the web import and bilingual preparation handlers in a process with an empty application cache. The provider responses supplied token usage, including cache reads and writes. Timings include provider calls and local processing. Browser rendering and transfer from the browser were outside the measurement.
+
+| Stage | Wall time | Provider calls | Estimated USD |
+| --- | ---: | ---: | ---: |
+| Raster preparation and parallel OCR | 22.20 s | 2 | $0.00568 |
+| Luna transcription comparison | 6.85 s | 1 | $0.00033 |
+| Luna extraction and validation retry | 108.52 s | 2 | $0.00611 |
+| Luna scaling plan and retry, with parallel Gemini check | 29.03 s | 3 | $0.00762 |
+| Luna bilingual preparation | 41.33 s | 1 | $0.00334 |
+| First import through bilingual preparation | 207.97 s | 9 | $0.02309 |
+
+Terra's OCR call took 21.70 s and Gemini's took 4.37 s. Extraction took 44.24 s on the first attempt and 64.28 s on the validation retry. Vegan planning was held for source review before any model call for that stage. The English display prepared successfully. Original-language notes fell back to their supplied wording after one translation validation failure. A repeat import reused the extraction and scaling plans and made one call to retry the remaining translations. That call took 11.04 s and cost an estimated $0.00089.
+
+The estimated first-import cost is $0.03107 if the observed OpenAI cache reads are priced as 30-minute cache writes with the same token counts. This is a scenario estimate for one file. Billing and latency can vary with account tier, cache state, OCR disagreements, output length, and retries. [OpenAI standard rates](https://developers.openai.com/api/docs/pricing) · [OpenAI cache accounting](https://developers.openai.com/api/docs/guides/prompt-caching) · [Gemini standard rates](https://aistudio.google.com/docs/pricing#gemini-3.1-flash-lite)

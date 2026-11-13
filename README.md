@@ -69,10 +69,10 @@ With the example's user-supplied baseline of four, the six-serving version scale
 | --- | ---: | ---: |
 | Earlier Gemini + Luna OCR, comparison and extraction | 67.54 s | $0.00467 with observed cache reads |
 | Earlier Terra direct-PDF OCR only | 18.09 s | $0.03789 |
-| Terra pipeline through adaptation plans, one live run | About 4 min | Full cost unmeasured |
+| Current pipeline through bilingual preparation, one import with vegan review pending | 3 min 28 s | $0.02309 at observed cache rates, or $0.03107 with cache reads priced as writes |
 | Serving change after preparation, Chromium test | About 110 ms | Zero model calls |
 
-The first two rows measure different scopes and configurations. The Terra pipeline time ends before bilingual display preparation. [Benchmark details and token counts](AI_LOG.md)
+The first two rows measure different scopes and configurations. In the current run, two extraction attempts took 108.5 s and Terra OCR took 21.7 s. The translation provided English and fell back to source wording for the original-language notes after a validation error. [Benchmark details and token counts](AI_LOG.md)
 
 ## Examples and tests
 
