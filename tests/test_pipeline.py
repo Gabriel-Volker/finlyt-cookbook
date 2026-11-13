@@ -5,6 +5,7 @@ from unittest.mock import Mock
 
 from cookbook_ocr.pipeline import (
     compare_transcriptions,
+    plan_vegan_recipe,
     run_pipeline,
     validate_comparison,
 )
@@ -177,3 +178,35 @@ class PipelineTests(unittest.TestCase):
                 comparison[category][0][field] = value
                 with self.assertRaises(ValueError):
                     validate_comparison(comparison, TRANSCRIPTION_A, TRANSCRIPTION_B)
+
+    def test_pipeline_asks_luna_for_vegan_plan_after_extraction(self):
+        text = "[page: 1]\nFry the bacon."
+        self.gemini.transcribe.return_value = text
+        self.openai.transcribe.return_value = text
+        span = {"source": "A", "quote": "Fry the bacon.", "text": "bacon"}
+        candidate = {
+            **EMPTY_RECIPE,
+            "ingredients": [{"id": "bacon", "name": span, "quantity": None, "unit": None,
+                             "preparation": None, "optional_when": None}],
+            "steps": [{"instruction": {**span, "text": "Fry the bacon."}, "condition": None,
+                       "duration": None, "ingredient_ids": ["bacon"], "tool_ids": []}],
+        }
+        proposal = {
+            "changes": [{"path": "/ingredients/0/name", "before": "bacon", "after": "smoked tempeh",
+                         "reason": "Provide smoky flavour with a firm texture."}],
+            "review_items": [],
+        }
+        self.openai.respond.side_effect = [json.dumps(output) for output in (
+            {"review_items": [], "equivalent_variations": []}, candidate, proposal,
+        )]
+        report = run_pipeline(DOCUMENT, "recipe.pdf", self.gemini, self.openai)
+        call = self.openai.respond.call_args.kwargs
+        self.assertEqual(call["text"]["format"]["name"], "vegan_plan")
+        supplied = json.loads(call["input"][1]["content"])["recipe"]
+        self.assertEqual(supplied["ingredients"][0]["name"], {"value": "bacon", "status": "stated"})
+        self.assertEqual(report["recipe"]["ingredients"][0]["name"]["value"], "bacon")
+        self.assertEqual(report["vegan_plan"]["changes"][0]["after"], "smoked tempeh")
+
+        self.openai.respond.side_effect = None
+        self.openai.respond.return_value = json.dumps({"changes": [{"path": "/bad"}], "review_items": []})
+        self.assertEqual(plan_vegan_recipe(self.openai, report["recipe"])["status"], "unavailable")

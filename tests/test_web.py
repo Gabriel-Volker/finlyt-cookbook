@@ -14,6 +14,7 @@ import pymupdf
 from PIL import Image
 
 from cookbook_ocr.raster import run_pdf_task
+from cookbook_ocr.vegan import validate_vegan_plan
 from cookbook_ocr.web import CookbookHandler
 
 
@@ -154,6 +155,13 @@ class WebTests(unittest.TestCase):
         self.assertEqual(review["decisions"][0]["after"], "1/4")
 
         report["review"] = review
+        report["vegan_plan"] = validate_vegan_plan(review["recipe"], {
+            "changes": [{
+                "path": f"/ingredients/{roast_index}/name", "before": "beef roast", "after": "seitan",
+                "reason": "Use a firm plant protein for the roast.",
+            }],
+            "review_items": [],
+        })
         status, _, response = self.request(
             "POST", "/api/adapt", json.dumps({"report": report, "servings": 8, "vegan": True}), headers,
         )
@@ -175,3 +183,14 @@ class WebTests(unittest.TestCase):
             with self.subTest(invalid=invalid):
                 body = json.dumps({"report": original, "decisions": [invalid]})
                 self.assertEqual(self.request("POST", "/api/review", body, headers)[0], 400)
+
+        with patch("cookbook_ocr.web.load_openai_key", return_value="test"), patch(
+            "cookbook_ocr.web.plan_vegan_recipe", return_value=report["vegan_plan"],
+        ) as plan_vegan:
+            original.pop("example", None)
+            original["vegan_plan"] = None
+            body = json.dumps({"report": original, "decisions": decisions})
+            status, _, response = self.request("POST", "/api/review", body, headers)
+            self.assertEqual(status, 200)
+            self.assertEqual(json.loads(response)["vegan_plan"], report["vegan_plan"])
+            self.assertEqual(plan_vegan.call_args.args[1], review["recipe"])

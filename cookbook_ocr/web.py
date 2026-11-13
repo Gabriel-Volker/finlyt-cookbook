@@ -14,12 +14,13 @@ from urllib.parse import parse_qs, unquote, urlsplit
 import pymupdf
 from PIL import Image, ImageOps
 
-from .__main__ import load_api_keys
+from .__main__ import load_api_keys, load_openai_key
 from .adaptation import adapt_recipe
-from .pipeline import run_pipeline
+from .pipeline import plan_vegan_recipe, run_pipeline
 from .providers import GeminiClient, MIME_TYPES, OpenAIClient, ProviderError
 from .raster import run_pdf_task
 from .review import review_recipe
+from .vegan import vegan_plan_matches
 
 
 ASSETS = Path(__file__).with_name("web_assets")
@@ -173,7 +174,11 @@ class CookbookHandler(BaseHTTPRequestHandler):
                 return
             if url.path == "/api/review":
                 data, report = self._recipe_request()
-                self._json({"review": review_recipe(report["recipe"], data.get("decisions"))})
+                review = review_recipe(report["recipe"], data.get("decisions"))
+                response = {"review": review}
+                if "vegan_plan" in report:
+                    response["vegan_plan"] = self._refresh_plan(report, review["recipe"])
+                self._json(response)
                 return
             if url.path == "/api/adapt":
                 self._json(self._adapt())
@@ -200,6 +205,21 @@ class CookbookHandler(BaseHTTPRequestHandler):
             raise RequestError("The request must contain a recipe report.")
         return data, report
 
+    def _refresh_plan(self, report: dict, recipe: dict) -> dict:
+        plan = report["vegan_plan"]
+        if vegan_plan_matches(recipe, plan):
+            return plan
+        if report.get("example") is True:
+            example = json.loads((ASSETS / "example.json").read_text(encoding="utf-8"))
+            if vegan_plan_matches(recipe, example.get("vegan_plan")):
+                return example["vegan_plan"]
+            return {"status": "unavailable", "reason": "The offline example plan no longer matches the reviewed recipe."}
+        try:
+            key = load_openai_key()
+        except (OSError, ValueError):
+            return {"status": "unavailable", "reason": "Set OPENAI_API_KEY to refresh the vegan plan."}
+        return plan_vegan_recipe(OpenAIClient(key), recipe)
+
     def _adapt(self) -> dict:
         data, report = self._recipe_request()
         vegan = data.get("vegan", False)
@@ -217,6 +237,7 @@ class CookbookHandler(BaseHTTPRequestHandler):
             result = adapt_recipe(
                 recipe, servings=data.get("servings"),
                 original_servings=data.get("original_servings"), vegan=vegan,
+                vegan_plan=report.get("vegan_plan"),
             )
         except (AttributeError, KeyError, TypeError):
             raise RequestError("The extraction report contains an invalid recipe object.") from None

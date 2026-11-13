@@ -166,10 +166,11 @@
                   <label for="vegan">
                     <img src="/assets/images/leaf.svg" width="17" height="17" alt=""> Make vegan
                   </label>
-                  <button type="button" id="vegan" class="toggle-control" role="switch" aria-checked="false" aria-label="Make vegan">
+                  <button type="button" id="vegan" class="toggle-control" role="switch" aria-checked="false" aria-label="Make vegan" aria-describedby="vegan-plan-status" disabled>
                     <img src="/assets/images/toggle-on.svg" width="41" height="23" alt="">
                   </button>
                 </div>
+                <p id="vegan-plan-status" class="status-message" role="status" hidden></p>
                 <p id="adapt-status" class="status-message" role="status" hidden></p>
               </form>
             </section>

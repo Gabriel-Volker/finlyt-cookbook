@@ -96,3 +96,7 @@ Gabriel proposed using OpenCV to identify scans that are too blurred to read. Co
 ## 2026-11-13 16:03 · Use reviewed fields in Adapt
 
 Gabriel asked to let the reviewer confirm or correct flagged fields and preserve the original evidence. Store reviewer decisions alongside the extraction and reapply them to the original recipe before adaptation. Keep unresolved fields and document findings available for inspection. Treat an original serving count confirmed in Review as the scaling baseline. The browser keeps the decisions for the current session and includes them in the JSON export.
+
+## 2026-11-13 16:18 · Plan vegan substitutions from the recipe
+
+Gabriel chose Luna to propose vegan substitutes and cooking changes in advance for each recipe. Generate the plan from the structured recipe during import and refresh it when a reviewer changes the source fields. Save the plan alongside the recipe. Apply the validated substitutions before scaling so Python can reconcile the ingredient names and measures in the updated instructions. Flag uncertain replacements or quantities for review. Serving adjustment remains available when vegan planning fails.

@@ -4,6 +4,7 @@ from fractions import Fraction
 
 from cookbook_ocr.adaptation import adapt_recipe
 from cookbook_ocr.quantities import scale_quantity
+from cookbook_ocr.vegan import validate_vegan_plan
 
 
 def field(value, status=None):
@@ -34,6 +35,16 @@ def recipe(servings, ingredients, steps):
         "title": field("Test recipe"), "servings": field(servings),
         "ingredients": ingredients, "steps": steps, "tools": [],
     }
+
+
+def vegan_plan(source, changes, review_items=()):
+    return validate_vegan_plan(source, {
+        "changes": [
+            {"path": path, "before": before, "after": after, "reason": "Use a plant-based technique or ingredient."}
+            for path, before, after in changes
+        ],
+        "review_items": [{"path": path, "reason": reason} for path, reason in review_items],
+    })
 
 
 class AdaptationTests(unittest.TestCase):
@@ -151,7 +162,13 @@ class AdaptationTests(unittest.TestCase):
             step("Render 200 g bacon in 50 g butter.", "bacon", "butter"),
             step("Add 2 eggs.", "eggs"),
         ])
-        result = adapt_recipe(source, servings=3, vegan=True)
+        plan = vegan_plan(source, [
+            ("/ingredients/0/name", "bacon", "smoked tofu"),
+            ("/ingredients/1/name", "butter", "vegan butter"),
+            ("/steps/0/instruction", "Render 200 g bacon in 50 g butter.",
+             "Brown 200 g smoked tofu in 50 g vegan butter."),
+        ], [("/ingredients/2/name", "Check how the eggs function in this recipe.")])
+        result = adapt_recipe(source, servings=3, vegan=True, vegan_plan=plan)
         bacon, butter, _ = result["recipe"]["ingredients"]
         self.assertEqual(bacon["name"]["value"], "smoked tofu")
         self.assertEqual(butter["name"]["value"], "vegan butter")
@@ -170,7 +187,14 @@ class AdaptationTests(unittest.TestCase):
             ingredient("wine", "red wine"),
         ], [step("Add butter, beef drippings and red wine.", "fat", "drippings", "wine")])
         source["title"] = field("Sauerbraten")
-        result = adapt_recipe(source, vegan=True)
+        plan = vegan_plan(source, [
+            ("/ingredients/0/name", "butter", "vegan butter"),
+            ("/ingredients/1/name", "beef drippings", "plant-based pan juices"),
+            ("/ingredients/2/name", "red wine", "vegan red wine"),
+            ("/steps/0/instruction", "Add butter, beef drippings and red wine.",
+             "Add vegan butter, plant-based pan juices and vegan red wine."),
+        ])
+        result = adapt_recipe(source, vegan=True, vegan_plan=plan)
         adapted = result["recipe"]
         self.assertEqual(adapted["ingredients"][0]["name"]["value"], "vegan butter")
         self.assertEqual(
@@ -245,10 +269,41 @@ class AdaptationTests(unittest.TestCase):
             step("Man legt den Braten eine Stunde vor dem Anrichten in die Soße.", "roast",
                  duration="eine Stunde"),
         ])
-        adapted = adapt_recipe(source, vegan=True)["recipe"]
+        plan = vegan_plan(source, [
+            ("/ingredients/0/name", "Bratenstücke", "Seitan"),
+            ("/steps/0/instruction", "gießt man es kalt darauf.", "Gieße die kalte Marinade über den Seitan."),
+            ("/steps/0/condition", "Soll der Braten nach 8 Tagen zubereitet werden", None),
+            ("/steps/1/instruction", "Für die Soße schwitzt man den Bratenfond mit Mehl an.",
+             "Für die Soße schwitzt man den pflanzlichen Bratensatz mit Mehl an."),
+            ("/steps/2/instruction", "Man legt den Braten eine Stunde vor dem Anrichten in die Soße.",
+             "Den Seitan vor dem Anrichten in der Soße erwärmen."),
+            ("/steps/2/duration", "eine Stunde", None),
+        ])
+        adapted = adapt_recipe(source, vegan=True, vegan_plan=plan)["recipe"]
         self.assertIsNone(adapted["servings"]["value"])
         self.assertIn("Seitan", adapted["steps"][0]["instruction"]["value"])
         self.assertIsNone(adapted["steps"][0]["condition"]["value"])
         self.assertIn("pflanzlichen Bratensatz", adapted["steps"][1]["instruction"]["value"])
         self.assertIsNone(adapted["steps"][2]["duration"]["value"])
         self.assertEqual(source["steps"][2]["duration"]["value"], "eine Stunde")
+
+    def test_vegan_plan_cannot_be_used_after_source_changes(self):
+        source = recipe("2", [ingredient("meat", "beef")], [step("Brown the beef.", "meat")])
+        plan = vegan_plan(source, [("/ingredients/0/name", "beef", "seitan")])
+        source["ingredients"][0]["name"]["value"] = "lamb"
+        with self.assertRaisesRegex(ValueError, "plan"):
+            adapt_recipe(source, vegan=True, vegan_plan=plan)
+
+    def test_vegan_plan_withholds_numeric_measure_change(self):
+        source = recipe("2", [ingredient("milk", "milk", "2", "cups")], [step("Add 2 cups milk.", "milk")])
+        plan = vegan_plan(source, [("/steps/0/instruction", "Add 2 cups milk.", "Add 2 tablespoons oat milk.")])
+        result = adapt_recipe(source, vegan=True, vegan_plan=plan)
+        self.assertEqual(result["status"], "needs_review")
+        self.assertEqual(result["recipe"]["steps"][0]["instruction"]["value"], "Add 2 cups milk.")
+
+    def test_vegan_plan_flags_a_linked_step_that_still_names_the_original_ingredient(self):
+        source = recipe("2", [ingredient("cheese", "Parmesan")], [step("Sprinkle Parmesan on top.", "cheese")])
+        plan = vegan_plan(source, [("/ingredients/0/name", "Parmesan", "vegan Parmesan")])
+        result = adapt_recipe(source, vegan=True, vegan_plan=plan)
+        self.assertEqual(result["status"], "needs_review")
+        self.assertEqual(result["review_items"][0]["path"], "/steps/0/instruction")

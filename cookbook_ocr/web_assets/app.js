@@ -12,6 +12,7 @@ const state = {
   screen: "import", file: null, filename: "", report: null, example: false,
   tab: "ingredients", selected: 0, pages: 1, page: 1,
   review: null, reviewPath: "", reviewing: false,
+  veganPlan: null,
   adaptation: null, adaptRequest: 0, previewRequest: 0, busy: false,
   previewReading: "A",
   previews: new Map(),
@@ -76,6 +77,7 @@ function loadReport(report, file) {
   state.review = null;
   state.reviewPath = "";
   state.reviewing = false;
+  state.veganPlan = report.vegan_plan ?? null;
   state.adaptation = null;
   state.adaptRequest++;
   state.previewRequest++;
@@ -83,7 +85,8 @@ function loadReport(report, file) {
 
   updateOriginalServings(true);
   $("#target-servings").value = state.example ? 6 : "";
-  $("#vegan").setAttribute("aria-checked", String(state.example));
+  $("#vegan").setAttribute("aria-checked", String(state.example && hasVeganPlan()));
+  renderVeganOption();
   message("#field-review-status");
   show("review");
 }
@@ -117,7 +120,7 @@ async function importRecipe(file) {
       method: "POST", headers: {"Content-Type": "application/octet-stream"}, body: file,
     });
     loadReport(report, file);
-  }, "Reading the recipe and comparing both transcriptions…");
+  }, "Reading the recipe and preparing a vegan plan…");
 }
 
 async function runImport(action, progress) {
@@ -353,6 +356,21 @@ function setReviewBusy(busy) {
   }
 }
 
+function hasVeganPlan() {
+  return ["ready", "needs_review"].includes(state.veganPlan?.status);
+}
+
+function renderVeganOption() {
+  const control = $("#vegan");
+  const available = hasVeganPlan();
+  control.disabled = !available;
+  if (!available) control.setAttribute("aria-checked", "false");
+  const hint = available
+    ? state.veganPlan.status === "needs_review" ? "Some substitutions require review." : "The plan is ready to apply."
+    : state.veganPlan?.reason || "No vegan plan is available for this recipe.";
+  message("#vegan-plan-status", hint);
+}
+
 async function saveFieldReview(action) {
   if (state.reviewing) return;
   const report = state.report;
@@ -368,17 +386,24 @@ async function saveFieldReview(action) {
   if (action) decisions.push({path, action, value: verified});
 
   setReviewBusy(true);
-  message("#field-review-status", "Saving review…");
+  message("#field-review-status", state.veganPlan && !state.example
+    ? "Saving review and checking the vegan plan…" : "Saving review…");
   try {
     const result = await request("/api/review", {
       method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({report: {recipe: report.recipe}, decisions}),
+      body: JSON.stringify({report: {
+        recipe: report.recipe,
+        vegan_plan: state.veganPlan,
+        example: state.example,
+      }, decisions}),
     });
     if (report !== state.report) return;
     state.review = result.review;
+    state.veganPlan = result.vegan_plan ?? null;
     state.adaptation = null;
     state.adaptRequest++;
     updateOriginalServings();
+    renderVeganOption();
     renderReview();
     renderFieldReview();
     message("#field-review-status", action === "confirm" ? "Value confirmed."
@@ -409,7 +434,7 @@ async function updateAdaptation() {
   const target = $("#target-servings");
   const servings = quantityField(target);
   const baseline = original.readOnly ? null : quantityField(original);
-  const vegan = $("#vegan").getAttribute("aria-checked") === "true";
+  const vegan = hasVeganPlan() && $("#vegan").getAttribute("aria-checked") === "true";
   const invalid = !target.checkValidity() || (servings !== null && !original.checkValidity());
   if (invalid || (servings !== null && !original.readOnly && baseline === null)) {
     state.adaptation = null;
@@ -431,7 +456,11 @@ async function updateAdaptation() {
     const report = await request("/api/adapt", {
       method: "POST", headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
-        report: {recipe: state.report.recipe, ...(state.review ? {review: {decisions: state.review.decisions}} : {})},
+        report: {
+          recipe: state.report.recipe,
+          ...(state.review ? {review: {decisions: state.review.decisions}} : {}),
+          ...(vegan ? {vegan_plan: state.veganPlan} : {}),
+        },
         servings,
         original_servings: servings === null ? null : baseline, vegan,
       }),
@@ -464,11 +493,15 @@ function renderAdaptation() {
   const title = clean(value(original.title)) || "recipe";
   $("#adapt-title").textContent = `Adapt ${title}`;
   const target = adapted?.scale?.target_servings;
-  $("#adapt-subtitle").textContent = [adapted?.vegan_requested ? "Vegan version" : "Recipe adaptation",
+  const adaptationLabel = adapted?.vegan_requested
+    ? adapted.status === "needs_review" ? "Vegan proposal · Review needed" : "Vegan proposal"
+    : "Recipe adaptation";
+  $("#adapt-subtitle").textContent = [adaptationLabel,
     target ? countLabel(target, "serving") : ""].filter(Boolean).join(" · ");
   const factor = adapted?.scale?.factor;
   $("#target-hint").textContent = factor ? `Serving scale factor: ${factor}.` : "Enter a target to scale quantities.";
   const changes = adapted?.changes || [];
+  const changeReasons = new Map(changes.map(({path, reason}) => [path, reason]));
   $("#change-count").textContent = `${changes.length} total`;
   const rows = original.ingredients.flatMap((item, index) => {
     const changed = adapted?.recipe.ingredients[index];
@@ -481,11 +514,14 @@ function renderAdaptation() {
     const showName = beforeName !== afterName;
     const before = showName ? [beforeName, beforeAmount].filter(Boolean).join(" · ") : beforeAmount;
     const after = showName ? [afterName, afterAmount].filter(Boolean).join(" · ") : afterAmount;
+    const reason = showName ? changeReasons.get(`/ingredients/${index}/name`) : null;
     return `<tr><th scope="row">${escape(beforeName)}</th><td>${escape(before || "—")}</td>
-      <td class="changed-value">${escape(after || "—")}</td></tr>`;
+      <td class="changed-value">${escape(after || "—")}${reason ? `<small class="change-reason">${escape(reason)}</small>` : ""}</td></tr>`;
   }).join("");
   $("#changes").innerHTML = rows ? table(["Ingredient", "Original", "Adapted"], rows)
-    : '<p class="empty">Adjust the servings or enable the vegan version to see ingredient changes.</p>';
+    : `<p class="empty">${adapted ? "No ingredient changes." : hasVeganPlan()
+      ? "Adjust the servings or enable the vegan plan to see ingredient changes."
+      : "Adjust the servings to see ingredient changes."}</p>`;
   const reviews = adapted?.review_items || [];
   const banner = $("#adaptation-review");
   banner.hidden = !reviews.length;
@@ -503,6 +539,8 @@ function renderAdaptation() {
 function exportReport() {
   const report = {...state.report};
   if (state.review) report.review = state.review;
+  if (state.veganPlan) report.vegan_plan = state.veganPlan;
+  else delete report.vegan_plan;
   if (state.adaptation) report.adaptation = state.adaptation;
   const blob = new Blob([JSON.stringify(report, null, 2) + "\n"], {type: "application/json"});
   const href = URL.createObjectURL(blob);

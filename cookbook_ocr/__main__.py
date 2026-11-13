@@ -5,12 +5,13 @@ import sys
 from pathlib import Path
 
 from .adaptation import adapt_recipe
-from .pipeline import run_pipeline
+from .pipeline import plan_vegan_recipe, run_pipeline
 from .providers import GeminiClient, OpenAIClient, ProviderError
 from .review import review_recipe
+from .vegan import vegan_plan_matches
 
 
-def load_api_keys() -> tuple[str, str]:
+def _load_api_keys(*names: str) -> tuple[str, ...]:
     env_file = Path(__file__).resolve().parents[1] / ".env"
     values = {}
     if env_file.is_file():
@@ -23,12 +24,21 @@ def load_api_keys() -> tuple[str, str]:
                 values[name.strip()] = value.strip()
 
     keys = []
-    for name in ("GEMINI_API_KEY", "OPENAI_API_KEY"):
+    for name in names:
         value = os.environ.get(name, "").strip() or values.get(name, "")
         if not value:
             raise ValueError(f"Set {name} in the environment or in the project's .env.")
         keys.append(value)
-    return keys[0], keys[1]
+    return tuple(keys)
+
+
+def load_api_keys() -> tuple[str, str]:
+    gemini, openai = _load_api_keys("GEMINI_API_KEY", "OPENAI_API_KEY")
+    return gemini, openai
+
+
+def load_openai_key() -> str:
+    return _load_api_keys("OPENAI_API_KEY")[0]
 
 
 def positive_servings(value: str) -> int:
@@ -47,7 +57,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, help="Write the JSON report to this file")
     parser.add_argument("--servings", type=positive_servings, help="Scale to this number of servings")
     parser.add_argument("--original-servings", type=positive_servings, help="Provide the original serving count")
-    parser.add_argument("--vegan", action="store_true", help="Apply vegan ingredient and cooking rules")
+    parser.add_argument("--vegan", action="store_true", help="Apply the Luna vegan plan")
     args = parser.parse_args()
     if args.original_servings is not None and args.servings is None:
         parser.error("--original-servings requires --servings.")
@@ -77,9 +87,17 @@ def main() -> int:
             recipe = report["review"]["recipe"]
         if args.servings is not None or args.vegan:
             try:
+                plan = report.get("vegan_plan")
+                if args.vegan and not vegan_plan_matches(recipe, plan):
+                    if args.recipe.suffix.lower() == ".json":
+                        plan = report["vegan_plan"] = plan_vegan_recipe(OpenAIClient(load_openai_key()), recipe)
+                    if not vegan_plan_matches(recipe, plan):
+                        reason = plan.get("reason") if isinstance(plan, dict) else None
+                        raise ValueError(reason or "The vegan plan is unavailable.")
                 report["adaptation"] = adapt_recipe(
                     recipe, servings=args.servings,
                     original_servings=args.original_servings, vegan=args.vegan,
+                    vegan_plan=plan,
                 )
             except (KeyError, TypeError, AttributeError):
                 raise ValueError("The extraction report contains an invalid recipe object.") from None

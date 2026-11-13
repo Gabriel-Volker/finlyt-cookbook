@@ -1123,5 +1123,105 @@
       }
     ]
   },
-  "extraction_issues": []
+  "extraction_issues": [],
+  "vegan_plan": {
+    "status": "needs_review",
+    "recipe_fingerprint": "8c02fb31660235ec8e1950e1e5a7dae4cd1efe99d1b54f330fdf92a0432bea9f",
+    "changes": [
+      {
+        "path": "/ingredients/7/name",
+        "before": "beef roast",
+        "after": "seitan roast",
+        "reason": "Seitan provides a plant-based roast that can be marinated, browned, and braised."
+      },
+      {
+        "path": "/ingredients/8/name",
+        "before": "bacon",
+        "after": "vegan bacon",
+        "reason": "Vegan bacon replaces bacon as the savory fat-rendering component."
+      },
+      {
+        "path": "/ingredients/9/name",
+        "before": "butter",
+        "after": "vegan butter",
+        "reason": "Vegan butter supplies the fat for browning and the sauce."
+      },
+      {
+        "path": "/ingredients/13/name",
+        "before": "beef drippings",
+        "after": "vegan butter",
+        "reason": "Vegan butter supplies plant-based fat for the flour-based sauce."
+      },
+      {
+        "path": "/ingredients/15/name",
+        "before": "red wine",
+        "after": "vegan-labelled red wine",
+        "reason": "A vegan-labelled wine avoids animal-derived clarification agents while providing acidity and depth."
+      },
+      {
+        "path": "/ingredients/18/name",
+        "before": "sugar",
+        "after": "vegan sugar",
+        "reason": "Vegan sugar avoids sugar that may be processed with animal-derived bone char."
+      },
+      {
+        "path": "/steps/1/instruction",
+        "before": "Pour the marinade over the beef roast for a shorter rest.",
+        "after": "Pour the marinade over the seitan roast for a shorter rest.",
+        "reason": "Marinating seasons the plant-based roast."
+      },
+      {
+        "path": "/steps/2/instruction",
+        "before": "For a longer rest, cool the marinade before adding the beef roast.",
+        "after": "For a longer rest, cool the marinade before adding the seitan roast.",
+        "reason": "Cooling the marinade before adding the seitan roast preserves the longer-rest method."
+      },
+      {
+        "path": "/steps/3/instruction",
+        "before": "Render the bacon, add butter, then brown the dried beef roast on all sides.",
+        "after": "Cook the vegan bacon until crisp, add vegan butter, then brown the drained seitan roast on all sides.",
+        "reason": "Crisping vegan bacon and adding vegan butter provide browning fat; drained seitan can then be seared."
+      },
+      {
+        "path": "/steps/4/instruction",
+        "before": "When the roast is browned, pour in a little of the marinade.",
+        "after": "When the seitan roast is browned, pour in a little of the marinade.",
+        "reason": "Names the substituted roast while retaining the deglazing step."
+      },
+      {
+        "path": "/steps/6/instruction",
+        "before": "Cover the pot and braise the beef roast gently until tender.",
+        "after": "Cover the pot and braise the seitan roast gently until heated through and infused with the braising liquid.",
+        "reason": "Seitan does not become tender like beef, so use heating through and flavor absorption as the cue."
+      },
+      {
+        "path": "/steps/7/instruction",
+        "before": "Stir flour into the beef drippings and loosen the mixture with marinade and red wine.",
+        "after": "Stir flour into the vegan butter and loosen the mixture with marinade and vegan-labelled red wine.",
+        "reason": "Vegan butter supplies the roux fat, and vegan-labelled wine preserves the sauce's acidity and depth."
+      },
+      {
+        "path": "/steps/8/instruction",
+        "before": "Add soaked currants, raisins and sugar to taste, balancing sweetness and acidity.",
+        "after": "Add soaked currants, raisins and vegan sugar to taste, balancing sweetness and acidity.",
+        "reason": "Uses vegan sugar to preserve the sauce's sweet-and-sour balance."
+      },
+      {
+        "path": "/steps/9/instruction",
+        "before": "Let the beef roast rest in the sauce before slicing and serving.",
+        "after": "Let the seitan roast rest in the sauce before slicing and serving.",
+        "reason": "Resting the seitan roast in the sauce allows it to absorb flavor before serving."
+      }
+    ],
+    "review_items": [
+      {
+        "path": "/ingredients/7/quantity",
+        "reason": "The recipe gives no beef-roast quantity, so the amount of seitan roast needed cannot be determined."
+      },
+      {
+        "path": "/steps/6/duration",
+        "reason": "Braising time for seitan depends on its form and size; the recipe provides no duration, so confirm the appropriate time while using the stated doneness cue."
+      }
+    ]
+  }
 }

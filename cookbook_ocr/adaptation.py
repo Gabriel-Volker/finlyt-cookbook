@@ -265,7 +265,7 @@ def _scale_steps(recipe, measures, original_servings, servings, factor, change, 
 
 def adapt_recipe(
     recipe: dict, *, servings: int | None = None, original_servings: int | None = None,
-    vegan: bool = False,
+    vegan: bool = False, vegan_plan: dict | None = None,
 ) -> dict:
     """Return the adapted recipe and explain the changes without mutating the extraction."""
     for count in (servings, original_servings):
@@ -287,6 +287,9 @@ def adapt_recipe(
         item = {"path": path, "reason": reason}
         if item not in review_items:
             review_items.append(item)
+
+    if vegan:
+        veganize(adapted, vegan_plan, change, warn)
 
     scale = None
     if servings is not None:
@@ -326,7 +329,7 @@ def adapt_recipe(
                 if adjusted is None:
                     warn(f"{path}/quantity", "The source measure cannot be scaled numerically.")
                     continue
-                review_reason = _manual_scale_reason(ingredient, recipe["steps"])
+                review_reason = _manual_scale_reason(ingredient, adapted["steps"])
                 if review_reason:
                     warn(f"{path}/quantity", review_reason)
                     continue
@@ -340,10 +343,8 @@ def adapt_recipe(
                 if count is not None and count.denominator != 1:
                     warn(f"{path}/quantity", "The scaled count is fractional. Check how to divide this ingredient.")
             _scale_steps(adapted, measures, source_count, servings, factor, change, warn)
-            review_vessel_capacity(recipe, factor, warn)
+            review_vessel_capacity(adapted, factor, warn)
 
-    if vegan:
-        veganize(adapted, change, warn)
     return {
         "recipe": adapted,
         "scale": scale,

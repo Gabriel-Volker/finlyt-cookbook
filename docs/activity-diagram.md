@@ -12,12 +12,14 @@ flowchart TD
         luna["Transcribe with Luna"]
         compare["Compare texts A and B with Luna"]
         extract["Extract with Luna and validate evidence"]
+        plan["Ask Luna for a vegan plan"]
         example["Load the example report"]
         upload -->|"Parallel OCR"| gemini
         upload -->|"Parallel OCR"| luna
         gemini --> compare
         luna --> compare
         compare --> extract
+        extract --> plan
     end
 
     entry -->|"Upload file"| upload
@@ -28,13 +30,15 @@ flowchart TD
         inspect["Inspect excerpts and source page"]
         resolve["Confirm or correct a flagged field"]
         saveReview["Save decision and original evidence"]
+        refreshPlan["Refresh the plan for the reviewed recipe"]
         display -.->|"Select item"| inspect
         inspect -->|"Resolve a field"| resolve
         resolve --> saveReview
-        saveReview -.->|"Review another field"| display
+        saveReview --> refreshPlan
+        refreshPlan -.->|"Review another field"| display
     end
 
-    extract --> display
+    plan --> display
     example --> display
 
     subgraph adapt ["Adapt"]
@@ -43,22 +47,22 @@ flowchart TD
         correct["Ask for valid serving counts"]
         requested{"Any adaptation requested?"}
         base["Apply saved decisions to the original recipe"]
+        vegan["Apply the saved Luna plan if selected"]
         scale["Scale measures and steps if requested"]
-        vegan["Apply Python vegan rules if requested"]
         changes["Show changes and warnings"]
         options --> valid
         valid -->|"No"| correct
         correct --> options
         valid -->|"Yes or not required"| requested
         requested -->|"Yes"| base
-        base --> scale
-        scale --> vegan
-        vegan --> changes
+        base --> vegan
+        vegan --> scale
+        scale --> changes
         changes -.->|"Change options"| options
     end
 
     display -->|"Open Adapt"| options
-    saveReview -->|"Open Adapt"| options
+    refreshPlan -->|"Open Adapt"| options
     requested -->|"No"| download(["Export JSON report"])
     changes -->|"Include adaptation"| download
 
@@ -68,6 +72,6 @@ flowchart TD
     style correct fill:#FFECBD,stroke:#D5A43A,color:#1E1E1E
 ```
 
-- For PDF uploads, Gemini receives the file and Luna receives rasterized pages, with a PDF fallback above the local raster budget. Luna compares the two transcriptions before a separate extraction call.
+- For PDF uploads, Gemini receives the file and Luna receives rasterized pages, with a PDF fallback above the local raster budget. Luna compares the two transcriptions, extracts the source recipe, and prepares a vegan plan from the validated fields.
 - Review keeps the original extraction and evidence alongside the reviewer's decisions. Unresolved fields and document-level alerts remain visible.
-- Adapt uses the reviewed recipe when decisions exist. Scaling requires a usable original serving count. When both options are selected, Python scales first and then applies vegan substitutions and step rules. The export includes the original report, review decisions, and any adaptation.
+- Adapt uses the reviewed recipe when decisions exist. Scaling requires a usable original serving count. Python applies the stored vegan plan before scaling if both options are selected. The export includes the original report, review decisions, the plan, and any adaptation.

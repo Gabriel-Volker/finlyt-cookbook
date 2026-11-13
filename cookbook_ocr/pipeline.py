@@ -4,7 +4,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from .extraction import PAGE_MARKER, build_recipe, has_unresolved_fields
-from .providers import GeminiClient, OpenAIClient
+from .providers import GeminiClient, OpenAIClient, ProviderError
+from .vegan import validate_vegan_plan
 
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
@@ -60,13 +61,13 @@ def compare_transcriptions(
 
 
 def _structured_response(
-    openai: OpenAIClient, prompt: str, schema: dict, name: str, transcriptions: dict,
+    openai: OpenAIClient, prompt: str, schema: dict, name: str, data: dict,
     **options,
 ) -> dict:
     response = openai.respond(
         input=[
             {"role": "system", "content": prompt},
-            {"role": "user", "content": json.dumps(transcriptions, ensure_ascii=False)},
+            {"role": "user", "content": json.dumps(data, ensure_ascii=False)},
         ],
         text={
             "format": {
@@ -79,6 +80,33 @@ def _structured_response(
         **options,
     )
     return json.loads(response)
+
+
+def plan_vegan_recipe(openai: OpenAIClient, recipe: dict) -> dict:
+    """Prepare and validate a recipe-specific plan before Adapt uses it."""
+    if not recipe["ingredients"] or not recipe["steps"]:
+        return {"status": "unavailable", "reason": "Vegan planning needs extracted ingredients and steps."}
+
+    def omit_evidence(value):
+        if isinstance(value, dict):
+            return {key: omit_evidence(item) for key, item in value.items()
+                    if key not in {"evidence", "review_item_ids"}}
+        if isinstance(value, list):
+            return [omit_evidence(item) for item in value]
+        return value
+
+    prompt = (PROMPTS_DIR / "plan_vegan.system.txt").read_text(encoding="utf-8")
+    schema = json.loads((PROMPTS_DIR / "plan_vegan.schema.json").read_text(encoding="utf-8"))
+    try:
+        candidate = _structured_response(
+            openai, prompt, schema, "vegan_plan", {"recipe": omit_evidence(recipe)},
+            max_output_tokens=8192,
+        )
+        return validate_vegan_plan(recipe, candidate)
+    except ProviderError:
+        return {"status": "unavailable", "reason": "Luna could not prepare a vegan plan."}
+    except ValueError:
+        return {"status": "unavailable", "reason": "Luna's vegan plan failed validation."}
 
 
 def run_pipeline(
@@ -129,4 +157,5 @@ def run_pipeline(
         "comparison": comparison,
         "recipe": recipe,
         "extraction_issues": extraction_issues,
+        "vegan_plan": plan_vegan_recipe(openai, recipe),
     }

@@ -572,6 +572,14 @@ h3 {
   font-weight: 600;
 }
 
+.change-reason {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
 .row-button {
   padding: 0;
   border: 0;
@@ -858,6 +866,11 @@ h3 {
   border-radius: 50%;
   background: #fff;
   content: "";
+}
+
+.toggle-control:disabled {
+  opacity: .65;
+  cursor: default;
 }
 
 .toggle-control[aria-checked="true"],
