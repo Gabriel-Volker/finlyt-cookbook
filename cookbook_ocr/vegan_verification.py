@@ -1,6 +1,7 @@
 """Check a vegan plan for concrete issues using the recipe and proposed edits."""
 
 import json
+import logging
 from pathlib import Path
 
 from .extraction import UNREADABLE
@@ -19,7 +20,25 @@ from .vegan import (
 
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
+LOGGER = logging.getLogger(__name__)
 FINDING_KINDS = {"animal_ingredient", "unsupported_substitute", "cooking_function", "quantity_or_unit", "preparation"}
+
+
+def _provider_failure_reason(error: ProviderError) -> str:
+    status = error.http_status
+    if status == 429:
+        return "Gemini rate or quota limit reached (HTTP 429). Retry after the quota allows it."
+    if status in (401, 403):
+        return f"Gemini denied access (HTTP {status}). Check the API key and model access."
+    if status == 400:
+        return "Gemini rejected the vegan verification request (HTTP 400). Check the API configuration."
+    if status is not None:
+        return f"Gemini returned HTTP {status} while verifying the vegan plan."
+    if error.kind == "timeout":
+        return "Gemini timed out while verifying the vegan plan. Retry adaptation plans."
+    if error.kind == "connection":
+        return "Could not reach Gemini to verify the vegan plan. Check the connection and retry adaptation plans."
+    return "Gemini did not return a usable vegan verification response. Retry adaptation plans."
 
 
 def _related_records(recipe: dict, collection: str, index: int) -> set[str]:
@@ -117,7 +136,7 @@ def verify_vegan_plan(gemini: GeminiClient | None, recipe: dict, plan: dict) -> 
             recipe, "verification_failed", "An animal ingredient remains in the proposed recipe.", review_items,
         )
     if gemini is None:
-        return unavailable("Gemini verification is unavailable.")
+        return unavailable("Set GEMINI_API_KEY to verify the vegan plan.")
     changes = {change["path"]: change["after"] for change in plan["changes"]}
     steps_to_check = {}
     for index, step in enumerate(recipe["steps"]):
@@ -141,8 +160,14 @@ def verify_vegan_plan(gemini: GeminiClient | None, recipe: dict, plan: dict) -> 
             ],
             "steps_to_check": steps_to_check,
         })
-    except (ProviderError, ValueError):
-        return unavailable("Gemini could not verify the vegan plan.")
+    except ProviderError as error:
+        reason = _provider_failure_reason(error)
+        LOGGER.warning("%s", reason)
+        return unavailable(reason)
+    except ValueError:
+        reason = "Gemini returned invalid verification results. Retry adaptation plans."
+        LOGGER.warning("%s", reason)
+        return unavailable(reason)
     if not isinstance(result, dict) or not all(key in result for key in (
         "status", "reason_code", "reason", "findings", "approved_substitutions",
     )) or not isinstance(result["findings"], list):

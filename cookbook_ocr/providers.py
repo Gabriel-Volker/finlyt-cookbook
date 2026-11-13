@@ -33,6 +33,11 @@ LOGGER = logging.getLogger(__name__)
 class ProviderError(RuntimeError):
     """A provider did not return a usable response."""
 
+    def __init__(self, message: str, *, kind: str = "response", http_status: int | None = None) -> None:
+        super().__init__(message)
+        self.kind = kind
+        self.http_status = http_status
+
 
 def _post_json(
     provider: str,
@@ -54,9 +59,15 @@ def _post_json(
             result = json.load(response)
     except HTTPError as error:
         error.close()
-        raise ProviderError(f"{provider} returned HTTP {error.code}.") from None
-    except (URLError, OSError, HTTPException):
-        raise ProviderError(f"Could not complete the request to {provider}.") from None
+        raise ProviderError(f"{provider} returned HTTP {error.code}.", kind="http", http_status=error.code) from None
+    except TimeoutError:
+        raise ProviderError(f"The request to {provider} timed out.", kind="timeout") from None
+    except URLError as error:
+        if isinstance(error.reason, TimeoutError):
+            raise ProviderError(f"The request to {provider} timed out.", kind="timeout") from None
+        raise ProviderError(f"Could not complete the request to {provider}.", kind="connection") from None
+    except (OSError, HTTPException):
+        raise ProviderError(f"Could not complete the request to {provider}.", kind="connection") from None
     except (UnicodeError, json.JSONDecodeError):
         raise ProviderError(f"{provider} returned invalid JSON.") from None
 

@@ -6,8 +6,6 @@ import json
 import mimetypes
 import re
 from collections import OrderedDict
-from concurrent.futures import Future
-from hashlib import sha256
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from io import BytesIO
@@ -15,6 +13,7 @@ from math import isfinite
 from pathlib import Path
 from threading import Lock
 from urllib.parse import parse_qs, unquote, urlsplit
+from uuid import uuid4
 
 import pymupdf
 from PIL import Image, ImageOps
@@ -44,38 +43,6 @@ LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 STATIC_TYPES = {".js": "application/javascript", ".svg": "image/svg+xml", ".woff2": "font/woff2"}
 _TRANSLATION_CACHE: OrderedDict[tuple[str, str], tuple[Lock, dict]] = OrderedDict()
 _TRANSLATION_CACHE_LOCK = Lock()
-_IMPORTS: OrderedDict[str, dict] = OrderedDict()
-_IMPORTS_PENDING: dict[str, Future] = {}
-_IMPORTS_LOCK = Lock()
-
-
-def _import_recipe(document: bytes, filename: str, mime_type: str, gemini_key: str, openai_key: str) -> dict:
-    session = sha256(mime_type.encode("ascii") + b"\0" + document).hexdigest()
-    with _IMPORTS_LOCK:
-        if session in _IMPORTS:
-            _IMPORTS.move_to_end(session)
-            return _IMPORTS[session]
-        pending = _IMPORTS_PENDING.get(session)
-        leader = pending is None
-        if leader:
-            pending = _IMPORTS_PENDING[session] = Future()
-    if not leader:
-        return pending.result()
-    try:
-        report = run_pipeline(document, filename, GeminiClient(gemini_key), OpenAIClient(openai_key))
-        result = {**report, "translation_session": session}
-        with _IMPORTS_LOCK:
-            _IMPORTS[session] = result
-            if len(_IMPORTS) > 8:
-                _IMPORTS.popitem(last=False)
-        pending.set_result(result)
-        return result
-    except Exception as error:
-        pending.set_exception(error)
-        raise
-    finally:
-        with _IMPORTS_LOCK:
-            del _IMPORTS_PENDING[session]
 
 
 def _translation_session(session: str, language: str) -> tuple[Lock, dict]:
@@ -306,7 +273,8 @@ class CookbookHandler(BaseHTTPRequestHandler):
                     gemini_key, openai_key = load_api_keys()
                 except (OSError, ValueError) as error:
                     raise RequestError(str(error), HTTPStatus.SERVICE_UNAVAILABLE) from None
-                self._json(_import_recipe(document, filename, mime_type, gemini_key, openai_key))
+                report = run_pipeline(document, filename, GeminiClient(gemini_key), OpenAIClient(openai_key))
+                self._json({**report, "translation_session": uuid4().hex})
                 return
             if url.path == "/api/review":
                 data, report = self._recipe_request()

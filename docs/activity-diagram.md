@@ -6,9 +6,8 @@ The web workflow from import to export. Import prepares the recipe and plans. Re
 flowchart TD
     start(["Open Cookbook"]) --> entry{"Upload or try example?"}
     entry -->|"Try example"| saved["Load the bundled report"]
-    entry -->|"Upload"| upload["Validate file and check import cache"]
-    upload -->|"Cache hit"| savedReport["Reuse saved readings and plans"]
-    upload -->|"New file"| route{"Read text directly?"}
+    entry -->|"Upload"| upload["Validate the uploaded file"]
+    upload --> route{"Read text directly?"}
     route -->|"TXT or eligible PDF"| native["Read native text with page markers"]
     route -->|"Scan or image"| ocr["Run Gemini and Terra OCR in parallel"]
     ocr --> blur{"Do both readers flag every page and the blur check concur?"}
@@ -19,7 +18,6 @@ flowchart TD
     extract --> veganPlan["Propose with Luna and verify the vegan recipe with Gemini when viable"]
     veganPlan --> scalePlan["Classify scaling for the original and any verified vegan variant"]
     scalePlan --> translations["Prepare both display languages in one batch"]
-    savedReport --> translations
     translations --> review["Review the recipe, source evidence and warnings"]
     saved --> review
 

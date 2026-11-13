@@ -3,6 +3,7 @@ import json
 import unittest
 from io import BytesIO
 from unittest.mock import patch
+from urllib.error import HTTPError, URLError
 
 import pymupdf
 from PIL import Image
@@ -193,6 +194,22 @@ class GeminiStructuredResponseTests(unittest.TestCase):
                 }]}
                 with self.assertRaisesRegex(ProviderError, expected_error):
                     GeminiClient("test-key").respond_structured(self.prompt, self.schema, self.data)
+
+    @patch("cookbook_ocr.providers.urlopen")
+    def test_provider_diagnostics_track_transport_and_http_failures_without_details(self, open_url):
+        sensitive = "opaque provider details"
+        for error, kind, status in (
+            (TimeoutError(sensitive), "timeout", None),
+            (URLError(TimeoutError(sensitive)), "timeout", None),
+            (URLError(sensitive), "connection", None),
+            (HTTPError("https://example.test", 429, sensitive, {}, None), "http", 429),
+        ):
+            with self.subTest(kind=kind, status=status):
+                open_url.side_effect = error
+                with self.assertRaises(ProviderError) as failure:
+                    GeminiClient("test-key").respond_structured(self.prompt, self.schema, self.data)
+                self.assertEqual((failure.exception.kind, failure.exception.http_status), (kind, status))
+                self.assertNotIn(sensitive, str(failure.exception))
 
 
 if __name__ == "__main__":

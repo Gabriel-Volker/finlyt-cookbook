@@ -324,14 +324,50 @@ class VeganVerificationTests(unittest.TestCase):
 
     def test_provider_failure_withholds_an_unverified_plan(self):
         source = self.plan("vegan baking block")
-        self.gemini.respond_structured.side_effect = ProviderError("offline")
-        verified = verify_vegan_plan(self.gemini, self.recipe, source)
-        self.assertEqual(verified["verification"]["status"], "unavailable")
-        self.assertEqual(verified["status"], "unavailable")
-        self.assertEqual(verified["reason_code"], "verification_unavailable")
-        self.assertEqual(verified["changes"], [])
         self.assertFalse(vegan_plan_usable(self.recipe, source))
-        self.assertFalse(vegan_plan_usable(self.recipe, verified))
+        for kind, status, message in (
+            ("connection", None, "Could not reach Gemini"),
+            ("timeout", None, "Gemini timed out"),
+            ("http", 429, "quota limit"),
+            ("http", 403, "denied access"),
+            ("http", 400, "rejected the vegan verification request"),
+            ("response", None, "usable vegan verification response"),
+        ):
+            with self.subTest(kind=kind, status=status):
+                sensitive = "opaque provider details"
+                self.gemini.respond_structured.side_effect = ProviderError(sensitive, kind=kind, http_status=status)
+                with self.assertLogs("cookbook_ocr.vegan_verification", "WARNING") as logs:
+                    verified = verify_vegan_plan(self.gemini, self.recipe, source)
+                self.assertIn(message, verified["verification"]["reason"])
+                self.assertNotIn(sensitive, str(verified))
+                self.assertNotIn(sensitive, str(logs.output))
+                self.assertEqual(verified["verification"]["status"], "unavailable")
+                self.assertEqual(verified["status"], "unavailable")
+                self.assertEqual(verified["reason_code"], "verification_unavailable")
+                self.assertEqual(verified["changes"], [])
+                self.assertFalse(vegan_plan_usable(self.recipe, verified))
+
+    def test_vegan_verification_preserves_a_stated_count_without_a_unit(self):
+        source = recipe("4", [ingredient("cheese", "mozzarella ball", "2")], [
+            step("Slice the mozzarella balls into the filling.", "cheese"),
+        ])
+        replacement = "plant-based mozzarella ball"
+        luna = Mock()
+        luna.respond.return_value = json.dumps(proposal([
+            {"path": "/ingredients/0/name", "before": "mozzarella ball", "after": replacement,
+             "reason": "Use an equivalent plant-based cheese ball made for melting."},
+            {"path": "/steps/0/instruction", "before": "Slice the mozzarella balls into the filling.",
+             "after": "Slice the plant-based mozzarella balls into the filling.", "reason": "Use the replacement."},
+        ]))
+        plan = plan_vegan_recipe(luna, source)
+        self.gemini.respond_structured.return_value = clear_verdict(replacement)
+        verified = verify_vegan_plan(self.gemini, source, plan)
+        adapted = adapt_recipe(source, vegan=True, vegan_plan=verified)["recipe"]
+
+        self.assertIn("stated count", luna.respond.call_args.kwargs["input"][0]["content"])
+        self.assertIn("stated count", self.gemini.respond_structured.call_args.args[0])
+        self.assertEqual(adapted["ingredients"][0]["quantity"]["value"], "2")
+        self.assertIsNone(adapted["ingredients"][0]["unit"]["value"])
 
     def test_requires_verification_for_the_exact_replacement(self):
         source = self.plan("vegan baking block")

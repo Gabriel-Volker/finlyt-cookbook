@@ -20,9 +20,8 @@ Select **Try example**, open the source evidence in **Review**, then set six ser
 flowchart TD
     start(["Open Cookbook"]) --> entry{"Upload or try example?"}
     entry -->|"Try example"| saved["Load the bundled report"]
-    entry -->|"Upload"| upload["Validate file and check import cache"]
-    upload -->|"Cache hit"| savedReport["Reuse saved readings and plans"]
-    upload -->|"New file"| route{"Read text directly?"}
+    entry -->|"Upload"| upload["Validate the uploaded file"]
+    upload --> route{"Read text directly?"}
     route -->|"TXT or eligible PDF"| native["Read native text with page markers"]
     route -->|"Scan or image"| ocr["Run Gemini and Terra OCR in parallel"]
     ocr --> blur{"Do both readers flag every page and the blur check concur?"}
@@ -33,7 +32,6 @@ flowchart TD
     extract --> veganPlan["Propose with Luna and verify the vegan recipe with Gemini when viable"]
     veganPlan --> scalePlan["Classify scaling for the original and any verified vegan variant"]
     scalePlan --> translations["Prepare both display languages in one batch"]
-    savedReport --> translations
     translations --> review["Review the recipe, source evidence and warnings"]
     saved --> review
 
@@ -62,7 +60,7 @@ With the example's user-supplied baseline of four, the six-serving version scale
 ## Reliability and evaluation
 
 - **Hallucination and trust.** Models read handwriting, interpret steps, and propose changes. Python validates citations, data, and arithmetic. Missing or disputed amounts stay unresolved. Reviewers can inspect the source and correct values or links. `stated`, `inferred`, `missing`, and `needs_review` describe the evidence and review state. They are qualitative signals. Readers can agree on a wrong word, and a valid quote can still conceal an omitted step or a wrong ingredient link.
-- **Non-determinism.** Fresh model calls can vary. Luna starts extraction at low reasoning effort. When a field fails validation, one targeted request can repair it while preserving the fields that passed validation. Structural failures such as an omitted measured ingredient still trigger one full retry. Saved reports preserve the readings and plans, and replay applies the same transformations in Python. Changing servings or switching between prepared languages makes zero model calls.
+- **Non-determinism.** Each upload runs the pipeline and model responses can vary. Luna starts extraction at low reasoning effort. When a field fails validation, one targeted request can repair it while preserving the fields that passed validation. Structural failures such as an omitted measured ingredient still trigger one full retry. Saved reports preserve the readings and plans, and replay applies the same transformations in Python. Changing servings or switching between prepared languages within the current upload makes zero model calls.
 - **Validation without ground truth.** I tested the German scan, three Portuguese scans and an English text recipe. For an accuracy estimate, I would annotate ingredient–quantity pairs, source spans and step links across clean PDFs, handwriting and degraded scans. Repeat each run and track field accuracy, errors that passed without a flag, and how often review was requested.
 
 | Measured on the two-page Sauerbraten | Time | Estimated API cost |

@@ -221,19 +221,17 @@ class WebTests(unittest.TestCase):
             load_key.assert_not_called()
             model.respond.assert_not_called()
 
-    def test_reimport_reuses_successful_report_by_content(self):
-        first_path = "/api/extract?filename=recipe.pdf"
+    def test_identical_uploads_run_pipeline_with_distinct_translation_sessions(self):
+        path = "/api/extract?filename=recipe.pdf"
         source = b"%PDF-1.7\nsame document"
         pipeline_result = {"recipe": recipe("2", [], []), "status": "needs_review"}
-        with patch("cookbook_ocr.web._IMPORTS", OrderedDict()), patch(
+        with patch(
             "cookbook_ocr.web.run_pipeline", return_value=pipeline_result,
         ) as pipeline, patch("cookbook_ocr.web.load_api_keys", return_value=("gemini", "openai")):
-            first = self.request("POST", first_path, source)
-            second = self.request("POST", "/api/extract?filename=copy.pdf", source)
-            third = self.request("POST", first_path, source + b" changed")
-            self.assertEqual((first[0], second[0], third[0]), (200, 200, 200))
-            self.assertEqual(first[2], second[2])
-            self.assertNotEqual(json.loads(first[2])["translation_session"], json.loads(third[2])["translation_session"])
+            first = self.request("POST", path, source)
+            second = self.request("POST", path, source)
+            self.assertEqual((first[0], second[0]), (200, 200))
+            self.assertNotEqual(json.loads(first[2])["translation_session"], json.loads(second[2])["translation_session"])
             self.assertEqual(pipeline.call_count, 2)
 
     def test_translation_retry_sends_only_fields_that_failed_validation(self):
