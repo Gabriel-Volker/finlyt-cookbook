@@ -29,16 +29,24 @@ flowchart TD
     blur -->|"Otherwise"| compare["Check unreadable spans and compare differing readings with Luna"]
     native --> extract["Extract with Luna and validate source evidence"]
     compare --> extract
-    extract --> veganPlan["Propose with Luna and verify the vegan recipe with Gemini when viable"]
-    veganPlan --> scalePlan["Classify scaling for the original and any verified vegan variant"]
-    scalePlan --> translations["Prepare both display languages in one batch"]
+    extract --> veganPlan["Propose vegan substitutions and method changes with Luna"]
+    veganPlan --> measures["Validate edits and any equivalent measures against the source"]
+    measures --> ready{"Is the proposal ready for verification?"}
+    ready -->|"Yes"| verify["Gemini checks suitability, preparation and proposed measures"]
+    ready -->|"No"| original["Keep the original recipe and record why the vegan plan is unavailable"]
+    verify --> approved{"Did Gemini approve the plan?"}
+    approved -->|"Yes"| vegan["Prepare the verified vegan variant"]
+    approved -->|"No"| original
+    vegan --> scalePlan["Classify scaling for each available variant with Luna and Gemini"]
+    original --> scalePlan
+    scalePlan --> translations["Prepare both display languages for the available variants"]
     translations --> review["Review the recipe, source evidence and warnings"]
     saved --> review
 
     review -->|"Edit a field"| correction["Save the review decision with source evidence"]
     correction --> review
     review -->|"Open Adapt"| current["Reuse current plans or refresh stale plans and translations"]
-    current --> options["Choose servings, diet and output language"]
+    current --> options["Choose servings, output language and any available vegan option"]
     options --> apply["Apply verified vegan changes, then scale in Python when possible"]
     apply --> display["Display adjusted recipe and warnings using prepared translations"]
     display -->|"Change settings"| options
@@ -52,10 +60,12 @@ flowchart TD
 | --- | --- |
 | **Ingest** | The Sauerbraten has two photographed pages and no text layer. Its method continues across the page boundary, and the drawings contain readable labels. I preserve page order and keep the header and labels in the readings for review. Docling missed complete ingredient–quantity pairs in my test, so I use Gemini 3.1 Flash-Lite on the original scan and GPT-6.1 Terra on rendered pages, with a PDF fallback above the raster budget. UTF-8 text and eligible digital PDFs go directly to extraction. |
 | **Extract** | I chose separate readings and extraction over one image-to-JSON prompt so the reviewer can see where an error entered the result. Luna once read `Bratenstand` for `Bratenfond`. That disagreement left the sauce instruction and its ingredient pending review. Python checks verbatim evidence and page references, ties quantities and units to the ingredient occurrence, and merges exact duplicate detections. Optional ingredients keep their qualifying text. Inferred tools cite a linked action and are labeled. The roast weight and original yield are absent, so both stay unknown. |
-| **Manipulate** | Luna proposes substitutions and changes to the method. A substitute can use a different measure when Luna supplies a culinary basis and Gemini approves the ingredient and its exact amount. The roast replacement affects the marinade and sauce as well as the ingredient list. I apply the verified vegan changes before scaling so the rules match the recipe being cooked. Python uses exact fractions to update ingredients and linked steps. Fixed or per-batch quantities, disputed measures, and vessel capacity need their own checks. |
+| **Manipulate** | Luna proposes substitutes that serve the original ingredient's role and revises the affected steps. When the source has a confirmed numeric amount, Luna can propose a different quantity or unit and give the basis for the equivalence. Python checks linked amounts, and Gemini verifies the final ingredient list and method and approves the exact substitute and measure. Adapt shows the reason when it cannot offer a vegan version. Python applies verified changes before scaling and records them separately from the source evidence. |
 | **Output** | Review and Adapt show source quotes, corrections, uncertainty, and what changed. I translate for display after anchoring the source fields and reuse those translations with the calculated quantities. Rewriting the recipe on every serving change would make those numbers harder to verify. Export preserves the source, review decisions, plans, and selected result so the adaptation can be replayed. |
 
 With the example's user-supplied baseline of four, the six-serving version scales half a litre each of vinegar and water to **750 mL each** and four onions to **six**. The preparation uses the same values. The roast quantity stays flagged for review.
+
+In a live Pastèizinhos replay, Gemini approved **six tablespoons of aquafaba for two eggs**, and the app applied the conversion while preserving the original recipe. The source gives no amounts for the frying oil or coating sugar, so both remain flagged. The check covered the generated plan and its application. A kitchen test is still pending. [Recorded run](AI_LOG.md#2026-11-13-20422049--verify-and-fix-the-vegan-equivalence-decision)
 
 ## Reliability and evaluation
 
@@ -68,11 +78,11 @@ With the example's user-supplied baseline of four, the six-serving version scale
 | Earlier Gemini + Luna OCR, comparison and extraction | 67.54 s | $0.00467 with observed cache reads |
 | Earlier Terra direct-PDF OCR only | 18.09 s | $0.03789 |
 | Previous end-to-end import, vegan planning held for review | 3 min 28 s | $0.02309 at observed cache rates, or $0.03107 with cache reads priced as writes |
-| Current end-to-end import, including a verified vegan plan and both output languages | 3 min | $0.03232 at observed cache rates, or $0.04036 with cache reads priced as writes |
+| End-to-end import measured on Nov 13, including a verified vegan plan and both output languages | 3 min | $0.03232 at observed cache rates, or $0.04036 with cache reads priced as writes |
 | Luna extraction and validation within those imports | 108.5 s → 38.6 s | $0.00611 → $0.00245 at observed cache rates |
 | Serving change after preparation, Chromium test | About 110 ms | Zero model calls |
 
-In the current run, Terra OCR took 19.4 s, Luna repaired individual fields in 16.6 s after its 22.0 s extraction, and bilingual preparation took 59.5 s. Total cost depends on which adaptations can be prepared. The previous import stopped before vegan planning, while the current one completed it and prepared both languages for both variants. Each row describes an individual measurement. [Benchmark details and pricing sources](AI_LOG.md#2026-11-13-20102022--shorten-luna-extraction-and-repair-field-evidence)
+In the measured three-minute run, Terra OCR took 19.4 s, Luna repaired individual fields in 16.6 s after its 22.0 s extraction, and bilingual preparation took 59.5 s. Total cost depends on which adaptations can be prepared. Each row describes an individual measurement. The cache rates are provider prices for cached input tokens. The demo runs the pipeline on every upload. [Benchmark details and pricing sources](AI_LOG.md#2026-11-13-20102022--shorten-luna-extraction-and-repair-field-evidence)
 
 ## Examples and tests
 

@@ -15,16 +15,24 @@ flowchart TD
     blur -->|"Otherwise"| compare["Check unreadable spans and compare differing readings with Luna"]
     native --> extract["Extract with Luna and validate source evidence"]
     compare --> extract
-    extract --> veganPlan["Propose with Luna and verify the vegan recipe with Gemini when viable"]
-    veganPlan --> scalePlan["Classify scaling for the original and any verified vegan variant"]
-    scalePlan --> translations["Prepare both display languages in one batch"]
+    extract --> veganPlan["Propose vegan substitutions and method changes with Luna"]
+    veganPlan --> measures["Validate edits and any equivalent measures against the source"]
+    measures --> ready{"Is the proposal ready for verification?"}
+    ready -->|"Yes"| verify["Gemini checks suitability, preparation and proposed measures"]
+    ready -->|"No"| original["Keep the original recipe and record why the vegan plan is unavailable"]
+    verify --> approved{"Did Gemini approve the plan?"}
+    approved -->|"Yes"| vegan["Prepare the verified vegan variant"]
+    approved -->|"No"| original
+    vegan --> scalePlan["Classify scaling for each available variant with Luna and Gemini"]
+    original --> scalePlan
+    scalePlan --> translations["Prepare both display languages for the available variants"]
     translations --> review["Review the recipe, source evidence and warnings"]
     saved --> review
 
     review -->|"Edit a field"| correction["Save the review decision with source evidence"]
     correction --> review
     review -->|"Open Adapt"| current["Reuse current plans or refresh stale plans and translations"]
-    current --> options["Choose servings, diet and output language"]
+    current --> options["Choose servings, output language and any available vegan option"]
     options --> apply["Apply verified vegan changes, then scale in Python when possible"]
     apply --> display["Display adjusted recipe and warnings using prepared translations"]
     display -->|"Change settings"| options
@@ -33,5 +41,6 @@ flowchart TD
 ```
 
 - Gemini reads the original PDF. Terra receives rendered pages or the original PDF above the raster budget. The blur check requires both OCR readers to flag every page and visual evidence of severe blur.
-- The original recipe remains available when the vegan plan cannot be verified. Changing the yield requires a stated or user-provided baseline. The app flags effects it cannot apply safely.
-- Changing servings uses the local Python calculation. Changing the language uses the prepared display output. Export preserves the original evidence and review decisions.
+- Luna can propose a different quantity or unit for a suitable vegan substitute when the source amount is confirmed. Gemini checks the specific equivalence and the final preparation. Adapt displays the reason when a culinary blocker, review issue, or verification failure prevents it from offering a vegan version.
+- Scaling uses a stated or user-provided baseline and the measures from the selected variant. Python adjusts linked steps and flags unresolved quantities, batch constraints and vessel capacity when needed.
+- Each upload runs the pipeline. Changing servings uses the local Python calculation, and changing the language uses the display output prepared for that upload. Export preserves the original evidence, review decisions and adapted values.

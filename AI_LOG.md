@@ -460,3 +460,7 @@ Gabriel asked to determine whether the Pastèizinhos abstention was warranted, f
 The revised planner accepts an equivalent derived amount for a confirmed numeric source amount. Python checks the links and arithmetic in explicitly measured steps, and Gemini approves the exact replacement, amount, unit and basis. When no workable substitute can be established, Adapt states that it could not prepare a vegan version and shows the specific reason.
 
 Luna proposed six tablespoons of aquafaba for the two eggs in the previously extracted Pastèizinhos recipe. Gemini approved the plan. The frying oil and coating sugar quantities remained flagged because the source did not state them. The recipe was not cooked. All 187 tests passed in Docker, and the running app applied the approved conversion through `/api/adapt`. [Aquafaba substitution guidance](https://www.vegansociety.com/news/blog/what-is-aquafaba)
+
+## 2026-11-13 20:49–20:51 · Update the documentation and Docker release
+
+Gabriel asked to update the documentation, activity diagram and local Docker service, then push to GitHub. The README and standalone diagram show the decision paths for vegan planning, exact measure approval, and original-recipe availability. Both diagrams match and render as Mermaid. The rebuilt Docker image passed all 187 tests. After restarting the service, the app applied the approved Pastèizinhos measure through its adaptation API and preserved the source amount.
