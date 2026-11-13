@@ -53,3 +53,16 @@ Gabriel confirmed that his API key and credits were ready and asked Codex to tes
 - **Illustrations.** Both recovered the printed page numbers and the four readable labels. GPT grouped the second page's illustration labels before the recipe text, while Gemini followed their placement below it in the scan.
 
 Codex compared the two saved outputs and checked the differences against the original pages. These observations come from one completed run per model with the full transcription prompt.
+
+## 2026-11-13 11:56:38–11:56:51 · GPT-6.1 Sol transcription and cost comparison
+
+Gabriel asked for the cost of the Luna run and a comparison with `gpt-6.1-sol`. Codex ran Sol on the same PDF with the same prompt and Responses API settings, changing only the model. Sol completed in 12.85 seconds. Its raw output is stored locally as `Recipe-gpt-6.1-sol-full-de.md`.
+
+| Model | Input tokens | Cache write tokens | Output tokens | Reasoning tokens within output | API time | Estimated USD |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| GPT-6 Luna | 14,833 | 14,830 | 1,941 | 1,552 | 23.10 s | $0.00282455 |
+| GPT-6.1 Sol | 14,833 | 14,830 | 553 | 131 | 12.85 s | $0.04261100 |
+
+Both responses reported zero cached input tokens and three ordinary input tokens. The estimates use the [standard API rates](https://developers.openai.com/api/docs/pricing) and [30-minute cache write rates](https://developers.openai.com/api/docs/guides/prompt-caching). Sol cost about 15.1 times as much and returned 10.25 seconds sooner in these single runs.
+
+The recipe body matches on both pages after joining words split at line breaks and normalizing spacing. Both models recovered the same ingredients, quantities, and preparation instructions. Sol read `Josefines` as written in the illustrated header. Luna returned `Jose[unleserlich]ines`. Sol also kept the second page's illustration labels below the recipe, where they appear in the scan. Sol preserved more of the original line breaks and added a period to the illustrated title.
