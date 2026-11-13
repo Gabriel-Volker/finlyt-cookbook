@@ -183,3 +183,17 @@ Gabriel asked Codex to change the Figma prototype's green accent to blue before 
 The web workspace connects upload and page previews to the Python backend. Ingredient and step selection shows the corresponding source excerpt. Adaptation uses the existing serving and vegan rules and can export the report as JSON. The bundled Sauerbraten example uses a written example and works without API keys or the source PDF. Testing the example surfaced an English vegan substitution mismatch for butter, drippings, and wine. Codex corrected it and added a regression test.
 
 All 51 tests passed in Docker. Chromium checks covered desktop and mobile layouts, example review and adaptation, export, and a live upload of the supplied two-page recipe. The live extraction showed 18 ingredients and nine steps, and the browser opened previews of both pages. The application was verified at `http://localhost:8000`.
+
+## 2026-11-13 15:36–15:37 · API cost of a complete recipe
+
+Gabriel asked how Gemini and Luna compare on cost and how much a recipe costs end to end. Codex measured all four API responses from the current pipeline on the two-page Sauerbraten. Gemini read the PDF directly and Luna read the rasterized pages. The run took 67.54 seconds, returned `no_discrepancies`, and required no retry.
+
+| Stage | Input tokens | Output tokens | USD using reported cache usage | USD with cache reads priced as 30-minute writes |
+| --- | ---: | ---: | ---: | ---: |
+| Gemini OCR | 1,322 | 422 | $0.00096350 | $0.00096350 |
+| Luna OCR | 6,212 | 1,421 | $0.00077289 | $0.00148693 |
+| Luna comparison | 1,628 | 294 | $0.00035043 | $0.00035043 |
+| Luna structured extraction | 1,872 | 4,939 | $0.00258498 | $0.00270343 |
+| Total | | | $0.00467179 | $0.00550428 |
+
+Luna read 6,209 cached tokens during OCR and 1,030 during extraction. The new-recipe scenario keeps measured output lengths and replaces those reads with 30-minute cache writes. The calculation uses the published [Gemini standard rates](https://aistudio.google.com/docs/pricing#gemini-3.1-flash-lite) and [Luna standard rates](https://developers.openai.com/api/docs/pricing) with [OpenAI cache accounting](https://developers.openai.com/api/docs/guides/prompt-caching). This is one sample. Longer documents, different outputs, and retries can change the cost. Scaling, vegan adaptation, and JSON export use the existing report without additional model calls.
