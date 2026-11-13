@@ -839,10 +839,22 @@ h3 {
   cursor: pointer;
 }
 
-.output-language {
+#workspace-output-language {
   flex: none;
   padding-inline-start: 10px;
   border-inline-start: 1px solid var(--line);
+}
+
+#import-output-language .output-language {
+  display: grid;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.output-language small {
+  padding-inline-start: 23px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .output-language label {

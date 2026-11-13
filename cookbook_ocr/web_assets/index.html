@@ -26,12 +26,7 @@
             <img src="/assets/images/document.svg" width="15" height="15" alt="">
             <span id="workspace-name">Recipe workspace</span>
           </div>
-          <div class="output-language" id="output-language-control" hidden>
-            <label for="output-english">
-              <input type="checkbox" id="output-english" aria-describedby="output-status" checked>
-              English output
-            </label>
-          </div>
+          <div id="workspace-output-language" hidden></div>
         </div>
       </div>
       <p id="output-status" class="status-message output-status" role="status" hidden></p>
@@ -42,6 +37,15 @@
           <div class="intro">
             <h1 id="import-title">Import a recipe</h1>
             <p>Upload a PDF or photo to extract ingredients and cooking steps.</p>
+            <div id="import-output-language">
+              <div class="output-language" id="output-language-control">
+                <label for="output-english">
+                  <input type="checkbox" id="output-english" aria-describedby="output-language-hint output-status" checked>
+                  English output
+                </label>
+                <small id="output-language-hint">Uncheck to use the recipe’s original language.</small>
+              </div>
+            </div>
           </div>
           <div class="drop-zone" id="drop-zone">
             <span class="upload-mark"><img src="/assets/images/upload.svg" width="24" height="24" alt=""></span>

@@ -57,7 +57,13 @@ function show(screen) {
     else button.removeAttribute("aria-current");
   }
   $("#workspace-name").textContent = state.filename || "Recipe workspace";
-  $("#output-language-control").hidden = screen === "import";
+  const importing = screen === "import";
+  const outputControl = $("#output-language-control");
+  const workspaceOutput = $("#workspace-output-language");
+  const outputSlot = importing ? $("#import-output-language") : workspaceOutput;
+  if (outputControl.parentElement !== outputSlot) outputSlot.append(outputControl);
+  workspaceOutput.hidden = importing;
+  $("#output-language-hint").hidden = !importing;
   message("#output-status");
   if (screen === "review") {
     renderReview();
@@ -103,7 +109,6 @@ function loadReport(report, file) {
 
   updateOriginalServings(true);
   $("#target-servings").value = settings?.servings ?? "";
-  $("#output-english").checked = true;
   $("#vegan").setAttribute("aria-checked", String(settings?.vegan === true && hasVeganPlan()));
   renderVeganOption();
   clearOutput();
