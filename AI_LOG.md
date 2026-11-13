@@ -430,3 +430,7 @@ The final German result kept half a litre each of vinegar and water, four onions
 ## 2026-11-13 20:24 · Explain the extraction speedup
 
 Gabriel asked how the extraction became faster. The API reported 5,356 output tokens, including 2,917 reasoning tokens, for the previous first pass. The optimized first pass used 2,675 output tokens, including 442 reasoning tokens. The retry used 1,319 output tokens for the targeted repair, down from 6,240 for the previous full regeneration. Low reasoning effort and shorter evidence fields were introduced together. The live measurements do not isolate the contribution of each change.
+
+## 2026-11-13 20:26 · Estimate elapsed challenge work
+
+Gabriel asked whether he had reached ten hours. The earliest local Docling test artifact dates to 10:29, and the repository's first commit is at 10:47. The recorded lunch break ran from 11:59 to 13:18. Using 10:29 as the start gives an estimated 8 h 38 min through 20:26 after subtracting lunch. This estimate assumes continuous work between recorded events outside lunch. Earlier work and other breaks are unknown.
