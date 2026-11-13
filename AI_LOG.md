@@ -347,3 +347,7 @@ At 19:02 the updated Docker image had passed all 154 tests. Chromium checks cove
 ## 2026-11-13 19:02–19:07 · Generalize vegan instruction validation
 
 Gabriel asked whether Luna caused the OCR error and asked that the implementation work across recipes. The saved OCR outputs show Gemini read `Bratenfond` and Luna read `Bratenstand` in that run. The OCR disagreement and the later validation error had separate causes. Codex removed the narrow modifier rule and sent all final step fields to Gemini for contextual verification, keeping Python's field and numeric checks. A confirmed animal ingredient can now be cited directly from the final instruction. Tests with Gemini accepted German inflection, a Portuguese shorthand reference, and an English negation. Gemini blocked a final step containing dairy butter and cited the relevant text. All 153 tests passed in Docker and Codex updated the local container.
+
+## 2026-11-13 19:09–19:14 · Record known problems and switch OCR to Terra
+
+Gabriel asked to collect the problems found, including OCR mistakes, and make GPT-6.1 Terra the default for OpenAI OCR. Codex added [PROBLEMS.md](PROBLEMS.md) with the observed readings, regression cases, fixes, mitigations, and open limitations. The OpenAI OCR adapter now uses Terra for images and PDFs. Luna continues to compare and process text. Terra recovered `Josefines` and `Bratenfond` in a live test using the rasterized original PDF. All 154 tests passed in Docker. The local container reported the intended model IDs and returned HTTP 200.

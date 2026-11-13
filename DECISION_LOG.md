@@ -128,3 +128,7 @@ Gabriel clarified that the app can offer a verified vegan substitute even when t
 ## 2026-11-13 19:02 · Generalize validation across recipes
 
 Gabriel asked that fixes apply to recipes generally. Treat specific OCR failures as regression cases. Have the independent verifier interpret final ingredients and steps in context, including grammatical variants and negations. Keep deterministic validation for recipe fields and recognizable numeric conflicts.
+
+## 2026-11-13 19:09 · Use GPT-6.1 Terra for OpenAI OCR
+
+Gabriel selected GPT-6.1 Terra as the default OpenAI transcription model. Send rasterized PDF pages and uploaded images to Terra. Send the original PDF if the document exceeds the raster budget. Gemini 3.1 Flash-Lite supplies the other transcription, and Luna compares the anonymous texts and handles the downstream text tasks. Record observed failures and their status in [Known problems](PROBLEMS.md).

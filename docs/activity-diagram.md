@@ -9,7 +9,7 @@ flowchart TD
     subgraph reading ["Import and read"]
         upload["Validate PDF, PNG or JPEG"]
         gemini["Transcribe with Gemini"]
-        luna["Transcribe with Luna"]
+        terra["Transcribe with Terra"]
         unreadable{"Severe blur and no readable text?"}
         rescan(["Request a sharper copy"])
         compare["Compare texts A and B with Luna"]
@@ -23,9 +23,9 @@ flowchart TD
         savePlans["Save plans and verification results"]
         example["Load the example report"]
         upload -->|"Parallel OCR"| gemini
-        upload -->|"Parallel OCR"| luna
+        upload -->|"Parallel OCR"| terra
         gemini --> unreadable
-        luna --> unreadable
+        terra --> unreadable
         unreadable -->|"Yes"| rescan
         unreadable -->|"No or uncertain"| compare
         compare --> extract
@@ -98,7 +98,7 @@ flowchart TD
     style correct fill:#FFECBD,stroke:#D5A43A,color:#1E1E1E
 ```
 
-- For PDF uploads, Gemini receives the file and Luna receives rasterized pages, with a PDF fallback above the local raster budget. Luna compares the two transcriptions, extracts the source recipe, and prepares a vegan plan from the validated fields.
+- For PDF uploads, Gemini receives the file and Terra receives rasterized pages, with a PDF fallback above the local raster budget. Luna compares the two transcriptions, extracts the source recipe, and prepares a vegan plan from the validated fields.
 - The blur check can reject an upload only when both readers explicitly report unreadable text on every page and the image check corroborates severe blur. A PDF text layer prevents blur rejection.
 - Review keeps the original extraction and evidence alongside the reviewer's decisions. Unresolved fields and document-level alerts remain visible.
 - Adapt uses the reviewed recipe when decisions exist. Scaling requires a usable original serving count. Python applies the stored vegan plan before using the scaling rules for that variant. The export includes the original report, review decisions, both plans, and any adaptation.

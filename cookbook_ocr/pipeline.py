@@ -383,8 +383,8 @@ def run_pipeline(
         gemini_reading = executor.submit(gemini.transcribe, document, filename, transcription_prompt)
         prepared = prepare_pdf(document) if Path(filename).suffix.lower() == ".pdf" else None
         options = {"prepared_pdf": prepared} if prepared is not None else {}
-        luna_reading = executor.submit(openai.transcribe, document, filename, transcription_prompt, **options)
-        a, b = gemini_reading.result(), luna_reading.result()
+        openai_reading = executor.submit(openai.transcribe, document, filename, transcription_prompt, **options)
+        a, b = gemini_reading.result(), openai_reading.result()
 
     pages = prepared.pages if prepared is not None else [document]
     no_readable_text = bool(

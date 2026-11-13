@@ -65,6 +65,7 @@ class TranscriptionBoundaryTests(unittest.TestCase):
         with self.assertLogs("cookbook_ocr.providers", "WARNING"):
             self.assertEqual(OpenAIClient("test-key").transcribe(document, self.filename, self.prompt), "Recipe")
         payload = post_json.call_args.args[-1]
+        self.assertEqual(payload["model"], "gpt-6.1-terra")
         self.assertEqual(
             payload["input"],
             [
@@ -94,7 +95,9 @@ class TranscriptionBoundaryTests(unittest.TestCase):
         transcription = "[page: 1]\nIngredients\n[page: 2]\nMethod"
         post_json.return_value = openai_response(transcription)
         self.assertEqual(OpenAIClient("test-key").transcribe(document, self.filename, self.prompt), transcription)
-        system, user = post_json.call_args.args[-1]["input"]
+        payload = post_json.call_args.args[-1]
+        self.assertEqual(payload["model"], "gpt-6.1-terra")
+        system, user = payload["input"]
         self.assertEqual(system["role"], "system")
         self.assertTrue(system["content"].startswith(self.prompt))
         self.assertIn("2 page images", system["content"])
@@ -112,6 +115,24 @@ class TranscriptionBoundaryTests(unittest.TestCase):
                 self.assertEqual(image.format, "PNG")
                 self.assertEqual(image.size, size)
                 self.assertEqual(image.getpixel((10, 10)), color)
+
+    @patch("cookbook_ocr.providers._post_json")
+    def test_openai_uses_terra_for_an_image_and_luna_to_compare_transcriptions(self, post_json):
+        client = OpenAIClient("test-key")
+        post_json.side_effect = [
+            openai_response("Recipe"),
+            openai_response('{"review_items": []}'),
+        ]
+        self.assertEqual(client.transcribe(b"image", "recipe.png", self.prompt), "Recipe")
+        response = client.respond(input=[
+            {"role": "system", "content": "Compare both readings."},
+            {"role": "user", "content": '{"A":"Recipe","B":"Recipe"}'},
+        ])
+        self.assertEqual(json.loads(response), {"review_items": []})
+        ocr_request, compare_request = (call.args[-1] for call in post_json.call_args_list)
+        self.assertEqual(ocr_request["model"], "gpt-6.1-terra")
+        self.assertEqual(ocr_request["input"][1]["content"][0]["type"], "input_image")
+        self.assertEqual(compare_request["model"], "gpt-6-luna")
 
     @patch("cookbook_ocr.providers._post_json")
     @patch("cookbook_ocr.providers.rasterize_pdf", return_value=[b"first", b"second"])

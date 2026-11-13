@@ -1,6 +1,6 @@
 # Finlyt Cookbook Challenge
 
-The OCR command sends the original PDF to Gemini 3.1 Flash-Lite and renders its pages for GPT-6 Luna in parallel. The Luna request contains the pages in order as lossless RGB PNGs. PyMuPDF renders each page and Pillow encodes it with PNG compression level 3. The command then sends both text transcriptions to GPT-6 Luna under the labels A and B. The [comparison prompt](prompts/compare_transcriptions.system.txt) and [JSON schema](prompts/compare_transcriptions.schema.json) define the review report.
+The OCR command sends the original PDF to Gemini 3.1 Flash-Lite and renders its pages for GPT-6.1 Terra in parallel. The Terra request contains the pages in order as lossless RGB PNGs. PyMuPDF renders each page and Pillow encodes it with PNG compression level 3. The command then sends both text transcriptions to GPT-6 Luna under the labels A and B. The [comparison prompt](prompts/compare_transcriptions.system.txt) and [JSON schema](prompts/compare_transcriptions.schema.json) define the review report. See [Known problems](PROBLEMS.md) for observed failures and their status.
 
 Copy `.env.example` to `.env` and fill in the two `KEY=value` entries. Run these commands from the project root with Docker running and a local copy of `Recipe.pdf` in that directory.
 
@@ -35,7 +35,7 @@ python -m pip install -r requirements.txt
 python -m cookbook_ocr Recipe.pdf --output outputs/recipe-review.json
 ```
 
-The command accepts PDF, PNG, and JPEG. Password-protected PDFs need to be unlocked first. Luna falls back to direct PDF input if a file exceeds the local raster budget of 32 pages or 36 MB of PNG data. Omit `--output` to write JSON to standard output.
+The command accepts PDF, PNG, and JPEG. Password-protected PDFs need to be unlocked first. Terra falls back to direct PDF input if a file exceeds the local raster budget of 32 pages or 36 MB of PNG data. Omit `--output` to write JSON to standard output.
 
 The import rejects a severely blurred file only when the image check finds strong blur on every page and both OCR readers explicitly report that they recovered no text on any page. Any recovered text, a PDF text layer, or incomplete evidence keeps the file out of the blur rejection path. The web app asks for a sharper copy, and the CLI exits with an error before writing a recipe report. This conservative check can let some unreadable files through.
 

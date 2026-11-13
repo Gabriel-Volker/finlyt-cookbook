@@ -15,6 +15,7 @@ from .raster import PreparedPdf, rasterize_pdf
 
 GEMINI_MODEL = "gemini-3.1-flash-lite"
 OPENAI_MODEL = "gpt-6-luna"
+OPENAI_OCR_MODEL = "gpt-6.1-terra"
 GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
     f"{GEMINI_MODEL}:generateContent"
@@ -151,13 +152,13 @@ class OpenAIClient:
     def __init__(self, api_key: str) -> None:
         self._api_key = api_key
 
-    def respond(self, **payload: Any) -> str:
+    def respond(self, *, model: str = OPENAI_MODEL, **payload: Any) -> str:
         result = _post_json(
             "OpenAI",
             OPENAI_URL,
             "Authorization",
             f"Bearer {self._api_key}",
-            {"max_output_tokens": 4096, **payload, "model": OPENAI_MODEL, "store": False},
+            {"max_output_tokens": 4096, **payload, "model": model, "store": False},
         )
         if result.get("status") != "completed":
             incomplete = result.get("incomplete_details") or {}
@@ -186,7 +187,7 @@ class OpenAIClient:
 
         pages = prepared_pdf.pages if prepared_pdf is not None else rasterize_pdf(document)
         if pages is None:
-            LOGGER.warning("The PDF exceeds the local raster budget. Luna will receive the original PDF.")
+            LOGGER.warning("The PDF exceeds the local raster budget. %s will receive the original PDF.", OPENAI_OCR_MODEL)
             attachment = {
                 "type": "input_file", "filename": "recipe.pdf",
                 "file_data": f"data:application/pdf;base64,{_base64(document)}",
@@ -210,6 +211,7 @@ class OpenAIClient:
 
     def _transcribe_parts(self, prompt: str, attachments: list[dict]) -> str:
         return self.respond(
+            model=OPENAI_OCR_MODEL,
             input=[
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": attachments},
