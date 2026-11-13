@@ -74,3 +74,13 @@ Gabriel paused work on the project for lunch.
 ## 2026-11-13 13:18 · Resumed after lunch
 
 Gabriel returned from lunch and asked Codex to push the project commits to GitHub.
+
+## 2026-11-13 13:27:38–13:29:09 · Blind transcription comparison
+
+Gabriel asked Codex to test a GPT comparison using the full Gemini and Luna transcriptions. Codex sent only the two texts in fields `A` and `B` to `gpt-6-luna`, with neither model names nor the PDF in the request. The [system prompt](prompts/compare_transcriptions.system.txt) gives general rules for aligning recipe passages and identifying conflicts, omissions, and unreadable text. The [output schema](prompts/compare_transcriptions.schema.json) keeps review items and equivalent variations in separate arrays.
+
+Early runs exposed inconsistent page labels and a synthetic result that normalized a fraction inside a quoted excerpt. Codex added a page-index convention and explicit instructions to copy evidence from each input. The test rejected any non-null excerpt that was absent verbatim from its assigned input.
+
+The final runs started at 13:28:58. With the original order (7.48 s) and with A and B swapped (10.34 s), the comparator returned exactly one review item on page 1. One text had `Josefines` and the other had `Jose[unleserlich]ines`. It classified `½ l` and `1/2 l` as equivalent in both runs.
+
+The same prompt was tested on a synthetic pear compote recipe (5.71 s). It flagged tablespoon versus teaspoon, an omitted optional ingredient, covered versus uncovered cooking, and a note marked unreadable by both readers. It accepted `¾` versus `3/4` and `0,25 l` versus `250 mL`. All three final outputs passed the verbatim excerpt check. The tests cover these examples only.

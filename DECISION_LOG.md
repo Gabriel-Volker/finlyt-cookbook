@@ -44,3 +44,9 @@ Gabriel would consider adding a conventional OCR engine as another independent r
 For credit analysis, Gabriel would also add deterministic arithmetic checks on extracted balance sheets. For example, verify that total assets equal total liabilities plus equity after accounting for units and rounding. A failed check would send the relevant figures for review.
 
 Both checks are outside the scope of the cookbook demo.
+
+## 2026-11-13 13:29 · Review evidence from anonymous transcriptions
+
+Gabriel wants the comparison LLM to receive both transcriptions without model identities. The [blind comparison test](AI_LOG.md#2026-11-13-132738132909--blind-transcription-comparison) used the labels A and B and repeated the test with the labels swapped.
+
+Codex proposed requiring literal excerpts from each reading and validating those excerpts in code before showing them to a reviewer. Normalize equivalent quantities for comparison while preserving their original notation in the evidence. A reviewer can use the page index and quoted text to inspect the original document.
