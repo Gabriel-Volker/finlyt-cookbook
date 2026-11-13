@@ -15,8 +15,9 @@ const state = {
   scalingPlan: null, veganPlan: null, planDecisions: [],
   plansStatus: "current", planRequest: 0, plansError: "", savedPlans: new Map(),
   adaptation: null, adaptationReady: false, adaptRequest: 0,
-  output: null, outputRequest: 0, reviewOutput: null, reviewOutputRequest: 0,
-  translationSession: null, localizedOutputs: new Map(), previewRequest: 0, busy: false,
+  output: null, reviewOutput: null, preparedOutput: null, adaptedOutput: null,
+  preparingOutput: false, preparationRequest: 0, translationSession: null,
+  previewRequest: 0, busy: false,
   previewReading: "A",
   previews: new Map(),
 };
@@ -85,7 +86,7 @@ function pageCount(report) {
   return Math.max(1, ...markers);
 }
 
-function loadReport(report, file) {
+async function loadReport(report, file) {
   state.report = report;
   state.file = file;
   state.example = !file;
@@ -97,7 +98,8 @@ function loadReport(report, file) {
   state.tab = "ingredients";
   state.review = null;
   state.reviewOutput = null;
-  state.reviewOutputRequest++;
+  state.preparedOutput = null;
+  state.adaptedOutput = null;
   state.reviewPath = "";
   state.reviewing = false;
   state.reviewDrafts.clear();
@@ -113,7 +115,6 @@ function loadReport(report, file) {
   state.adaptRequest++;
   state.translationSession = [...crypto.getRandomValues(new Uint8Array(16))]
     .map((byte) => byte.toString(16).padStart(2, "0")).join("");
-  state.localizedOutputs = new Map();
   state.previewRequest++;
   state.previews.clear();
 
@@ -123,6 +124,8 @@ function loadReport(report, file) {
   renderVeganOption();
   clearOutput();
   message("#field-review-status");
+  if (file) message("#import-status", "Preparing both output languages…");
+  await prepareOutput();
   show("review");
 }
 
@@ -155,7 +158,7 @@ async function importRecipe(file) {
     const report = await request(`/api/extract?filename=${encodeURIComponent(file.name)}`, {
       method: "POST", headers: {"Content-Type": "application/octet-stream"}, body: file,
     });
-    loadReport(report, file);
+    await loadReport(report, file);
   }, "Reading the recipe and preparing adaptation plans…");
 }
 
@@ -609,6 +612,8 @@ async function refreshPlans(retry = false) {
     applyPlans(result);
     if (state.savedPlans.size >= 8) state.savedPlans.delete(state.savedPlans.keys().next().value);
     state.savedPlans.set(key, result);
+    await prepareOutput({refreshAdaptation: false});
+    if (sequence !== state.planRequest) return;
   } catch (error) {
     if (sequence !== state.planRequest) return;
     state.plansStatus = "failed";
@@ -641,6 +646,8 @@ async function saveFieldReview(action, clear = false) {
     state.review = result.review;
     state.reviewDrafts.delete(path);
     state.reviewOutput = null;
+    state.preparedOutput = null;
+    state.adaptedOutput = null;
     state.planRequest++;
     const saved = state.savedPlans.get(reviewPlanKey());
     if (saved) applyPlans(saved);
@@ -656,7 +663,7 @@ async function saveFieldReview(action, clear = false) {
     renderVeganOption();
     renderReview();
     renderFieldReview();
-    updateReviewOutput();
+    prepareOutput();
     message("#field-review-status", action === "confirm" ? "Value confirmed."
       : action === "correct" ? "Correction saved." : "Review decision undone.");
   } catch (error) {
@@ -678,17 +685,16 @@ function scheduleAdaptation() {
   window.clearTimeout(adaptationTimer);
   state.adaptRequest++;
   state.adaptationReady = false;
-  state.outputRequest++;
   $("#export-recipe").disabled = true;
   message("#adapt-status", "Updating preview…");
-  adaptationTimer = window.setTimeout(updateAdaptation, 220);
+  adaptationTimer = window.setTimeout(updateAdaptation, 60);
 }
 
 async function updateAdaptation() {
+  window.clearTimeout(adaptationTimer);
   if (state.screen !== "adapt") return;
   const sequence = ++state.adaptRequest;
   state.adaptationReady = false;
-  state.outputRequest++;
   $("#export-recipe").disabled = true;
   renderVeganOption();
   const original = $("#original-servings");
@@ -709,6 +715,7 @@ async function updateAdaptation() {
   const requestedServings = scaleMessage ? null : servings;
   if (requestedServings === null && !vegan) {
     state.adaptation = null;
+    state.adaptedOutput = null;
     state.adaptationReady = true;
     message("#adapt-status", scaleMessage ? `${scaleMessage} Showing the reviewed recipe.` : "", Boolean(scaleMessage));
     updateOutput();
@@ -725,8 +732,9 @@ async function updateAdaptation() {
           ...(requested !== null ? {scaling_plan: state.scalingPlan} : {}),
           ...(vegan ? {vegan_plan: state.veganPlan} : {}),
         },
-        servings: requested,
-        original_servings: requested === null ? null : baseline, vegan,
+        servings: requested, original_servings: requested === null ? null : baseline, vegan,
+        translation_session: state.translationSession, source_is_english: sourceIsEnglish(),
+        texts: outputTexts(),
       }),
     });
     let report;
@@ -740,12 +748,14 @@ async function updateAdaptation() {
     }
     if (sequence !== state.adaptRequest || state.screen !== "adapt") return;
     state.adaptation = report.adaptation;
+    state.adaptedOutput = unpackOutputs(report, report.adaptation.recipe, outputTexts());
     state.adaptationReady = true;
     message("#adapt-status", scaleMessage ? `${scaleMessage} Showing the vegan recipe at its original yield.` : "", Boolean(scaleMessage));
     updateOutput();
   } catch (error) {
     if (sequence !== state.adaptRequest || state.screen !== "adapt") return;
     state.adaptation = null;
+    state.adaptedOutput = null;
     state.adaptationReady = true;
     message("#adapt-status", `${error.message} Showing the reviewed recipe.`, true);
     updateOutput();
@@ -753,7 +763,6 @@ async function updateAdaptation() {
 }
 
 function clearOutput() {
-  state.outputRequest++;
   state.output = null;
   $("#recipe-output").hidden = true;
   $("#changes-card").hidden = true;
@@ -767,7 +776,7 @@ function displayLanguage() {
   return $("#output-english").checked ? "english" : "original";
 }
 
-function outputTexts(adaptation = null) {
+function outputTexts() {
   const texts = {};
   const add = (key, text) => {
     if (typeof text === "string" && text.trim()) texts[key] = text;
@@ -786,50 +795,65 @@ function outputTexts(adaptation = null) {
       (plan?.review_items || []).forEach((item, index) => add(`scaling-plan:${variant}:${index}`, item.reason));
     }
   }
-  (adaptation?.changes || []).forEach(({path, reason}) => add(`change:${path}`, reason));
-  (adaptation?.scale?.ingredients || []).forEach(({ingredient_id, reason}) => add(`scale:${ingredient_id}`, reason));
-  (adaptation?.review_items || []).forEach((item, index) => add(`adaptation:${index}`, item.reason));
   return texts;
 }
 
-function localizeOutput(recipe, language, texts) {
-  const sourceIsEnglish = state.example && !state.review?.decisions.length;
-  if (sourceIsEnglish) return Promise.resolve({language, recipe, texts});
+function sourceIsEnglish() {
+  return state.example && !state.review?.decisions.length;
+}
 
+function unpackOutputs(result, recipe, texts) {
+  const outputs = result.outputs || {};
+  return {
+    original: outputs.original || {language: "original", recipe, texts},
+    english: outputs.english || null,
+    errors: result.output_errors || {},
+  };
+}
+
+async function prepareOutput({refreshAdaptation = true} = {}) {
+  const sequence = ++state.preparationRequest;
+  const recipe = currentRecipe();
+  const texts = outputTexts();
+  if (sourceIsEnglish()) {
+    state.preparingOutput = false;
+    state.preparedOutput = unpackOutputs({outputs: {english: {language: "english", recipe, texts}}}, recipe, texts);
+    if (state.screen === "review") updateReviewOutput();
+    return;
+  }
+  state.preparingOutput = true;
+  if (state.screen === "review") updateReviewOutput();
+  if (state.screen === "adapt") updateOutput();
   const planReasons = [
     ...(state.veganPlan?.changes || []),
     ...(state.scalingPlan?.original?.rules || []),
     ...(state.scalingPlan?.vegan?.rules || []),
+    ...(state.scalingPlan?.original?.verification?.rules || []),
+    ...(state.scalingPlan?.vegan?.verification?.rules || []),
   ].map(({reason}) => reason).filter((reason) => typeof reason === "string" && reason.trim());
-  const prefetchTexts = [...new Set(planReasons)];
-  if (language === "original" && !Object.keys(texts).length && !prefetchTexts.length) {
-    return Promise.resolve({language, recipe, texts});
-  }
-
   const payload = {
-    recipe, output_language: language, texts,
+    recipe, texts,
     translation_session: state.translationSession,
     can_scale: hasScalingPlan(false) || hasScalingPlan(true),
-    prefetch_texts: prefetchTexts,
+    prefetch_texts: state.plansStatus === "current" ? [...new Set(planReasons)] : [],
   };
-  const source = currentRecipe();
-  if (recipe !== source) payload.source_recipe = source;
   if (hasVeganPlan()) payload.vegan_plan = state.veganPlan;
-  const key = JSON.stringify(payload);
-  const cache = state.localizedOutputs;
-  if (cache.has(key)) return cache.get(key);
-  const pending = request("/api/output", {
-    method: "POST", headers: {"Content-Type": "application/json"}, body: key,
-  }).then(({output}) => {
-    if (output?.language !== language || !output.recipe) throw new Error("The selected output language was not returned.");
-    return output;
-  }).catch((error) => {
-    if (cache.get(key) === pending) cache.delete(key);
-    throw error;
-  });
-  if (cache.size >= 8) cache.delete(cache.keys().next().value);
-  cache.set(key, pending);
-  return pending;
+  let result;
+  try {
+    result = await request("/api/prepare-output", {
+      method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    result = {output_errors: {english: error.message, original: error.message}};
+  }
+  if (sequence !== state.preparationRequest) return;
+  state.preparedOutput = unpackOutputs(result, recipe, texts);
+  state.preparingOutput = false;
+  if (state.screen === "review") updateReviewOutput();
+  if (refreshAdaptation && state.screen === "adapt") {
+    if (!state.adaptationReady || state.adaptation) updateAdaptation();
+    else updateOutput();
+  }
 }
 
 function renderReviewOutput() {
@@ -846,63 +870,40 @@ function renderReviewOutput() {
   for (const option of references.options) option.selected = linked.has(option.value);
 }
 
-async function updateReviewOutput() {
-  if (state.screen !== "review") return;
-  const sequence = ++state.reviewOutputRequest;
-  const recipe = currentRecipe();
-  const language = displayLanguage();
-  const texts = outputTexts();
-  state.reviewOutput = null;
-  renderReviewOutput();
-  message("#output-status");
-  $("#retry-output").hidden = true;
-  if (language === "english" && !state.example) message("#output-status", "Preparing the English recipe. The source is shown during translation.");
-  try {
-    const output = await localizeOutput(recipe, language, texts);
-    if (sequence !== state.reviewOutputRequest || state.screen !== "review") return;
-    state.reviewOutput = output;
-    renderReviewOutput();
-    message("#output-status");
-  } catch (error) {
-    if (sequence !== state.reviewOutputRequest || state.screen !== "review") return;
-    message("#output-status", `${error.message} The source is shown.`, true);
-    $("#retry-output").hidden = false;
+function renderOutputStatus(outputs, language) {
+  const error = outputs?.errors?.[language];
+  if (state.preparingOutput && (!outputs || !outputs[language])) {
+    message("#output-status", "Preparing both output languages. The source is shown during translation.");
+    $("#retry-output").hidden = true;
+    return;
   }
+  const englishMissing = language === "english" && !outputs?.english;
+  const recovery = englishMissing ? "Showing the original recipe text. Uncheck English output to export it."
+    : error && language === "original" ? "The original recipe is available with the recorded notes." : "";
+  message("#output-status", [error, recovery].filter(Boolean).join(" "), Boolean(error || englishMissing));
+  $("#retry-output").hidden = !error && !englishMissing;
 }
 
-async function updateOutput() {
+function updateReviewOutput() {
+  if (state.screen !== "review") return;
+  const language = displayLanguage();
+  const outputs = state.preparedOutput;
+  state.reviewOutput = outputs?.[language] ?? outputs?.original ?? null;
+  renderReviewOutput();
+  renderOutputStatus(outputs, language);
+}
+
+function updateOutput() {
   if (state.screen !== "adapt" || !state.adaptationReady) return;
-  clearOutput();
-  const sequence = state.outputRequest;
   const recipe = state.adaptation?.recipe ?? currentRecipe();
   const language = displayLanguage();
-  const texts = outputTexts(state.adaptation);
+  const outputs = state.adaptation ? state.adaptedOutput : state.preparedOutput;
+  const fallback = {language: "original", recipe, texts: outputTexts()};
+  state.output = outputs?.[language] ?? outputs?.original ?? fallback;
   renderAdaptation();
   renderVeganOption();
-  const applyOutput = (output, readyToExport = true) => {
-    state.output = output;
-    renderAdaptation();
-    renderVeganOption();
-    $("#export-recipe").disabled = !readyToExport;
-  };
-  if (language === "original") {
-    applyOutput({language, recipe, texts: {}}, false);
-  } else if (!state.example) {
-    message("#output-status", "Preparing the English recipe…");
-  }
-  try {
-    const output = await localizeOutput(recipe, language, texts);
-    if (sequence !== state.outputRequest || state.screen !== "adapt") return;
-    applyOutput(output);
-    message("#output-status");
-  } catch (error) {
-    if (sequence !== state.outputRequest || state.screen !== "adapt") return;
-    applyOutput({language: "original", recipe, texts: {}}, language === "original");
-    $("#retry-output").hidden = false;
-    const recovery = language === "english" ? "Showing the original recipe text. Uncheck English output to export it."
-      : "The original recipe is available with the recorded notes.";
-    message("#output-status", `${error.message} ${recovery}`, true);
-  }
+  $("#export-recipe").disabled = state.output.language !== language;
+  renderOutputStatus(outputs, language);
 }
 
 function reviewLabel(path, recipe) {
@@ -1118,7 +1119,7 @@ async function openPage(page, reading = state.previewReading) {
 $("#choose-file").addEventListener("click", () => $("#recipe-file").click());
 $("#recipe-file").addEventListener("change", (event) => importRecipe(event.target.files[0]));
 $("#try-example").addEventListener("click", () => runImport(async () => {
-  loadReport(await request("/assets/example.json"), null);
+  await loadReport(await request("/assets/example.json"), null);
 }, "Loading the example…"));
 const dropZone = $("#drop-zone");
 for (const eventName of ["dragover", "dragleave", "drop"]) {
@@ -1214,14 +1215,15 @@ $("#output-english").addEventListener("change", () => {
   if (state.screen === "review") updateReviewOutput();
   if (state.screen === "adapt") updateOutput();
 });
-$("#retry-output").addEventListener("click", () => {
-  if (state.screen === "review") updateReviewOutput();
-  else if (state.screen === "adapt") updateOutput();
+$("#retry-output").addEventListener("click", async () => {
+  $("#retry-output").hidden = true;
+  message("#output-status", "Preparing both output languages…");
+  await prepareOutput();
 });
 $("#vegan").addEventListener("click", (event) => {
   const control = event.currentTarget;
   control.setAttribute("aria-checked", String(control.getAttribute("aria-checked") !== "true"));
-  scheduleAdaptation();
+  updateAdaptation();
 });
 $("#retry-plans").addEventListener("click", () => refreshPlans(true));
 $("#export-recipe").addEventListener("click", exportReport);

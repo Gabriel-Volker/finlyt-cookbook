@@ -7,7 +7,7 @@ from pathlib import Path
 from .adaptation import adapt_recipe
 from .pipeline import plan_vegan_recipe, refresh_scaling_plans, run_pipeline
 from .providers import GeminiClient, OpenAIClient, ProviderError
-from .review import review_recipe
+from .review import review_recipe, reviewed_step_links
 from .scaling_plan import scaling_plan_matches
 from .vegan import unavailable_vegan_plan, vegan_plan_matches, vegan_plan_usable
 from .vegan_verification import verify_vegan_plan
@@ -137,6 +137,7 @@ def main() -> int:
                         recipe, servings=args.servings,
                         original_servings=args.original_servings, vegan=args.vegan,
                         vegan_plan=plan, scaling_plan=scaling,
+                        reviewed_step_links=reviewed_step_links(report.get("review", {}).get("decisions", [])),
                     )
             except (KeyError, TypeError, AttributeError):
                 raise ValueError("The extraction report contains an invalid recipe object.") from None

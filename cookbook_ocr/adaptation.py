@@ -65,6 +65,7 @@ YIELD_INSTRUCTION = re.compile(
     re.IGNORECASE,
 )
 QUANTITY_START = r"(?<![\w.,/⁄∕–—−-])(?<![0-9]\s)"
+WRAPPED_WORD = re.compile(r"(?<=[^\W\d_])[-\u00ad][ \t]*\r?\n[ \t]*(?=[^\W\d_])")
 ALTERNATE_AMOUNT = re.compile(r"\d\s+(?:or|oder|ou|to|bis|a|até)\s+$", re.IGNORECASE)
 REMAINING_AMOUNT = r"(?:(?:the\s+)?remaining\s+|(?:die\s+|den\s+|das\s+)?restlich\w*\s+)"
 MEASURE_CONNECTOR = r"(?:(?:of(?:\s+the)?|de|da|das|do|dos)\s+)?"
@@ -86,6 +87,7 @@ def _portion_count(field: dict) -> int | None:
 
 
 def _phrase_pattern(text: str) -> str:
+    text = WRAPPED_WORD.sub("", text)
     return r"\s+".join(re.escape(word) for word in text.split())
 
 
@@ -119,6 +121,10 @@ def _ingredient_measure_patterns(ingredient: dict, *, review_only: bool = False)
             rf"(?<!\w){name_pattern}\s*\(\s*{measure}\s*\)",
             re.IGNORECASE,
         ),
+        re.compile(
+            rf"(?<!\w){name_pattern}\s*:\s*{measure}(?=\s*(?:[.;!?)]|$))",
+            re.IGNORECASE,
+        ),
     )
 
 
@@ -149,23 +155,41 @@ class _ScaledIngredient:
     review_patterns: tuple[re.Pattern, ...]
 
 
-def _step_measures(steps, ingredient_id, patterns):
+def _step_text_fields(steps):
     for index, step in enumerate(steps):
-        if ingredient_id not in step["ingredient_ids"]:
-            continue
         for key in ("instruction", "condition"):
-            text = step[key]["value"] or ""
-            for pattern in patterns:
-                for match in pattern.finditer(text):
-                    groups = match.groupdict()
-                    unit = groups.get("unit")
-                    start, end = match.start("amount"), match.end("unit" if unit else "amount")
-                    yield _StepMeasure(
-                        index, key, start, end,
-                        "1" if match["amount"].casefold() in {"a", "an"} and unit else match["amount"],
-                        unit, groups.get("gap", ""),
-                        bool(ALTERNATE_AMOUNT.search(text[:start])),
-                    )
+            original = step[key]["value"] or ""
+            offset = []
+            end = 0
+            for gap in WRAPPED_WORD.finditer(original):
+                offset.extend(range(end, gap.start()))
+                end = gap.end()
+            if end:
+                offset.extend(range(end, len(original)))
+                text = WRAPPED_WORD.sub("", original)
+            else:
+                text = original
+            yield index, key, text, offset, step["ingredient_ids"]
+
+
+def _step_measures(fields, ingredient_id, patterns, *, include_unlinked=False):
+    for index, key, text, offset, linked_ids in fields:
+        if not include_unlinked and ingredient_id not in linked_ids:
+            continue
+        for pattern in patterns:
+            for match in pattern.finditer(text):
+                groups = match.groupdict()
+                unit = groups.get("unit")
+                start, end = match.start("amount"), match.end("unit" if unit else "amount")
+                alternative = bool(ALTERNATE_AMOUNT.search(text[:start]))
+                if offset:
+                    start, end = offset[start], offset[end - 1] + 1
+                yield _StepMeasure(
+                    index, key, start, end,
+                    "1" if match["amount"].casefold() in {"a", "an"} and unit else match["amount"],
+                    unit, groups.get("gap", ""),
+                    alternative,
+                )
 
 
 def _step_amounts_for_scale(mentions, ingredient: _ScaledIngredient, warn):
@@ -235,25 +259,32 @@ def _apply_step_edits(text, edits, warn):
 def _reviewed_measure_conflicts(steps, ingredient, measure: _ScaledIngredient) -> list[str]:
     if not any(ingredient[key]["status"] == "reviewed" for key in ("quantity", "unit")):
         return []
-    matches = list(dict.fromkeys(_step_measures(steps, ingredient["id"], measure.patterns)))
-    unresolved = set(_step_measures(steps, ingredient["id"], measure.review_patterns)) - set(matches)
+    fields = tuple(_step_text_fields(steps))
+    matches = list(dict.fromkeys(_step_measures(fields, ingredient["id"], measure.patterns)))
+    unresolved = set(_step_measures(fields, ingredient["id"], measure.review_patterns)) - set(matches)
     conflicts = {item.path for item in unresolved}
     list(_step_amounts_for_scale(matches, measure, lambda path, _: conflicts.add(path)))
     return sorted(conflicts)
 
 
-def _scale_steps(recipe, measures, batch_ingredients, held_ingredients, original_servings, servings, change, warn):
+def _scale_steps(recipe, measures, batch_ingredients, held_ingredients, original_servings, servings,
+                 change, warn, reviewed_step_links):
     edits_by_path = {}
     owners = {}
+    steps = recipe["steps"]
+    fields = tuple(_step_text_fields(steps))
     step_amounts = {
-        ingredient_id: list(dict.fromkeys(_step_measures(
-            recipe["steps"], ingredient_id, measure.patterns,
-        )))
+        ingredient_id: list(dict.fromkeys(
+            item for item in _step_measures(fields, ingredient_id, measure.patterns, include_unlinked=True)
+            if ingredient_id in steps[item.step]["ingredient_ids"]
+            or (item.step not in reviewed_step_links
+                and quantity_matches(measure.quantity, measure.unit, item.quantity, item.unit))
+        ))
         for ingredient_id, measure in measures.items()
     }
     review_amounts = {
         ingredient_id: list(_step_measures(
-            recipe["steps"], ingredient_id, measure.review_patterns,
+            fields, ingredient_id, measure.review_patterns,
         ))
         for ingredient_id, measure in measures.items()
     }
@@ -262,7 +293,9 @@ def _scale_steps(recipe, measures, batch_ingredients, held_ingredients, original
             owners.setdefault((item.path, item.start, item.end), set()).add(ingredient_id)
     held_spans = {}
     for ingredient in held_ingredients:
-        for item in _step_measures(recipe["steps"], ingredient["id"], _ingredient_measure_patterns(ingredient)):
+        for item in _step_measures(
+            fields, ingredient["id"], _ingredient_measure_patterns(ingredient), include_unlinked=True,
+        ):
             held_spans.setdefault(item.path, []).append((item.start, item.end))
 
     for ingredient_id, amounts in step_amounts.items():
@@ -310,6 +343,7 @@ def _scale_steps(recipe, measures, batch_ingredients, held_ingredients, original
 def adapt_recipe(
     recipe: dict, *, servings: int | None = None, original_servings: int | None = None,
     vegan: bool = False, vegan_plan: dict | None = None, scaling_plan: dict | None = None,
+    reviewed_step_links: set[int] | None = None,
 ) -> dict:
     """Return the adapted recipe and explain the changes without mutating the extraction."""
     for count in (servings, original_servings):
@@ -419,6 +453,7 @@ def adapt_recipe(
                     batch_ingredients.add(ingredient["id"])
                     warn(path, SCALE_BATCH_WARNING.format(count=int(multiplier)))
                 if multiplier == 1:
+                    held_ingredients.append(ingredient)
                     continue
                 adjusted = scale_quantity(quantity, unit, multiplier)
                 if adjusted is None:
@@ -445,7 +480,8 @@ def adapt_recipe(
                 count = parse_number(scaled) if unit is None else None
                 if count is not None and count.denominator != 1:
                     warn(f"{path}/quantity", SCALE_FRACTIONAL_WARNING)
-            _scale_steps(adapted, measures, batch_ingredients, held_ingredients, source_count, servings, change, warn)
+            _scale_steps(adapted, measures, batch_ingredients, held_ingredients,
+                         source_count, servings, change, warn, reviewed_step_links or set())
             review_vessel_capacity(adapted, factor, warn)
 
     return {

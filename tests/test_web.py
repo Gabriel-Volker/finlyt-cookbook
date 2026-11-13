@@ -162,6 +162,59 @@ class WebTests(unittest.TestCase):
             self.assertEqual([json.loads(call.kwargs["input"][1]["content"])["language"]
                               for call in model.respond.call_args_list], ["english", "original"])
 
+    def test_prepare_both_languages_then_scale_with_no_provider(self):
+        source = recipe("1", [ingredient("vinegar", "Essig", "½", "l"), ingredient("water", "Wasser", "½", "l")],
+                        [step("½ l Essig und ½ l Wasser kochen.", "vinegar", "water")])
+        source["title"] = field("Sud")
+        rules = [{"ingredient_id": item["id"], "mode": "proportional", "reason": "Adjust the measured amount.",
+                  "batch_servings": None, "evidence": []} for item in source["ingredients"]]
+        report = {"recipe": source, "scaling_plan": {"original": validate_scaling_plan(source, {"rules": rules})}}
+        context = {"translation_session": "prepared-bilingual", "texts": {"notice": "Check the amounts."}}
+        headers = {"Content-Type": "application/json"}
+        model = Mock()
+        translations = {
+            "Sud": "Marinade", "Essig": "vinegar", "Wasser": "water",
+            "[MEASURE_A] Essig und [MEASURE_B] Wasser kochen.": "Boil [MEASURE_A] of vinegar and [MEASURE_B] of water.",
+        }
+
+        def respond(**payload):
+            request = json.loads(payload["input"][1]["content"])
+            return json.dumps({"translations": [
+                {"path": item["path"], "text": translations.get(item["text"], item["text"])
+                 if request["language"] == "english" else item["text"].replace("Check the amounts.", "Mengen prüfen.")}
+                for item in request["fields"]
+            ]})
+
+        model.respond.side_effect = respond
+        with patch("cookbook_ocr.web._TRANSLATION_CACHE", OrderedDict()), patch(
+            "cookbook_ocr.web.load_openai_key", return_value="test",
+        ) as load_key, patch("cookbook_ocr.web.OpenAIClient", return_value=model):
+            status, _, body = self.request("POST", "/api/prepare-output", json.dumps({
+                **context, "recipe": source, "can_scale": True,
+            }), headers)
+            self.assertEqual(status, 200, body)
+            prepared = json.loads(body)
+            self.assertEqual(set(prepared["outputs"]), {"english", "original"})
+            self.assertEqual(prepared["output_errors"], {})
+            self.assertEqual(prepared["outputs"]["original"]["texts"]["notice"], "Mengen prüfen.")
+            self.assertEqual(model.respond.call_count, 2)
+            load_key.reset_mock()
+            model.respond.reset_mock(side_effect=True)
+            model.respond.side_effect = AssertionError("Changing servings must not call the model.")
+            for servings, amount in ((5, "2½"), (6, "3")):
+                status, _, body = self.request("POST", "/api/adapt", json.dumps({
+                    **context, "report": report, "servings": servings,
+                }), headers)
+                self.assertEqual(status, 200, body)
+                result = json.loads(body)
+                self.assertEqual(result["output_errors"], {})
+                for language, unit, name in (("english", "L", "of vinegar"), ("original", "l", "Essig")):
+                    output = result["outputs"][language]["recipe"]
+                    self.assertEqual(output["ingredients"][0]["quantity"]["value"], amount)
+                    self.assertIn(f"{amount} {unit} {name}", output["steps"][0]["instruction"]["value"])
+            load_key.assert_not_called()
+            model.respond.assert_not_called()
+
     def test_serve_assets_without_exposing_files_above_asset_directory(self):
         with tempfile.TemporaryDirectory() as temporary:
             parent = Path(temporary)

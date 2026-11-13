@@ -363,3 +363,9 @@ Gabriel asked whether large PDFs can fail to transcribe. Codex checked the web u
 ## 2026-11-13 19:19–19:20 · Check a slow web import
 
 Gabriel reported a slow import of the original `Recipe.pdf`. Codex observed an active outbound API connection and monitored the Docker logs. Import returned HTTP 200 at 19:19:47. Adaptation and output requests also returned HTTP 200. The import shows one progress message while it waits for OCR, comparison, recipe extraction, and adaptation plans.
+
+## 2026-11-13 19:25–19:31 · Prepare both output languages and scale steps locally
+
+Gabriel reported a slow serving adjustment and a vinegar amount that differed between the ingredient list and preparation. He asked to prepare the translation in advance regardless of the selected language. The Docker logs showed repeated attempts at on-demand translation. Codex moved translation to import and to later recipe or plan changes. A serving change now uses the local Python endpoint and cached bilingual templates. The language switch uses the outputs already received by the browser. Validation failures still permit a correctly scaled source preview and an explicit translation retry.
+
+The exact report behind the screenshots was unavailable. Codex reproduced a stale step amount after removing a step's extracted ingredient link. Scaling now recovers a unique exact name and amount when the link was omitted, recognizes OCR line breaks, and respects human-reviewed links. A replay with the original PDF's verified vegan plan prepared both languages using two Luna calls in 36.67 seconds. Scaling then displayed 2½ L of vinegar for five servings and 3 L for six in both the list and the preparation, with no provider calls. A Chromium control measured approximately 110 ms per change and verified the bilingual preview and export. All 161 tests passed in Docker and the local service was updated.

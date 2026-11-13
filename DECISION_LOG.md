@@ -136,3 +136,7 @@ Gabriel selected GPT-6.1 Terra as the default OpenAI transcription model. Send r
 ## 2026-11-13 19:15 · Prefer Claude Sonnet for production OCR
 
 Gabriel would use Claude Sonnet in Terra's OCR role in production. He chose GPT-6.1 Terra for the demonstration because his ChatGPT plan made it more convenient for him to use.
+
+## 2026-11-13 19:25 · Prepare both output languages before adaptation
+
+Gabriel chose upfront translation so language and serving changes are immediately usable after import. Prepare the original language and English for each available variant. Use local arithmetic and the prepared translations for serving changes.

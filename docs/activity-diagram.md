@@ -21,6 +21,7 @@ flowchart TD
         abstain["Save the reason and keep original scaling available"]
         scalePlan["Classify scaling rules independently with Luna and Gemini"]
         savePlans["Save plans and verification results"]
+        prepareOutput["Prepare both output languages and validate measures"]
         example["Load the example report"]
         upload -->|"Parallel OCR"| gemini
         upload -->|"Parallel OCR"| terra
@@ -38,6 +39,7 @@ flowchart TD
         verified -->|"No or uncertain"| abstain
         abstain --> scalePlan
         scalePlan --> savePlans
+        savePlans --> prepareOutput
     end
 
     entry -->|"Upload file"| upload
@@ -54,7 +56,7 @@ flowchart TD
         saveReview -.->|"Review another field"| display
     end
 
-    savePlans --> display
+    prepareOutput --> display
     example --> display
 
     subgraph adapt ["Adapt"]
@@ -66,8 +68,7 @@ flowchart TD
         base["Apply saved decisions to the original recipe"]
         vegan["Apply the verified vegan plan if selected"]
         scale["Compare outcomes and apply scaling rules in Python"]
-        outputLanguage{"Output in English?"}
-        translate["Translate the final recipe and validate measures"]
+        outputLanguage["Select prepared language and insert current measures"]
         output["Show recipe and keep original evidence"]
         changes["Show changes and warnings"]
         refreshPlan --> options
@@ -81,9 +82,7 @@ flowchart TD
         scale --> changes
         changes --> outputLanguage
         requested -->|"No"| outputLanguage
-        outputLanguage -->|"Yes"| translate
-        outputLanguage -->|"No"| output
-        translate --> output
+        outputLanguage --> output
         changes -.->|"Change options"| options
     end
 

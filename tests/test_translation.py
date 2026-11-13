@@ -238,3 +238,46 @@ class TranslationTests(unittest.TestCase):
     def test_original_language_without_notes_needs_no_provider(self):
         self.assertEqual(translate_output(None, self.recipe, {}, language="original"),
                          {"recipe": self.recipe, "texts": {}})
+
+    def test_cached_vegan_steps_use_the_current_fractions_and_units(self):
+        path = "/steps/0/instruction"
+        variant = deepcopy(self.recipe)
+        variant["steps"][0]["instruction"]["value"] = "Koche ½ l\nWasser und 1 Tasse Äpfel."
+        variant_notes = {"batches": "Batches required: 5."}
+        templates = {}
+        self.response({
+            **ENGLISH, f"/variant{path}": "Boil [MEASURE_A] of water and [MEASURE_B] of apples.",
+            "/prefetch/0": "Batches required: [MEASURE_A].",
+        })
+        translate_output(
+            self.openai, self.recipe, {}, templates=templates, variant=variant,
+            prefetch_texts=("Batches required: 2.",),
+        )
+        self.openai.reset_mock()
+        for german, english in (
+            ("250 ml\nWasser und 2 Tassen Äpfel", "250 mL of water and 2 cups of apples"),
+            ("2½ l\nWasser und 5 Tassen Äpfel", "2½ L of water and 5 cups of apples"),
+            ("3 l\nWasser und 6 Tassen Äpfel", "3 L of water and 6 cups of apples"),
+        ):
+            with self.subTest(amounts=german):
+                variant["steps"][0]["instruction"]["value"] = f"Koche {german}."
+                result = translate_output(self.openai, variant, variant_notes, templates=templates, cache_only=True)
+                self.assertEqual(result["recipe"]["steps"][0]["instruction"]["value"], f"Boil {english}.")
+                self.assertEqual(result["texts"], variant_notes)
+        self.openai.respond.assert_not_called()
+
+    def test_cached_render_never_reuses_a_translation_for_a_different_step(self):
+        path = "/steps/0/instruction"
+        self.response()
+        templates = {}
+        translate_output(self.openai, self.recipe, {}, templates=templates)
+        self.openai.reset_mock()
+        self.recipe["steps"][0]["instruction"]["value"] = "2 Tassen Äpfel ohne Deckel kochen."
+        with self.assertRaisesRegex(TranslationError, "current recipe is not ready"):
+            translate_output(self.openai, self.recipe, {}, templates=templates, cache_only=True)
+        result = translate_output(
+            self.openai, self.recipe, {"uncached": "Check the pot."},
+            language="original", templates={}, cache_only=True,
+        )
+        self.assertEqual(result, {"recipe": self.recipe, "texts": {"uncached": "Check the pot."}})
+        self.openai.respond.assert_not_called()

@@ -4,6 +4,7 @@ from fractions import Fraction
 
 from cookbook_ocr.adaptation import adapt_recipe
 from cookbook_ocr.quantities import quantity_matches, scale_quantity
+from cookbook_ocr.review import review_recipe, reviewed_step_links
 from cookbook_ocr.scaling_plan import validate_scaling_plan
 from cookbook_ocr.vegan import validate_vegan_plan
 
@@ -135,6 +136,50 @@ class AdaptationTests(unittest.TestCase):
         self.assertEqual(first["instruction"]["status"], "derived")
         self.assertIsNone(first["instruction"]["evidence"])
         self.assertTrue(source["steps"][0]["instruction"]["evidence"])
+
+    def test_scales_exact_step_measures_when_ocr_omits_a_link_or_wraps_a_word(self):
+        source = recipe("1", [
+            ingredient("wine", "Rot-\nwein", "½", "l"),
+            ingredient("water", "Wasser", "½", "l"),
+        ], [
+            step("Wasser: ½ l; dann ½ l Rot-\nwein dazugießen.", "water"),
+        ])
+        plan = scaling_plan(source, scaling_rule("wine"), scaling_rule("water"))
+
+        five = adapt_recipe(source, servings=5, scaling_plan=plan)["recipe"]
+        six = adapt_recipe(source, servings=6, scaling_plan=plan)["recipe"]
+
+        self.assertEqual(five["steps"][0]["instruction"]["value"], "Wasser: 2½ l; dann 2½ l Rot-\nwein dazugießen.")
+        self.assertEqual(six["steps"][0]["instruction"]["value"], "Wasser: 3 l; dann 3 l Rot-\nwein dazugießen.")
+        self.assertEqual([item["quantity"]["value"] for item in five["ingredients"]], ["2½", "2½"])
+        self.assertEqual([item["quantity"]["value"] for item in six["ingredients"]], ["3", "3"])
+        self.assertEqual(six["steps"][0]["ingredient_ids"], ["water"])
+
+    def test_does_not_guess_unlinked_step_measure_with_multiple_matching_ingredients(self):
+        source = recipe("1", [
+            ingredient("first", "milk", "1", "cup"),
+            ingredient("second", "milk", "1", "cup"),
+        ], [step("Add 1 cup milk.")])
+        plan = scaling_plan(source, scaling_rule("first"), scaling_rule("second"))
+        result = adapt_recipe(source, servings=4, scaling_plan=plan)
+        self.assertEqual(result["recipe"]["steps"][0], source["steps"][0])
+        self.assertEqual([item["path"] for item in result["review_items"]], ["/steps/0/instruction"])
+
+    def test_preserves_an_explicitly_removed_step_link(self):
+        source = recipe("1", [ingredient("milk", "milk", "1", "cup")], [step("Add 1 cup milk.", "milk")])
+        review = review_recipe(source, [{"path": "/steps/0/ingredient_ids", "action": "correct", "value": []}])
+        reviewed = review["recipe"]
+        result = adapt_recipe(reviewed, servings=4, scaling_plan=scaling_plan(reviewed, scaling_rule("milk")),
+                              reviewed_step_links=reviewed_step_links(review["decisions"]))
+        self.assertEqual(result["recipe"]["steps"][0], reviewed["steps"][0])
+
+    def test_name_followed_by_colon_does_not_turn_a_duration_into_an_ingredient_count(self):
+        source = recipe("1", [ingredient("onions", "Zwiebeln", "4")], [
+            step("Zwiebeln: 4 Minuten dünsten.", "onions", duration="4 Minuten"),
+        ])
+        result = adapt_recipe(source, servings=5, scaling_plan=scaling_plan(source, scaling_rule("onions")))
+        self.assertEqual(result["recipe"]["ingredients"][0]["quantity"]["value"], "20")
+        self.assertEqual(result["recipe"]["steps"], source["steps"])
 
     def test_requires_positive_original_yield_when_unknown_or_ambiguous(self):
         for servings in (None, "4–6", "0"):

@@ -6,6 +6,7 @@ import json
 import mimetypes
 import re
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from io import BytesIO
@@ -23,7 +24,7 @@ from .capacity import VESSEL_DISPLAY_TEXTS
 from .pipeline import UnreadableRecipeError, plan_vegan_recipe, refresh_scaling_plans, run_pipeline
 from .providers import GeminiClient, MIME_TYPES, OpenAIClient, ProviderError
 from .raster import run_pdf_task
-from .review import review_recipe
+from .review import review_recipe, reviewed_step_links
 from .scaling_plan import SCALING_RULE_DISPLAY_TEXTS, rebase_scaling_plan
 from .translation import TranslationError, translate_output
 from .vegan import (
@@ -54,6 +55,71 @@ def _translation_session(session: str, language: str) -> tuple[Lock, dict]:
         if len(_TRANSLATION_CACHE) > 32:
             _TRANSLATION_CACHE.popitem(last=False)
         return entry
+
+
+def _translation_session_id(data: dict, *, required: bool = False) -> str | None:
+    session = data.get("translation_session")
+    if session is None and not required:
+        return None
+    if not isinstance(session, str) or not re.fullmatch(r"[A-Za-z0-9-]{1,64}", session):
+        raise RequestError("The translation session is invalid.")
+    return session
+
+
+def _output_options(data: dict) -> tuple[dict, bool]:
+    texts = data.get("texts", {})
+    if not isinstance(texts, dict) or any(not key or not isinstance(text, str) for key, text in texts.items()):
+        raise RequestError("Output notes must be an object containing text values.")
+    source_is_english = data.get("source_is_english", False)
+    if type(source_is_english) is not bool:
+        raise RequestError("The source language flag must be true or false.")
+    return texts, source_is_english
+
+
+def _adaptation_texts(result: dict) -> dict:
+    return {
+        **{f"change:{item['path']}": item["reason"] for item in result["changes"]},
+        **{f"scale:{item['ingredient_id']}": item["reason"] for item in (result["scale"] or {}).get("ingredients", [])},
+        **{f"adaptation:{index}": item["reason"] for index, item in enumerate(result["review_items"])},
+    }
+
+
+def _bilingual_output(
+    recipe: dict, texts: dict, *, session: str, source_is_english: bool, source_recipe: dict | None = None,
+    client: OpenAIClient | None = None, variant: dict | None = None, prefetch: tuple = (),
+) -> dict:
+    plain = {"recipe": recipe, "texts": texts}
+
+    def localized(language):
+        if source_is_english or (language == "original" and not (texts or prefetch)):
+            return {"language": language, **plain}, None
+        lock, templates = _translation_session(session, language)
+        options = {
+            "language": language, "source_recipe": source_recipe, "templates": templates,
+            "variant": variant, "prefetch_texts": prefetch,
+        }
+        try:
+            if client is None:
+                output = translate_output(None, recipe, texts, **options, cache_only=True)
+            else:
+                with lock:
+                    output = translate_output(client, recipe, texts, **options)
+                    while len(templates) > 2048:
+                        del templates[next(iter(templates))]
+            return {"language": language, **output}, None
+        except (TranslationError, ProviderError) as error:
+            return ({"language": language, **plain} if language == "original" else None), str(error)
+
+    languages = ("english", "original")
+    if client is not None and not source_is_english:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(executor.map(localized, languages))
+    else:
+        results = [localized(language) for language in languages]
+    return {
+        "outputs": {language: output for language, (output, _) in zip(languages, results) if output is not None},
+        "output_errors": {language: error for language, (_, error) in zip(languages, results) if error is not None},
+    }
 
 
 class RequestError(ValueError):
@@ -223,6 +289,9 @@ class CookbookHandler(BaseHTTPRequestHandler):
             if url.path == "/api/output":
                 self._json(self._output())
                 return
+            if url.path == "/api/prepare-output":
+                self._json(self._prepare_output())
+                return
             raise RequestError("Not found.", HTTPStatus.NOT_FOUND)
         except RequestError as error:
             self._json({"error": str(error)}, error.status)
@@ -251,6 +320,38 @@ class CookbookHandler(BaseHTTPRequestHandler):
             raise RequestError("The request must contain a recipe report.")
         return data, report
 
+    def _prepare_output(self) -> dict:
+        data = self._json_request()
+        recipe = data.get("recipe")
+        if not isinstance(recipe, dict):
+            raise RequestError("The request must contain a recipe to display.")
+        texts, source_is_english = _output_options(data)
+        session = _translation_session_id(data, required=True)
+        prefetch = data.get("prefetch_texts", [])
+        if not isinstance(prefetch, list) or any(not isinstance(text, str) for text in prefetch):
+            raise RequestError("Additional output notes must be a list of strings.")
+        plan = data.get("vegan_plan")
+        variant = None
+        try:
+            if vegan_plan_usable(recipe, plan):
+                variant = adapt_recipe(recipe, vegan=True, vegan_plan=plan)["recipe"]
+            if data.get("can_scale") is True:
+                prefetch.extend((*SCALING_DISPLAY_TEXTS, *SCALING_RULE_DISPLAY_TEXTS, *VESSEL_DISPLAY_TEXTS))
+            if variant is not None:
+                prefetch.extend((VEGAN_AMOUNT_WARNING, VEGAN_UNIT_WARNING))
+        except (AttributeError, KeyError, TypeError):
+            raise RequestError("The request contains an invalid recipe object.") from None
+        if source_is_english:
+            client = None
+        else:
+            try:
+                client = OpenAIClient(load_openai_key())
+            except (OSError, ValueError) as error:
+                return {"outputs": {"original": {"language": "original", "recipe": recipe, "texts": texts}},
+                        "output_errors": {"english": str(error), "original": str(error)}}
+        return _bilingual_output(recipe, texts, session=session, source_is_english=source_is_english,
+                                 client=client, variant=variant, prefetch=tuple(prefetch))
+
     def _output(self) -> dict:
         data = self._json_request()
         recipe = data.get("recipe")
@@ -259,18 +360,11 @@ class CookbookHandler(BaseHTTPRequestHandler):
         language = data.get("output_language", "english")
         if language not in ("english", "original"):
             raise RequestError("Choose English or the original recipe language.")
-        source_is_english = data.get("source_is_english", False)
-        if type(source_is_english) is not bool:
-            raise RequestError("The source language flag must be true or false.")
-        texts = data.get("texts", {})
-        if not isinstance(texts, dict) or any(not key or not isinstance(text, str) for key, text in texts.items()):
-            raise RequestError("Output notes must be an object containing text values.")
+        texts, source_is_english = _output_options(data)
         source_recipe = data.get("source_recipe")
         if source_recipe is not None and not isinstance(source_recipe, dict):
             raise RequestError("The original recipe must be an object.")
-        session = data.get("translation_session")
-        if session is not None and (not isinstance(session, str) or not re.fullmatch(r"[A-Za-z0-9-]{1,64}", session)):
-            raise RequestError("The translation session is invalid.")
+        session = _translation_session_id(data)
         prefetch = data.get("prefetch_texts", [])
         if not isinstance(prefetch, list) or any(not isinstance(text, str) for text in prefetch):
             raise RequestError("Additional output notes must be a list of strings.")
@@ -386,12 +480,14 @@ class CookbookHandler(BaseHTTPRequestHandler):
         if type(vegan) is not bool:
             raise RequestError("Vegan preference must be true or false.")
         recipe = report["recipe"]
+        decisions = []
         if "review" in report:
             submitted_review = report["review"]
             if not isinstance(submitted_review, dict):
                 raise RequestError("The review must contain the decisions made on the original recipe.")
             review = review_recipe(recipe, submitted_review.get("decisions"))
             recipe = review["recipe"]
+            decisions = review["decisions"]
             report = {**report, "review": review}
         plan = report.get("vegan_plan")
         if vegan and not vegan_plan_usable(recipe, plan):
@@ -410,10 +506,18 @@ class CookbookHandler(BaseHTTPRequestHandler):
                 original_servings=data.get("original_servings"), vegan=vegan,
                 vegan_plan=plan,
                 scaling_plan=report.get("scaling_plan"),
+                reviewed_step_links=reviewed_step_links(decisions),
             )
         except (AttributeError, KeyError, TypeError):
             raise RequestError("The extraction report contains an invalid recipe object.") from None
-        return {**report, "adaptation": result}, HTTPStatus.OK
+        response = {**report, "adaptation": result}
+        if session := _translation_session_id(data):
+            texts, source_is_english = _output_options(data)
+            response.update(_bilingual_output(
+                result["recipe"], {**texts, **_adaptation_texts(result)}, session=session,
+                source_recipe=recipe, source_is_english=source_is_english,
+            ))
+        return response, HTTPStatus.OK
 
 
 def main() -> None:

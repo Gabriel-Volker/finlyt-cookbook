@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .pipeline import _structured_response
 from .providers import OpenAIClient
-from .quantities import NUMBER_PATTERN, known_units, normalized_amount
+from .quantities import NUMBER_PATTERN, known_units, normalized_amount, step_unit
 from .review import REVIEW_FIELDS
 from .translation_constraints import preserves_constraints
 
@@ -49,10 +49,14 @@ _ENGLISH_UNITS.update({
     if (base := normalized_amount("1", unit)) in _METRIC_LABELS
 })
 _UNIT_PATTERN = "|".join(re.escape(unit) for unit in sorted(_ENGLISH_UNITS, key=lambda unit: (-len(unit), unit)))
+_SCALABLE_UNIT_PATTERN = "|".join(re.escape(unit) for unit in sorted(
+    set(known_units()) & _ENGLISH_UNITS.keys(), key=lambda unit: (-len(unit), unit),
+))
 _NUMERIC_TEXT = re.compile(
     rf"(?:(?P<ordinal>[0-9]+)\.(?=\s+(?:tags?|tage|tagen)\b)|"
-    rf"(?P<number>(?:(?<!\w)[-−])?(?:{NUMBER_PATTERN}|\d+)))"
-    rf"(?:[ \t]*(?P<unit>{_UNIT_PATTERN})(?!\w))?",
+    rf"(?P<number>(?:(?<!\w)[-−])?(?:{NUMBER_PATTERN}|\d+))|"
+    rf"(?P<article>\ban?)(?=\s+(?:{_SCALABLE_UNIT_PATTERN})(?!\w)))"
+    rf"(?:\s*(?P<unit>{_UNIT_PATTERN})(?!\w))?",
     re.IGNORECASE,
 )
 _NUMBERS_ONLY = re.compile(rf"(?P<number>(?:(?<!\w)[-−])?(?:{NUMBER_PATTERN}|\d+))")
@@ -67,6 +71,15 @@ def _english_ordinal(number: str) -> str:
     value = int(number)
     suffix = "th" if 11 <= value % 100 <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(value % 10, "th")
     return number + suffix
+
+
+def _measure_kind(unit: str | None, label: str | None) -> str:
+    if label is None:
+        return "number"
+    metric = normalized_amount("1", unit)
+    if metric in _METRIC_LABELS:
+        return metric[0]
+    return step_unit("1", label)
 
 
 def _recipe_fields(recipe: dict) -> dict:
@@ -98,11 +111,13 @@ def _protected_measures(text: str, language: str) -> tuple[str, dict[str, str], 
         if language == "english":
             unit = match["unit"]
             label = _english_unit(unit) if unit else None
-            number = _english_ordinal(match["ordinal"]) if match["ordinal"] else match["number"]
+            if match["ordinal"]:
+                number = _english_ordinal(match["ordinal"])
+            else:
+                number = match["number"] or "1"
             separator = " " if label and label not in {"°C", "°F", "%"} else ""
-            measures[token] = number + separator + (label or "")
-            metric = normalized_amount("1", unit) if unit else None
-            kind = metric[0] if metric in _METRIC_LABELS else label or "number"
+            measures[token] = number + separator + (step_unit(number, label) if label else "")
+            kind = _measure_kind(unit, label)
             measure_kinds.append("ordinal " + kind if match["ordinal"] else kind)
         return token
 
@@ -116,12 +131,12 @@ def _validate_translation_semantics(source: str, target: str) -> None:
 
 
 def translate_output(
-    openai: OpenAIClient, recipe: dict, texts: dict[str, str], *,
+    openai: OpenAIClient | None, recipe: dict, texts: dict[str, str], *,
     language: str = "english", source_recipe: dict | None = None,
     templates: dict[tuple[str, str, tuple[str, ...]], str] | None = None,
-    variant: dict | None = None, prefetch_texts: tuple[str, ...] = (),
+    variant: dict | None = None, prefetch_texts: tuple[str, ...] = (), cache_only: bool = False,
 ) -> dict:
-    """Translate final recipe and explanation display values, keeping all source evidence."""
+    """Translate display values, or render them with previously validated templates."""
     if language not in ("english", "original"):
         raise TranslationError("Choose English or the original recipe language.")
     try:
@@ -130,7 +145,7 @@ def translate_output(
         note_paths = {f"/display/{index}": key for index, key in enumerate(texts)}
         notes = {path: {"value": texts[key], "status": "derived"} for path, key in note_paths.items()}
         additional_recipes = []
-        if language == "english":
+        if language == "english" and not cache_only:
             if source_recipe is not None and source_recipe != recipe:
                 additional_recipes.append(("/source", _recipe_fields(deepcopy(source_recipe))))
             if variant is not None:
@@ -166,7 +181,7 @@ def translate_output(
             key = (scope, text, measure_kinds)
             if path in requested_fields:
                 translations[path] = (key, measures)
-            if key not in cached and key not in pending:
+            if not cache_only and key not in cached and key not in pending:
                 pending[key] = path
                 entries.append({"path": path, "text": text})
     except (KeyError, TypeError, AttributeError):
@@ -175,9 +190,14 @@ def translate_output(
     required = {key for key, _ in translations.values() if key in pending}
     fresh = _translate_missing(openai, entries, pending, required, language, source_recipe or recipe) if entries else {}
     for path, (key, measures) in translations.items():
-        text = fresh[key] if key in fresh else cached[key]
+        text = fresh.get(key) or cached.get(key)
+        if text is None:
+            if path in notes:
+                continue
+            raise TranslationError("The English translation for the current recipe is not ready.")
         requested_fields[path]["value"] = _PLACEHOLDER.sub(lambda match: measures.get(match.group(), match.group()), text).strip()
-    cached.update(fresh)
+    if fresh:
+        cached.update(fresh)
     return {"recipe": translated, "texts": {key: notes[path]["value"] for path, key in note_paths.items()}}
 
 

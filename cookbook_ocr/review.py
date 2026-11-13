@@ -15,6 +15,16 @@ OPTIONAL_FIELDS = {"title", "servings", "quantity", "unit", "preparation", "opti
 REFERENCE_FIELDS = {"ingredient_ids": "ingredients", "tool_ids": "tools"}
 
 
+def reviewed_step_links(decisions: list[dict]) -> set[int]:
+    """Identify steps whose ingredient links were explicitly reviewed."""
+    indexes = set()
+    for decision in decisions:
+        match = re.fullmatch(r"/steps/([0-9]+)/ingredient_ids", decision["path"])
+        if match:
+            indexes.add(int(match[1]))
+    return indexes
+
+
 def review_recipe(recipe: dict, decisions: list) -> dict:
     """Build a reviewed copy from the original fields and the current decisions."""
     if not isinstance(decisions, list):
