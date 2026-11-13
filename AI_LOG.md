@@ -434,3 +434,7 @@ Gabriel asked how the extraction became faster. The API reported 5,356 output to
 ## 2026-11-13 20:26 · Estimate elapsed challenge work
 
 Gabriel asked whether he had reached ten hours. The earliest local Docling test artifact dates to 10:29, and the repository's first commit is at 10:47. The recorded lunch break ran from 11:59 to 13:18. Using 10:29 as the start gives an estimated 8 h 38 min through 20:26 after subtracting lunch. This estimate assumes continuous work between recorded events outside lunch. Earlier work and other breaks are unknown.
+
+## 2026-11-13 20:28 · Verify the upload cache in the activity diagram
+
+Gabriel asked whether previous uploads are cached. Codex confirmed that the web server keeps up to eight successfully processed reports in memory, keyed by the hash of the file type and bytes. Concurrent identical requests share the same processing. A restart clears the cache. The existing reimport test passed and verified that identical bytes under a different filename bypass processing, while changed bytes start a new import. Prepared translations use a separate cache and may retry fields that still need translation.
