@@ -88,3 +88,7 @@ Reuse one ingredient ID when the recipe divides a stated total between steps. Sc
 ## 2026-11-13 15:28 · Browser recipe workspace
 
 Gabriel chose the Figma prototype and requested a blue accent. The web workspace follows its import, review, and adaptation views. A small Python HTTP server serves local assets and calls the existing extraction and adaptation functions. The workspace holds imported files and reports for the current browser session. The bundled example provides a way to explore review and adaptation without credentials.
+
+## 2026-11-13 15:43 · Evaluate blur detection on scanned pages
+
+Gabriel proposed using OpenCV to identify scans that are too blurred to read. Codex recommends trying Laplacian variance as a warning on consistently sized grayscale text regions from the existing rasterization. Combine that warning with unreadable passages, missing critical fields, and disagreements on amounts or units. Show the affected page and let the user review it or upload a clearer image. Evaluate any automatic rejection threshold on manually labeled scans across languages, handwriting, resolutions, contrast, noise, and blur types, and measure how many readable pages it would reject. [Consensus Entropy OCR](https://tianyilt.github.io/consensus-entropy/) remains a separate proposal for uncertainty in the transcriptions. The [AI log](AI_LOG.md) records the offline experiment. The application has no blur filter yet.
