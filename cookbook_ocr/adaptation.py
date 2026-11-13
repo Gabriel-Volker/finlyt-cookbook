@@ -29,6 +29,31 @@ from .scaling_plan import (
 from .vegan import veganize
 
 
+SCALE_STEP_REASON = "Apply each ingredient's scaling rule to matched measures in this step."
+SCALE_SERVINGS_REASON = "Use the requested serving count."
+SCALE_UNIT_REASON = "Convert within the same metric dimension."
+SCALE_BATCH_WARNING = "Batches required: {count}. Keep the written amount in the method per batch."
+SCALE_CONFLICT_WARNING = "Luna and Gemini calculate different amounts or batches for these servings. Check the source amount and method."
+SCALE_UNRESOLVED_WARNING = "Resolve the source measure before scaling this ingredient."
+SCALE_BASELINE_WARNING = "The original serving count differs from the documented single-batch yield. Check the batch amount."
+SCALE_UNSUPPORTED_WARNING = "The source measure cannot be scaled numerically."
+SCALE_FRACTIONAL_WARNING = "The scaled count is fractional. Check how to divide this ingredient."
+STEP_UNRECONCILED_WARNING = "The linked step amounts do not reconcile with the ingredient total."
+STEP_ALTERNATIVE_WARNING = "Alternative measures in this step need manual scaling."
+STEP_MISMATCH_WARNING = "A step measure differs from its linked ingredient quantity."
+STEP_OVERLAP_WARNING = "Overlapping measures in this step need manual scaling."
+STEP_UNSAFE_WARNING = "Check the linked ingredient amounts. At least one could not be scaled safely."
+STEP_AMBIGUOUS_WARNING = "A step measure could belong to more than one linked ingredient."
+STEP_BATCH_WARNING = "Check this step's amounts for each batch. The ingredient list shows totals."
+STEP_YIELD_WARNING = "Check the number of portions named in this step against the recipe yield."
+SCALING_DISPLAY_TEXTS = (
+    SCALE_STEP_REASON, SCALE_SERVINGS_REASON, SCALE_UNIT_REASON, SCALE_BATCH_WARNING.format(count=2),
+    SCALE_CONFLICT_WARNING, SCALE_UNRESOLVED_WARNING, SCALE_BASELINE_WARNING, SCALE_UNSUPPORTED_WARNING,
+    SCALE_FRACTIONAL_WARNING, STEP_UNRECONCILED_WARNING, STEP_ALTERNATIVE_WARNING, STEP_MISMATCH_WARNING,
+    STEP_OVERLAP_WARNING, STEP_UNSAFE_WARNING, STEP_AMBIGUOUS_WARNING, STEP_BATCH_WARNING, STEP_YIELD_WARNING,
+)
+
+
 YIELD_UNIT = r"(?:servings?|people|persons?|portions?|porç(?:ão|ões)|pessoas?|portionen?|personen?)"
 YIELD = re.compile(
     rf"(?:(?:serves|makes|yield|für|rende|para)\s+)?({NUMBER_PATTERN})(?:\s+{YIELD_UNIT})?",
@@ -161,12 +186,12 @@ def _step_amounts_for_scale(mentions, ingredient: _ScaledIngredient, warn):
         )
     ):
         for path in dict.fromkeys(item.path for item in mentions):
-            warn(path, "The linked step amounts do not reconcile with the ingredient total.")
+            warn(path, STEP_UNRECONCILED_WARNING)
         return
 
     for item in mentions:
         if item.is_alternative:
-            warn(item.path, "Alternative measures in this step need manual scaling.")
+            warn(item.path, STEP_ALTERNATIVE_WARNING)
             continue
         if quantity_matches(quantity, unit, item.quantity, item.unit):
             new_quantity, new_unit = ingredient.scaled_quantity, ingredient.scaled_unit
@@ -182,7 +207,7 @@ def _step_amounts_for_scale(mentions, ingredient: _ScaledIngredient, warn):
         ):
             new_quantity, new_unit = scale_quantity(item.quantity, item.unit, ingredient.factor)
         else:
-            warn(item.path, "A step measure differs from its linked ingredient quantity.")
+            warn(item.path, STEP_MISMATCH_WARNING)
             continue
         replacement = new_quantity
         if new_unit:
@@ -195,7 +220,7 @@ def _apply_step_edits(text, edits, warn):
     last_end = 0
     for (start, end), options in sorted(edits.items()):
         if len(options) != 1 or start < last_end:
-            warn("Overlapping measures in this step need manual scaling.")
+            warn(STEP_OVERLAP_WARNING)
             if accepted and start < accepted[-1][1]:
                 accepted.pop()
             last_end = max(end, last_end)
@@ -238,7 +263,7 @@ def _scale_steps(recipe, measures, batch_ingredients, held_ingredients, original
         ]
         if unmatched:
             for path in dict.fromkeys(item.path for item in (*unmatched, *amounts)):
-                warn(path, "Check the linked ingredient amounts. At least one could not be scaled safely.")
+                warn(path, STEP_UNSAFE_WARNING)
             continue
         if any(
             len(owners[item.path, item.start, item.end]) > 1
@@ -246,7 +271,7 @@ def _scale_steps(recipe, measures, batch_ingredients, held_ingredients, original
             for item in amounts
         ):
             for path in dict.fromkeys(item.path for item in amounts):
-                warn(path, "A step measure could belong to more than one linked ingredient.")
+                warn(path, STEP_AMBIGUOUS_WARNING)
             continue
         for item, replacement in _step_amounts_for_scale(amounts, measures[ingredient_id], warn):
             edits_by_path.setdefault(item.path, {}).setdefault((item.start, item.end), set()).add(replacement)
@@ -254,7 +279,7 @@ def _scale_steps(recipe, measures, batch_ingredients, held_ingredients, original
     for index, step in enumerate(recipe["steps"]):
         if batch_ingredients.intersection(step["ingredient_ids"]):
             if any(f"/steps/{index}/{key}" in edits_by_path for key in ("instruction", "condition")):
-                warn(f"/steps/{index}/instruction", "Check this step's amounts for each batch. The ingredient list shows totals.")
+                warn(f"/steps/{index}/instruction", STEP_BATCH_WARNING)
             continue
         for key in ("instruction", "condition"):
             field = step[key]
@@ -267,9 +292,9 @@ def _scale_steps(recipe, measures, batch_ingredients, held_ingredients, original
                 if parse_number(match[2]) == original_servings:
                     edits.setdefault(match.span(2), set()).add(str(servings))
                 else:
-                    warn(path, "Check the number of portions named in this step against the recipe yield.")
+                    warn(path, STEP_YIELD_WARNING)
             updated = _apply_step_edits(text, edits, lambda reason: warn(path, reason))
-            change(path, field, updated, "Apply each ingredient's scaling rule to matched measures in this step.")
+            change(path, field, updated, SCALE_STEP_REASON)
 
 
 def adapt_recipe(
@@ -331,7 +356,7 @@ def adapt_recipe(
         if rules or scaling_plan_matches(adapted, plan):
             scale["verification"], gemini_rules = verified_scaling_rules(adapted, plan)
         if factor != 1 or recipe_count is None:
-            change("/servings", adapted["servings"], str(servings), "Use the requested serving count.")
+            change("/servings", adapted["servings"], str(servings), SCALE_SERVINGS_REASON)
         measures = {}
         batch_ingredients = set()
         held_ingredients = []
@@ -349,7 +374,7 @@ def adapt_recipe(
                     applied["verification"] = comparison
                     if comparison["materially_different"]:
                         scale["verification"]["material_conflicts"].append(ingredient["id"])
-                        reason = "Luna and Gemini calculate different amounts or batches for these servings. Check the source amount and method."
+                        reason = SCALE_CONFLICT_WARNING
                         if rule["mode"] == "review":
                             reason = f'{reason} Luna requested review: {rule["reason"]}'
                         applied.update(
@@ -363,12 +388,10 @@ def adapt_recipe(
                         warn(f"{path}/quantity", reason)
                         continue
                 if any(ingredient[key]["status"] == "needs_review" for key in ("name", "quantity", "unit")):
-                    warn(path, "Resolve the source measure before scaling this ingredient.")
+                    warn(path, SCALE_UNRESOLVED_WARNING)
                     continue
                 if multiplier is None:
-                    reason = rule["reason"] if rule["mode"] == "review" else (
-                        "The original serving count differs from the documented single-batch yield. Check the batch amount."
-                    )
+                    reason = rule["reason"] if rule["mode"] == "review" else SCALE_BASELINE_WARNING
                     applied["reason"] = reason
                     warn(f"{path}/quantity", reason)
                     continue
@@ -382,12 +405,12 @@ def adapt_recipe(
                     # The ingredient list needs a total. The method still uses the original amount per batch.
                     applied.update(batches=int(multiplier), per_batch_quantity=quantity, per_batch_unit=unit)
                     batch_ingredients.add(ingredient["id"])
-                    warn(path, f"Batches required: {int(multiplier)}. Keep the written amount in the method per batch.")
+                    warn(path, SCALE_BATCH_WARNING.format(count=int(multiplier)))
                 if multiplier == 1:
                     continue
                 adjusted = scale_quantity(quantity, unit, multiplier)
                 if adjusted is None:
-                    warn(f"{path}/quantity", "The source measure cannot be scaled numerically.")
+                    warn(f"{path}/quantity", SCALE_UNSUPPORTED_WARNING)
                     continue
                 scaled, scaled_unit = adjusted
                 if rule["mode"] != "per_batch":
@@ -397,10 +420,10 @@ def adapt_recipe(
                         _ingredient_measure_patterns(ingredient, review_only=True),
                     )
                 change(f"{path}/quantity", quantity_field, scaled, rule["reason"])
-                change(f"{path}/unit", unit_field, scaled_unit, "Convert within the same metric dimension.")
+                change(f"{path}/unit", unit_field, scaled_unit, SCALE_UNIT_REASON)
                 count = parse_number(scaled) if unit is None else None
                 if count is not None and count.denominator != 1:
-                    warn(f"{path}/quantity", "The scaled count is fractional. Check how to divide this ingredient.")
+                    warn(f"{path}/quantity", SCALE_FRACTIONAL_WARNING)
             _scale_steps(adapted, measures, batch_ingredients, held_ingredients, source_count, servings, change, warn)
             review_vessel_capacity(adapted, factor, warn)
 

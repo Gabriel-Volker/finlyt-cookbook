@@ -4,24 +4,29 @@ import argparse
 import base64
 import json
 import mimetypes
+import re
+from collections import OrderedDict
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from io import BytesIO
 from math import isfinite
 from pathlib import Path
+from threading import Lock
 from urllib.parse import parse_qs, unquote, urlsplit
 
 import pymupdf
 from PIL import Image, ImageOps
 
 from .__main__ import load_api_keys, load_openai_key, optional_gemini_client
-from .adaptation import adapt_recipe
+from .adaptation import SCALING_DISPLAY_TEXTS, adapt_recipe
+from .capacity import VESSEL_DISPLAY_TEXTS
 from .pipeline import UnreadableRecipeError, plan_vegan_recipe, refresh_scaling_plans, run_pipeline
 from .providers import GeminiClient, MIME_TYPES, OpenAIClient, ProviderError
 from .raster import run_pdf_task
 from .review import review_recipe
+from .scaling_plan import SCALING_RULE_DISPLAY_TEXTS
 from .translation import TranslationError, translate_output
-from .vegan import unavailable_vegan_plan, vegan_plan_matches, vegan_plan_usable
+from .vegan import VEGAN_AMOUNT_WARNING, VEGAN_UNIT_WARNING, unavailable_vegan_plan, vegan_plan_matches, vegan_plan_usable
 from .vegan_verification import verify_vegan_plan
 
 
@@ -31,6 +36,21 @@ MAX_REPORT_BYTES = 2_000_000
 PREVIEW_EDGE = 1200
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 STATIC_TYPES = {".js": "application/javascript", ".svg": "image/svg+xml", ".woff2": "font/woff2"}
+_TRANSLATION_CACHE: OrderedDict[tuple[str, str], tuple[Lock, dict]] = OrderedDict()
+_TRANSLATION_CACHE_LOCK = Lock()
+
+
+def _translation_session(session: str, language: str) -> tuple[Lock, dict]:
+    key = (session, language)
+    with _TRANSLATION_CACHE_LOCK:
+        entry = _TRANSLATION_CACHE.get(key)
+        if entry is None:
+            entry = (Lock(), {})
+            _TRANSLATION_CACHE[key] = entry
+        _TRANSLATION_CACHE.move_to_end(key)
+        if len(_TRANSLATION_CACHE) > 32:
+            _TRANSLATION_CACHE.popitem(last=False)
+        return entry
 
 
 class RequestError(ValueError):
@@ -238,14 +258,41 @@ class CookbookHandler(BaseHTTPRequestHandler):
         source_recipe = data.get("source_recipe")
         if source_recipe is not None and not isinstance(source_recipe, dict):
             raise RequestError("The original recipe must be an object.")
+        session = data.get("translation_session")
+        if session is not None and (not isinstance(session, str) or not re.fullmatch(r"[A-Za-z0-9-]{1,64}", session)):
+            raise RequestError("The translation session is invalid.")
+        prefetch = data.get("prefetch_texts", [])
+        if not isinstance(prefetch, list) or any(not isinstance(text, str) for text in prefetch):
+            raise RequestError("Additional output notes must be a list of strings.")
         output = {"recipe": recipe, "texts": texts}
-        if not source_is_english and (language == "english" or texts):
+        if not source_is_english and (language == "english" or texts or (session and prefetch)):
             try:
                 key = load_openai_key()
             except (OSError, ValueError) as error:
                 raise RequestError(str(error), HTTPStatus.SERVICE_UNAVAILABLE) from None
             try:
-                output = translate_output(OpenAIClient(key), recipe, texts, language=language, source_recipe=source_recipe)
+                client = OpenAIClient(key)
+                options = {"language": language, "source_recipe": source_recipe}
+                if session is None:
+                    output = translate_output(client, recipe, texts, **options)
+                else:
+                    variant = None
+                    base = source_recipe or recipe
+                    plan = data.get("vegan_plan")
+                    if language == "english" and vegan_plan_usable(base, plan):
+                        variant = adapt_recipe(base, vegan=True, vegan_plan=plan)["recipe"]
+                    if data.get("can_scale") is True:
+                        prefetch.extend((*SCALING_DISPLAY_TEXTS, *SCALING_RULE_DISPLAY_TEXTS, *VESSEL_DISPLAY_TEXTS))
+                    if isinstance(plan, dict) and plan.get("status") == "ready":
+                        prefetch.extend((VEGAN_AMOUNT_WARNING, VEGAN_UNIT_WARNING))
+                    lock, templates = _translation_session(session, language)
+                    with lock:
+                        output = translate_output(
+                            client, recipe, texts, **options, templates=templates,
+                            variant=variant, prefetch_texts=tuple(prefetch),
+                        )
+                        while len(templates) > 2048:
+                            del templates[next(iter(templates))]
             except TranslationError as error:
                 raise RequestError(str(error), HTTPStatus.BAD_GATEWAY) from None
             except (AttributeError, KeyError, TypeError):

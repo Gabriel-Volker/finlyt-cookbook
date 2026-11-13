@@ -15,7 +15,7 @@ const state = {
   scalingPlan: null, veganPlan: null,
   adaptation: null, adaptationReady: false, adaptRequest: 0,
   output: null, outputRequest: 0, reviewOutput: null, reviewOutputRequest: 0,
-  localizedOutputs: new Map(), previewRequest: 0, busy: false,
+  translationSession: null, localizedOutputs: new Map(), previewRequest: 0, busy: false,
   previewReading: "A",
   previews: new Map(),
 };
@@ -103,6 +103,8 @@ function loadReport(report, file) {
   state.adaptation = null;
   state.adaptationReady = false;
   state.adaptRequest++;
+  state.translationSession = [...crypto.getRandomValues(new Uint8Array(16))]
+    .map((byte) => byte.toString(16).padStart(2, "0")).join("");
   state.localizedOutputs = new Map();
   state.previewRequest++;
   state.previews.clear();
@@ -631,7 +633,7 @@ function displayLanguage() {
   return $("#output-english").checked ? "english" : "original";
 }
 
-function outputTexts(adapted = false) {
+function outputTexts(adaptation = null) {
   const texts = {};
   const add = (key, text) => {
     if (typeof text === "string" && text.trim()) texts[key] = text;
@@ -641,20 +643,38 @@ function outputTexts(adapted = false) {
     add(`comparison:${index}:section`, item.section);
   });
   (state.report.extraction_issues || []).forEach((item, index) => add(`extraction:${index}`, item.reason));
-  if (adapted) {
-    add("vegan:reason", state.veganPlan?.reason);
-    (state.veganPlan?.review_items || []).forEach((item, index) => add(`vegan:review:${index}`, item.reason));
-    for (const variant of ["original", "vegan"]) add(`scaling-plan:${variant}`, state.scalingPlan?.[variant]?.reason);
-    (state.adaptation?.changes || []).forEach(({path, reason}) => add(`change:${path}`, reason));
-    (state.adaptation?.scale?.ingredients || []).forEach(({ingredient_id, reason}) => add(`scale:${ingredient_id}`, reason));
-    (state.adaptation?.review_items || []).forEach((item, index) => add(`adaptation:${index}`, item.reason));
-  }
+  add("vegan:reason", state.veganPlan?.reason);
+  (state.veganPlan?.review_items || []).forEach((item, index) => add(`vegan:review:${index}`, item.reason));
+  for (const variant of ["original", "vegan"]) add(`scaling-plan:${variant}`, state.scalingPlan?.[variant]?.reason);
+  (adaptation?.changes || []).forEach(({path, reason}) => add(`change:${path}`, reason));
+  (adaptation?.scale?.ingredients || []).forEach(({ingredient_id, reason}) => add(`scale:${ingredient_id}`, reason));
+  (adaptation?.review_items || []).forEach((item, index) => add(`adaptation:${index}`, item.reason));
   return texts;
 }
 
 function localizeOutput(recipe, language, texts) {
-  const payload = {recipe, output_language: language, texts, source_is_english: state.example && !state.review?.decisions.length};
-  if (language === "original" && state.adaptation?.recipe === recipe) payload.source_recipe = currentRecipe();
+  const sourceIsEnglish = state.example && !state.review?.decisions.length;
+  if (sourceIsEnglish) return Promise.resolve({language, recipe, texts});
+
+  const planReasons = [
+    ...(state.veganPlan?.changes || []),
+    ...(state.scalingPlan?.original?.rules || []),
+    ...(state.scalingPlan?.vegan?.rules || []),
+  ].map(({reason}) => reason).filter((reason) => typeof reason === "string" && reason.trim());
+  const prefetchTexts = [...new Set(planReasons)];
+  if (language === "original" && !Object.keys(texts).length && !prefetchTexts.length) {
+    return Promise.resolve({language, recipe, texts});
+  }
+
+  const payload = {
+    recipe, output_language: language, texts,
+    translation_session: state.translationSession,
+    can_scale: hasScalingPlan(false) || hasScalingPlan(true),
+    prefetch_texts: prefetchTexts,
+  };
+  const source = currentRecipe();
+  if (recipe !== source) payload.source_recipe = source;
+  if (hasVeganPlan()) payload.vegan_plan = state.veganPlan;
   const key = JSON.stringify(payload);
   const cache = state.localizedOutputs;
   if (cache.has(key)) return cache.get(key);
@@ -695,7 +715,6 @@ async function updateReviewOutput() {
   state.reviewOutput = null;
   renderReviewOutput();
   message("#output-status");
-  if (language === "original" && !Object.keys(texts).length) return;
   if (language === "english" && !state.example) message("#output-status", "Preparing the English recipe. The source is shown during translation.");
   try {
     const output = await localizeOutput(recipe, language, texts);
@@ -715,18 +734,17 @@ async function updateOutput() {
   const sequence = state.outputRequest;
   const recipe = state.adaptation?.recipe ?? currentRecipe();
   const language = displayLanguage();
-  const texts = outputTexts(true);
+  const texts = outputTexts(state.adaptation);
   renderAdaptation();
   renderVeganOption();
-  const applyOutput = (output) => {
+  const applyOutput = (output, readyToExport = true) => {
     state.output = output;
     renderAdaptation();
     renderVeganOption();
-    $("#export-recipe").disabled = false;
+    $("#export-recipe").disabled = !readyToExport;
   };
   if (language === "original") {
-    applyOutput({language, recipe});
-    if (!Object.keys(texts).length) return;
+    applyOutput({language, recipe, texts: {}}, false);
   } else if (!state.example) {
     message("#output-status", "Preparing the English recipe…");
   }
@@ -737,6 +755,7 @@ async function updateOutput() {
     message("#output-status");
   } catch (error) {
     if (sequence !== state.outputRequest || state.screen !== "adapt") return;
+    if (language === "original") $("#export-recipe").disabled = false;
     const recovery = language === "english" ? "Uncheck English output to view and export the original language." : "The original recipe is available with the recorded notes.";
     message("#output-status", `${error.message} ${recovery}`, true);
   }

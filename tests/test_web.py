@@ -3,12 +3,13 @@ import json
 import tempfile
 import threading
 import unittest
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pymupdf
 from PIL import Image
@@ -17,6 +18,7 @@ from cookbook_ocr.raster import run_pdf_task
 from cookbook_ocr.scaling_plan import validate_scaling_plan
 from cookbook_ocr.translation import TranslationError
 from cookbook_ocr.web import CookbookHandler
+from test_adaptation import field, ingredient, recipe, step, vegan_plan
 
 
 class RequestSocket:
@@ -102,6 +104,63 @@ class WebTests(unittest.TestCase):
             status, _, _ = self.request("POST", "/api/output", json.dumps(data), {"Content-Type": "application/json"})
         self.assertEqual(status, 400)
         load_key.assert_not_called()
+
+    def test_output_reuses_validated_templates_for_servings_vegan_and_language_switches(self):
+        source = recipe("4", [ingredient("butter", "Butter", "10", "g")],
+                        [step("10 g Butter schmelzen.", "butter")])
+        source["title"] = field("Suppe")
+        plan = vegan_plan(source, [
+            ("/ingredients/0/name", "Butter", "Margarine"),
+            ("/steps/0/instruction", "10 g Butter schmelzen.", "10 g Margarine schmelzen."),
+        ])
+        scaled_vegan = deepcopy(source)
+        scaled_vegan["ingredients"][0]["name"] = field("Margarine", "derived")
+        scaled_vegan["ingredients"][0]["quantity"] = field("20", "derived")
+        scaled_vegan["steps"][0]["instruction"] = field("20 g Margarine schmelzen.", "derived")
+        model = Mock()
+        known = {
+            "Suppe": "Soup", "Butter": "Butter", "Margarine": "Margarine",
+            "[MEASURE_A] Butter schmelzen.": "Melt [MEASURE_A] of butter.",
+            "[MEASURE_A] Margarine schmelzen.": "Melt [MEASURE_A] of margarine.",
+            "Check the quantity.": "Check the quantity.", "Menge prüfen.": "Check the amount.",
+        }
+
+        def respond(**payload):
+            request = json.loads(payload["input"][1]["content"])
+            return json.dumps({"translations": [
+                {"path": item["path"], "text": known.get(item["text"], item["text"]) if request["language"] == "english"
+                 else "Menge prüfen."}
+                for item in request["fields"]
+            ]})
+
+        model.respond.side_effect = respond
+
+        def output(current, language="english", **extra):
+            data = {"recipe": current, "output_language": language, "translation_session": "cache-test", **extra}
+            status, _, body = self.request("POST", "/api/output", json.dumps(data), {"Content-Type": "application/json"})
+            self.assertEqual(status, 200, body)
+            return json.loads(body)["output"]
+
+        with patch("cookbook_ocr.web.load_openai_key", return_value="test"), patch(
+            "cookbook_ocr.web.OpenAIClient", return_value=model,
+        ), patch("cookbook_ocr.web._TRANSLATION_CACHE", OrderedDict()):
+            first = output(source, texts={"review": "Menge prüfen."}, vegan_plan=plan,
+                           prefetch_texts=["Check the quantity."])
+            self.assertEqual(first["texts"], {"review": "Check the amount."})
+            self.assertEqual(model.respond.call_count, 1)
+            adapted = output(scaled_vegan, source_recipe=source, texts={"adapted": "Check the quantity."})
+            self.assertEqual(adapted["recipe"]["steps"][0]["instruction"]["value"], "Melt 20 g of margarine.")
+            self.assertEqual(adapted["texts"], {"adapted": "Check the quantity."})
+            self.assertEqual(model.respond.call_count, 1)
+
+            original = output(scaled_vegan, "original", source_recipe=source, texts={"adapted": "Check the quantity."})
+            self.assertEqual(original["recipe"], scaled_vegan)
+            self.assertEqual(original["texts"], {"adapted": "Menge prüfen."})
+            self.assertEqual(model.respond.call_count, 2)
+            self.assertEqual(output(scaled_vegan, source_recipe=source)["recipe"], adapted["recipe"])
+            self.assertEqual(model.respond.call_count, 2)
+            self.assertEqual([json.loads(call.kwargs["input"][1]["content"])["language"]
+                              for call in model.respond.call_args_list], ["english", "original"])
 
     def test_serve_assets_without_exposing_files_above_asset_directory(self):
         with tempfile.TemporaryDirectory() as temporary:

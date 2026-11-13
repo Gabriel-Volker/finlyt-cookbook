@@ -98,6 +98,100 @@ class TranslationTests(unittest.TestCase):
                 self.response({**ENGLISH, path: text})
                 translate_recipe(self.openai, self.recipe)
 
+    def test_rejects_the_ten_minute_inversion_and_accepts_equivalent_maximums(self):
+        path = "/steps/0/instruction"
+        self.recipe["steps"][0]["instruction"] = field("Die Sauce nicht länger als 10 Minuten kochen.")
+        self.response({**ENGLISH, path: "Boil the sauce for longer than [MEASURE_A]."})
+        with self.assertRaisesRegex(TranslationError, "negation or a recipe limit"):
+            translate_recipe(self.openai, self.recipe)
+
+        self.response({**ENGLISH, path: "Do not stir and boil the sauce for longer than [MEASURE_A]."})
+        with self.assertRaisesRegex(TranslationError, "negation or a recipe limit"):
+            translate_recipe(self.openai, self.recipe)
+
+        for reply in (
+            "Boil the sauce for at most [MEASURE_A].",
+            "Do not boil the sauce for longer than [MEASURE_A].",
+            "Boil the sauce for [MEASURE_A] or less.",
+        ):
+            with self.subTest(reply=reply):
+                self.response({**ENGLISH, path: reply})
+                result = translate_recipe(self.openai, self.recipe)
+                self.assertIn("10 min", result["steps"][0]["instruction"]["value"])
+
+    def test_compares_each_minimum_and_maximum_without_loosening_a_strict_limit(self):
+        path = "/steps/0/instruction"
+        self.recipe["steps"][0]["instruction"] = field("Cozinhe por no mínimo 5 minutos e por menos de 10 minutos.")
+        for reply in (
+            "Cook for at most [MEASURE_A] and for less than [MEASURE_B].",
+            "Cook for at least [MEASURE_A] and for at most [MEASURE_B].",
+            "Cook for [MEASURE_A] and for [MEASURE_B].",
+        ):
+            with self.subTest(reply=reply), self.assertRaisesRegex(TranslationError, "negation or a recipe limit"):
+                self.response({**ENGLISH, path: reply})
+                translate_recipe(self.openai, self.recipe)
+
+        self.response({**ENGLISH, path: "Cook for at least [MEASURE_A] and for less than [MEASURE_B]."})
+        result = translate_recipe(self.openai, self.recipe)
+        self.assertEqual(result["steps"][0]["instruction"]["value"], "Cook for at least 5 min and for less than 10 min.")
+
+    def test_rejects_a_lost_or_moved_negation_without_any_numbers(self):
+        path = "/steps/0/instruction"
+        self.recipe["steps"][0]["instruction"] = field("Não mexa. Depois cubra.")
+        for reply in ("Stir. Then cover.", "Stir. Then do not cover."):
+            with self.subTest(reply=reply), self.assertRaisesRegex(TranslationError, "negation or a recipe limit"):
+                self.response({**ENGLISH, path: reply})
+                translate_recipe(self.openai, self.recipe)
+
+        self.response({**ENGLISH, path: "Do not stir. Then cover."})
+        result = translate_recipe(self.openai, self.recipe)
+        self.assertEqual(result["steps"][0]["instruction"]["value"], "Do not stir. Then cover.")
+
+    def test_accepts_a_negated_condition_moved_to_start_of_sentence(self):
+        path = "/steps/0/instruction"
+        self.recipe["steps"][0]["instruction"] = field("Den Braten, wenn er nicht geschnitten ist, in die Soße legen.")
+        translated = "If the roast has not been sliced, place it in the sauce."
+        self.response({**ENGLISH, path: translated})
+        result = translate_recipe(self.openai, self.recipe)
+        self.assertEqual(result["steps"][0]["instruction"]["value"], translated)
+
+        self.response({**ENGLISH, path: "If the roast has been sliced, do not place it in the sauce."})
+        with self.assertRaisesRegex(TranslationError, "negation or a recipe limit"):
+            translate_recipe(self.openai, self.recipe)
+
+    def test_accepts_not_until_after_as_an_equivalent_time_bound(self):
+        path = "/steps/0/instruction"
+        self.recipe["steps"][0]["instruction"] = field("Soll der Braten erst nach 8 Tagen zubereitet werden, gießt man es kalt darauf.")
+        self.response({**ENGLISH, path: "If the roast is not to be prepared until after [MEASURE_A], pour it over cold."})
+        result = translate_recipe(self.openai, self.recipe)
+        self.assertIn("until after 8 days", result["steps"][0]["instruction"]["value"])
+
+        self.recipe["steps"][0]["instruction"] = field("Não mexa e cubra.")
+        self.response({**ENGLISH, path: "Stir and do not cover."})
+        with self.assertRaisesRegex(TranslationError, "negation or a recipe limit"):
+            translate_recipe(self.openai, self.recipe)
+
+    def test_preserves_a_numeric_range_across_equivalent_wording(self):
+        path = "/steps/0/instruction"
+        self.recipe["steps"][0]["instruction"] = field("Cozinhe por entre 5 e 10 minutos.")
+        self.response({**ENGLISH, path: "Cook for [MEASURE_A] and [MEASURE_B]."})
+        with self.assertRaisesRegex(TranslationError, "negation or a recipe limit"):
+            translate_recipe(self.openai, self.recipe)
+
+        self.response({**ENGLISH, path: "Cook for between [MEASURE_A] and [MEASURE_B]."})
+        result = translate_recipe(self.openai, self.recipe)
+        self.assertEqual(result["steps"][0]["instruction"]["value"], "Cook for between 5 and 10 min.")
+
+    def test_original_language_notes_preserve_inclusive_bounds_and_prohibitions(self):
+        notes = {"time": "Do not boil for longer than 10 minutes. Do not stir."}
+        self.response({"/display/0": "Länger als [MEASURE_A] Minuten kochen. Nicht umrühren."})
+        with self.assertRaisesRegex(TranslationError, "negation or a recipe limit"):
+            translate_output(self.openai, self.recipe, notes, language="original")
+
+        self.response({"/display/0": "Höchstens [MEASURE_A] Minuten kochen. Nicht umrühren."})
+        result = translate_output(self.openai, self.recipe, notes, language="original")
+        self.assertEqual(result["texts"], {"time": "Höchstens 10 Minuten kochen. Nicht umrühren."})
+
     def test_rejects_translation_that_is_missing_uncertain_or_edits_unknown_fields(self):
         without_title = {path: text for path, text in ENGLISH.items() if path != "/title"}
         for fields in (without_title, {**ENGLISH, "/title": None}, {**ENGLISH, "/ingredients/0/id": "pear"}):

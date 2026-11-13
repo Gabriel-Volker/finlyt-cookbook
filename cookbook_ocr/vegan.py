@@ -15,6 +15,8 @@ EDITABLE_FIELDS = {
     "steps": {"instruction", "condition", "duration"},
 }
 VEGAN_PLAN_VERSION = 2
+VEGAN_AMOUNT_WARNING = "Confirm the amount of the vegan replacement."
+VEGAN_UNIT_WARNING = "Confirm the unit for the vegan replacement."
 PLAN_STATUSES = ("ready", "needs_review", "unavailable")
 REMOVABLE_FIELDS = {"preparation", "condition", "duration"}
 TIME_UNITS = frozenset(
@@ -336,7 +338,7 @@ def veganize(
             if keys[0] == "ingredients" and keys[2] == "name":
                 quantity, unit = record["quantity"], record["unit"]
                 if quantity["value"] is None or quantity["status"] == "needs_review":
-                    warn(path.removesuffix("/name") + "/quantity", "Confirm the amount of the vegan replacement.")
+                    warn(path.removesuffix("/name") + "/quantity", VEGAN_AMOUNT_WARNING)
                 if unit["status"] == "needs_review":
-                    warn(path.removesuffix("/name") + "/unit", "Confirm the unit for the vegan replacement.")
+                    warn(path.removesuffix("/name") + "/unit", VEGAN_UNIT_WARNING)
         change(path, field, item["after"], item["reason"])

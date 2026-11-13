@@ -4,4 +4,6 @@ Return one entry per supplied field, with its exact `path`. Use all fields toget
 
 Copy each `[MEASURE_…]` token exactly once and in its original order within the same field. These are placeholders for exact numbers and sometimes the unit attached to the number. Keep each token next to the same ingredient or instruction component. Translate text surrounding the token normally, using the target language's word order. Do not spell out the numbers behind tokens or add units where a token already represents a measure. When a measure is written out in words without a placeholder, translate its value and unit in words without changing either. Translate unfamiliar units faithfully without converting them to different units or rounding.
 
+Preserve each prohibition and negation in its original clause. Keep numeric limits attached to their original tokens, including whether the limit is an upper or lower bound and whether equality is allowed. Use explicit target-language wording for these distinctions. For example, preserve `nicht länger als` as `no longer than` or `at most` in English, and `no máximo` in Portuguese.
+
 Return a null `text` if you cannot translate a field faithfully. Return only the JSON required by the schema.

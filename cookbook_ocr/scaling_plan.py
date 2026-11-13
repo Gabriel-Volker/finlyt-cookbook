@@ -137,13 +137,18 @@ def _supports_ingredient_mode(fields: dict, references: list[dict], index: int, 
     return False
 
 
+_FIXED_AMOUNT_WARNING = "The recipe specifies a fixed amount. Check the proportional scaling rule."
+_PER_BATCH_AMOUNT_WARNING = "The recipe specifies an amount per batch. Check the proportional scaling rule."
+SCALING_RULE_DISPLAY_TEXTS = (_FIXED_AMOUNT_WARNING, _PER_BATCH_AMOUNT_WARNING)
+
+
 def proportional_source_conflict(recipe: dict, index: int, ingredient: dict) -> str | None:
     """Do not multiply an amount with an explicit fixed or per-batch instruction."""
     fields = _evidence_fields(recipe, index, ingredient)
     prefix = f"/ingredients/{index}/"
     for wording, reason in (
-        (_FIXED_AMOUNT, "The recipe specifies a fixed amount. Check the proportional scaling rule."),
-        (_PER_BATCH_AMOUNT, "The recipe specifies an amount per batch. Check the proportional scaling rule."),
+        (_FIXED_AMOUNT, _FIXED_AMOUNT_WARNING),
+        (_PER_BATCH_AMOUNT, _PER_BATCH_AMOUNT_WARNING),
     ):
         references = []
         for path, field in fields.items():

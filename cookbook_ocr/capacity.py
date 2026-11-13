@@ -78,15 +78,21 @@ def _keeps_vessel_batch_size(instruction: str, names: set[str]) -> bool:
     )
 
 
+VESSEL_CAPACITY_WARNING = "Check whether this cooking vessel fits the larger batch or cook it in batches."
+VESSEL_SIZE_WARNING = "Check whether the larger batch fits the vessel with stated {description} ({value}) or cook it in batches."
+VESSEL_DISPLAY_TEXTS = (
+    VESSEL_CAPACITY_WARNING,
+    VESSEL_SIZE_WARNING.format(description="capacity", value="2 L"),
+    VESSEL_SIZE_WARNING.format(description="dimensions", value="20 cm"),
+)
+
+
 def _reason(size: tuple[str, str] | None) -> str:
     if size is None:
-        return "Check whether this cooking vessel fits the larger batch or cook it in batches."
+        return VESSEL_CAPACITY_WARNING
     kind, value = size
     description = "capacity" if kind == "volume" else "dimensions"
-    return (
-        f"Check whether the larger batch fits the vessel with stated {description} "
-        f"({value}) or cook it in batches."
-    )
+    return VESSEL_SIZE_WARNING.format(description=description, value=value)
 
 
 def review_vessel_capacity(
