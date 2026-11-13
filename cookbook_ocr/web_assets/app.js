@@ -12,7 +12,7 @@ const state = {
   screen: "import", file: null, filename: "", report: null, example: false,
   tab: "ingredients", selected: 0, pages: 1, page: 1,
   review: null, reviewPath: "", reviewing: false,
-  veganPlan: null,
+  scalingPlan: null, veganPlan: null,
   adaptation: null, adaptRequest: 0, previewRequest: 0, busy: false,
   previewReading: "A",
   previews: new Map(),
@@ -79,6 +79,7 @@ function loadReport(report, file) {
   state.review = null;
   state.reviewPath = "";
   state.reviewing = false;
+  state.scalingPlan = report.scaling_plan ?? null;
   state.veganPlan = report.vegan_plan ?? null;
   state.adaptation = null;
   state.adaptRequest++;
@@ -123,7 +124,7 @@ async function importRecipe(file) {
       method: "POST", headers: {"Content-Type": "application/octet-stream"}, body: file,
     });
     loadReport(report, file);
-  }, "Reading the recipe and preparing a vegan plan…");
+  }, "Reading the recipe and preparing adaptation plans…");
 }
 
 async function runImport(action, progress) {
@@ -363,6 +364,18 @@ function hasVeganPlan() {
   return ["ready", "needs_review"].includes(state.veganPlan?.status);
 }
 
+function veganSelected() {
+  return hasVeganPlan() && $("#vegan").getAttribute("aria-checked") === "true";
+}
+
+function currentScalingPlan(vegan) {
+  return state.scalingPlan?.[vegan ? "vegan" : "original"];
+}
+
+function hasScalingPlan(vegan) {
+  return ["ready", "needs_review"].includes(currentScalingPlan(vegan)?.status);
+}
+
 function renderVeganOption() {
   const control = $("#vegan");
   const available = hasVeganPlan();
@@ -389,19 +402,21 @@ async function saveFieldReview(action) {
   if (action) decisions.push({path, action, value: verified});
 
   setReviewBusy(true);
-  message("#field-review-status", state.veganPlan && !state.example
-    ? "Saving review and checking the vegan plan…" : "Saving review…");
+  message("#field-review-status", !state.example
+    ? "Saving review and checking adaptation plans…" : "Saving review…");
   try {
     const result = await request("/api/review", {
       method: "POST", headers: {"Content-Type": "application/json"},
       body: JSON.stringify({report: {
         recipe: report.recipe,
+        scaling_plan: state.scalingPlan,
         vegan_plan: state.veganPlan,
         example: state.example,
       }, decisions}),
     });
     if (report !== state.report) return;
     state.review = result.review;
+    state.scalingPlan = result.scaling_plan ?? null;
     state.veganPlan = result.vegan_plan ?? null;
     state.adaptation = null;
     state.adaptRequest++;
@@ -437,8 +452,18 @@ async function updateAdaptation() {
   const target = $("#target-servings");
   const servings = quantityField(target);
   const baseline = original.readOnly ? null : quantityField(original);
-  const vegan = hasVeganPlan() && $("#vegan").getAttribute("aria-checked") === "true";
+  const vegan = veganSelected();
   const invalid = !target.checkValidity() || (servings !== null && !original.checkValidity());
+  if (servings !== null && !hasScalingPlan(vegan)) {
+    state.adaptation = null;
+    renderAdaptation();
+    const recovery = vegan && hasScalingPlan(false)
+      ? "Clear the target servings to make the recipe vegan, or turn off Make vegan to scale the original."
+      : "Clear the target servings to continue.";
+    message("#adapt-status", recovery, true);
+    $("#export-recipe").disabled = true;
+    return;
+  }
   if (invalid || (servings !== null && !original.readOnly && baseline === null)) {
     state.adaptation = null;
     renderAdaptation();
@@ -462,6 +487,7 @@ async function updateAdaptation() {
         report: {
           recipe: state.report.recipe,
           ...(state.review ? {review: {decisions: state.review.decisions}} : {}),
+          ...(servings !== null ? {scaling_plan: state.scalingPlan} : {}),
           ...(vegan ? {vegan_plan: state.veganPlan} : {}),
         },
         servings,
@@ -490,6 +516,23 @@ function reviewLabel(path) {
   return stepLabel(item || {}, Number(match[2]));
 }
 
+const scalingLabels = {
+  proportional: "Proportional",
+  fixed: "Keep original amount",
+  per_batch: "Per batch",
+  review: "Review required",
+};
+
+function scalingExplanation(rule) {
+  if (!rule) return "";
+  const label = scalingLabels[rule.mode];
+  const count = rule.batches ? `${rule.batches} ${rule.batches === 1 ? "batch" : "batches"}` : "";
+  const perBatch = [rule.per_batch_quantity, rule.per_batch_unit].filter(Boolean).join(" ");
+  const factor = rule.multiplier && rule.mode !== "fixed" ? `×${rule.multiplier}` : "";
+  const details = [label, count || factor, perBatch && `${perBatch} each`, rule.reason].filter(Boolean).join(" · ");
+  return `<small class="change-reason">${escape(details)}</small>`;
+}
+
 function renderAdaptation() {
   const original = currentRecipe();
   const adapted = state.adaptation;
@@ -502,9 +545,17 @@ function renderAdaptation() {
   $("#adapt-subtitle").textContent = [adaptationLabel,
     target ? countLabel(target, "serving") : ""].filter(Boolean).join(" · ");
   const factor = adapted?.scale?.factor;
-  $("#target-hint").textContent = factor ? `Serving scale factor: ${factor}.` : "Enter a target to scale quantities.";
+  const vegan = veganSelected();
+  const canScale = hasScalingPlan(vegan);
+  const hasVegan = hasVeganPlan();
+  $("#target-hint").textContent = !canScale
+    ? currentScalingPlan(vegan)?.reason || (vegan ? "Serving adjustment is unavailable for the vegan recipe."
+      : "Serving adjustment is unavailable for this recipe.")
+    : factor ? `Serving scale factor: ${factor}.` : "Enter a target to scale quantities.";
   const changes = adapted?.changes || [];
   const changeReasons = new Map(changes.map(({path, reason}) => [path, reason]));
+  const scalingRules = new Map((adapted?.scale?.ingredients || []).map((rule) => [rule.ingredient_id, rule]));
+  $("#changes-title").textContent = scalingRules.size ? "Ingredient adjustments" : "Selected changes";
   $("#change-count").textContent = `${changes.length} total`;
   const rows = original.ingredients.flatMap((item, index) => {
     const changed = adapted?.recipe.ingredients[index];
@@ -513,18 +564,22 @@ function renderAdaptation() {
     const afterName = ingredientLabel(changed);
     const beforeAmount = ingredientAmount(item);
     const afterAmount = ingredientAmount(changed);
-    if (beforeName === afterName && beforeAmount === afterAmount) return [];
+    const rule = scalingRules.get(item.id);
+    if (beforeName === afterName && beforeAmount === afterAmount && !rule) return [];
     const showName = beforeName !== afterName;
     const before = showName ? [beforeName, beforeAmount].filter(Boolean).join(" · ") : beforeAmount;
     const after = showName ? [afterName, afterAmount].filter(Boolean).join(" · ") : afterAmount;
     const reason = showName ? changeReasons.get(`/ingredients/${index}/name`) : null;
     return `<tr><th scope="row">${escape(beforeName)}</th><td>${escape(before || "—")}</td>
-      <td class="changed-value">${escape(after || "—")}${reason ? `<small class="change-reason">${escape(reason)}</small>` : ""}</td></tr>`;
+      <td class="changed-value">${escape(after || "—")}${reason ? `<small class="change-reason">${escape(reason)}</small>` : ""}${scalingExplanation(rule)}</td></tr>`;
   }).join("");
+  let emptyMessage = "No adaptation is available for this recipe.";
+  if (adapted) emptyMessage = "No ingredient changes.";
+  else if (canScale && hasVegan) emptyMessage = "Adjust servings or enable Make vegan to see changes.";
+  else if (canScale) emptyMessage = "Adjust servings to see ingredient changes.";
+  else if (hasVegan) emptyMessage = "Enable Make vegan to see substitutions.";
   $("#changes").innerHTML = rows ? table(["Ingredient", "Original", "Adapted"], rows)
-    : `<p class="empty">${adapted ? "No ingredient changes." : hasVeganPlan()
-      ? "Adjust the servings or enable the vegan plan to see ingredient changes."
-      : "Adjust the servings to see ingredient changes."}</p>`;
+    : `<p class="empty">${emptyMessage}</p>`;
   const reviews = adapted?.review_items || [];
   const banner = $("#adaptation-review");
   banner.hidden = !reviews.length;
@@ -542,6 +597,8 @@ function renderAdaptation() {
 function exportReport() {
   const report = {...state.report};
   if (state.review) report.review = state.review;
+  if (state.scalingPlan) report.scaling_plan = state.scalingPlan;
+  else delete report.scaling_plan;
   if (state.veganPlan) report.vegan_plan = state.veganPlan;
   else delete report.vegan_plan;
   if (state.adaptation) report.adaptation = state.adaptation;

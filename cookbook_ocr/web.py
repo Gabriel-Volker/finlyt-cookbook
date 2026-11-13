@@ -16,7 +16,7 @@ from PIL import Image, ImageOps
 
 from .__main__ import load_api_keys, load_openai_key
 from .adaptation import adapt_recipe
-from .pipeline import UnreadableRecipeError, plan_vegan_recipe, run_pipeline
+from .pipeline import UnreadableRecipeError, plan_vegan_recipe, refresh_scaling_plans, run_pipeline
 from .providers import GeminiClient, MIME_TYPES, OpenAIClient, ProviderError
 from .raster import run_pdf_task
 from .review import review_recipe
@@ -178,6 +178,10 @@ class CookbookHandler(BaseHTTPRequestHandler):
                 response = {"review": review}
                 if "vegan_plan" in report:
                     response["vegan_plan"] = self._refresh_plan(report, review["recipe"])
+                if "scaling_plan" in report:
+                    response["scaling_plan"] = self._refresh_scaling(
+                        report, review["recipe"], response.get("vegan_plan"),
+                    )
                 self._json(response)
                 return
             if url.path == "/api/adapt":
@@ -222,6 +226,16 @@ class CookbookHandler(BaseHTTPRequestHandler):
             return {"status": "unavailable", "reason": "Set OPENAI_API_KEY to refresh the vegan plan."}
         return plan_vegan_recipe(OpenAIClient(key), recipe)
 
+    def _refresh_scaling(self, report: dict, recipe: dict, vegan_plan: dict | None) -> dict:
+        if report.get("example") is True:
+            example = json.loads((ASSETS / "example.json").read_text(encoding="utf-8"))
+            return refresh_scaling_plans(None, recipe, vegan_plan, example.get("scaling_plan"))
+        try:
+            client = OpenAIClient(load_openai_key())
+        except (OSError, ValueError):
+            client = None
+        return refresh_scaling_plans(client, recipe, vegan_plan, report.get("scaling_plan"))
+
     def _adapt(self) -> dict:
         data, report = self._recipe_request()
         vegan = data.get("vegan", False)
@@ -240,6 +254,7 @@ class CookbookHandler(BaseHTTPRequestHandler):
                 recipe, servings=data.get("servings"),
                 original_servings=data.get("original_servings"), vegan=vegan,
                 vegan_plan=report.get("vegan_plan"),
+                scaling_plan=report.get("scaling_plan"),
             )
         except (AttributeError, KeyError, TypeError):
             raise RequestError("The extraction report contains an invalid recipe object.") from None

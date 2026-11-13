@@ -1,0 +1,33 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rules"],
+  "properties": {
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ingredient_id", "mode", "reason", "batch_servings", "evidence"],
+        "properties": {
+          "ingredient_id": {"type": "string"},
+          "mode": {"type": "string", "enum": ["proportional", "fixed", "per_batch", "review"]},
+          "reason": {"type": "string"},
+          "batch_servings": {"type": ["integer", "null"]},
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "quote"],
+              "properties": {
+                "path": {"type": "string"},
+                "quote": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

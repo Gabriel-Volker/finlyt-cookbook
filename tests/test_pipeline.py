@@ -201,16 +201,30 @@ class PipelineTests(unittest.TestCase):
                          "reason": "Provide smoky flavour with a firm texture."}],
             "review_items": [],
         }
-        self.openai.respond.side_effect = [json.dumps(output) for output in (
-            {"review_items": [], "equivalent_variations": []}, candidate, proposal,
-        )]
+        def respond(**call):
+            name = call["text"]["format"]["name"]
+            if name == "transcription_comparison":
+                return json.dumps({"review_items": [], "equivalent_variations": []})
+            if name == "recipe_extraction":
+                return json.dumps(candidate)
+            if name == "vegan_plan":
+                return json.dumps(proposal)
+            supplied = json.loads(call["input"][1]["content"])["recipe"]
+            return json.dumps({"rules": [{
+                "ingredient_id": "bacon", "mode": "review", "batch_servings": None,
+                "reason": supplied["ingredients"][0]["name"]["value"] + " has no numeric amount.", "evidence": [],
+            }]})
+
+        self.openai.respond.side_effect = respond
         report = run_pipeline(DOCUMENT, "recipe.pdf", self.gemini, self.openai)
-        call = self.openai.respond.call_args.kwargs
+        call = self.openai.respond.call_args_list[2].kwargs
         self.assertEqual(call["text"]["format"]["name"], "vegan_plan")
         supplied = json.loads(call["input"][1]["content"])["recipe"]
         self.assertEqual(supplied["ingredients"][0]["name"], {"value": "bacon", "status": "stated"})
         self.assertEqual(report["recipe"]["ingredients"][0]["name"]["value"], "bacon")
         self.assertEqual(report["vegan_plan"]["changes"][0]["after"], "smoked tempeh")
+        self.assertEqual(report["scaling_plan"]["original"]["rules"][0]["reason"], "bacon has no numeric amount.")
+        self.assertEqual(report["scaling_plan"]["vegan"]["rules"][0]["reason"], "smoked tempeh has no numeric amount.")
 
         self.openai.respond.side_effect = None
         self.openai.respond.return_value = json.dumps({"changes": [{"path": "/bad"}], "review_items": []})

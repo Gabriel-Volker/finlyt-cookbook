@@ -4,6 +4,7 @@ from fractions import Fraction
 
 from cookbook_ocr.adaptation import adapt_recipe
 from cookbook_ocr.quantities import scale_quantity
+from cookbook_ocr.scaling_plan import validate_scaling_plan
 from cookbook_ocr.vegan import validate_vegan_plan
 
 
@@ -47,6 +48,18 @@ def vegan_plan(source, changes, review_items=()):
     })
 
 
+def scaling_rule(ingredient_id, mode="proportional", *, reason=None, batch_servings=None, evidence=()):
+    return {
+        "ingredient_id": ingredient_id, "mode": mode,
+        "reason": reason or "Scale with the servings.", "batch_servings": batch_servings,
+        "evidence": [{"path": path, "quote": quote} for path, quote in evidence],
+    }
+
+
+def scaling_plan(source, *rules, variant="original"):
+    return {variant: validate_scaling_plan(source, {"rules": list(rules)})}
+
+
 class AdaptationTests(unittest.TestCase):
     def test_scale_updates_only_linked_measures_and_yield_in_steps(self):
         source = recipe("Serves 2", [
@@ -59,7 +72,8 @@ class AdaptationTests(unittest.TestCase):
             step("Divide into 2 servings."),
         ])
         original = deepcopy(source)
-        result = adapt_recipe(source, servings=4)
+        plan = scaling_plan(source, scaling_rule("milk"), scaling_rule("flour"), scaling_rule("onions"))
+        result = adapt_recipe(source, servings=4, scaling_plan=plan)
         self.assertEqual(source, original)
         self.assertEqual(result["scale"]["original_servings_source"], "recipe")
         self.assertEqual(result["recipe"]["servings"]["value"], "4")
@@ -87,7 +101,7 @@ class AdaptationTests(unittest.TestCase):
                     adapt_recipe(source, servings=6)
                 with self.assertRaisesRegex(ValueError, "positive"):
                     adapt_recipe(source, servings=6, original_servings=0)
-                result = adapt_recipe(source, servings=6, original_servings=4)
+                result = adapt_recipe(source, servings=6, original_servings=4, scaling_plan=scaling_plan(source))
                 self.assertEqual(result["scale"]["original_servings_source"], "user")
                 self.assertEqual(result["scale"]["factor"], "3/2")
         with self.assertRaisesRegex(ValueError, "conflicts"):
@@ -103,14 +117,17 @@ class AdaptationTests(unittest.TestCase):
             step("Add 1 tbsp oil and season with salt.", "oil", "salt"),
         ])
         source["ingredients"][3]["quantity"] = field(None, "needs_review")
-        result = adapt_recipe(source, servings=4)
+        plan = scaling_plan(source, scaling_rule("salt", "review", reason="Season to taste."),
+                            scaling_rule("pepper", "review", reason="The source gives no quantity."),
+                            scaling_rule("oil"), scaling_rule("oats", "review", reason="Resolve the disputed amount."))
+        result = adapt_recipe(source, servings=4, scaling_plan=plan)
         self.assertEqual(result["status"], "needs_review")
         self.assertEqual(result["recipe"]["steps"][0]["instruction"]["value"], source["steps"][0]["instruction"]["value"])
         quantities = [item["quantity"]["value"] for item in result["recipe"]["ingredients"]]
         self.assertEqual(quantities, ["to taste", None, "4", None])
         self.assertEqual(
             {item["path"] for item in result["review_items"]},
-            {"/ingredients/0/quantity", "/ingredients/3", "/steps/0/instruction"},
+            {"/ingredients/0/quantity", "/ingredients/1/quantity", "/ingredients/3", "/steps/0/instruction"},
         )
 
     def test_leaves_numeric_seasoning_and_frying_oil_for_manual_review(self):
@@ -126,7 +143,11 @@ class AdaptationTests(unittest.TestCase):
                  "salt", "pepper", "oil", "potatoes", duration="12 minutes"),
             step("Mix in 50 ml olive oil.", "olive-oil"),
         ])
-        result = adapt_recipe(source, servings=4)
+        plan = scaling_plan(source, scaling_rule("salt", "review", reason="Check the seasoning by taste."),
+                            scaling_rule("pepper", "review", reason="Check the seasoning by taste."),
+                            scaling_rule("oil", "review", reason="Check the oil level in the frying vessel."),
+                            scaling_rule("olive-oil"), scaling_rule("potatoes"))
+        result = adapt_recipe(source, servings=4, scaling_plan=plan)
         adapted = result["recipe"]
         self.assertEqual(result["status"], "needs_review")
         self.assertEqual(
@@ -148,7 +169,9 @@ class AdaptationTests(unittest.TestCase):
         source = recipe("2", [
             ingredient("pan-oil", "canola oil", "10", "ml", preparation="for greasing"),
         ], [step("Use 10 ml canola oil.", "pan-oil")])
-        result = adapt_recipe(source, servings=4)
+        plan = scaling_plan(source, scaling_rule("pan-oil", "review", reason="Check the pan coverage.",
+                                               evidence=(("/ingredients/0/preparation", "for greasing"),)))
+        result = adapt_recipe(source, servings=4, scaling_plan=plan)
         self.assertEqual(result["status"], "needs_review")
         self.assertEqual(result["recipe"]["ingredients"][0]["quantity"]["value"], "10")
         self.assertEqual(result["recipe"]["steps"][0]["instruction"]["value"], "Use 10 ml canola oil.")
@@ -168,7 +191,10 @@ class AdaptationTests(unittest.TestCase):
             ("/steps/0/instruction", "Render 200 g bacon in 50 g butter.",
              "Brown 200 g smoked tofu in 50 g vegan butter."),
         ], [("/ingredients/2/name", "Check how the eggs function in this recipe.")])
-        result = adapt_recipe(source, servings=3, vegan=True, vegan_plan=plan)
+        vegan_recipe = adapt_recipe(source, vegan=True, vegan_plan=plan)["recipe"]
+        scale_plan = scaling_plan(vegan_recipe, scaling_rule("bacon"), scaling_rule("butter"),
+                                  scaling_rule("eggs"), variant="vegan")
+        result = adapt_recipe(source, servings=3, vegan=True, vegan_plan=plan, scaling_plan=scale_plan)
         bacon, butter, _ = result["recipe"]["ingredients"]
         self.assertEqual(bacon["name"]["value"], "smoked tofu")
         self.assertEqual(butter["name"]["value"], "vegan butter")
@@ -223,7 +249,7 @@ class AdaptationTests(unittest.TestCase):
             step("Add 1 cup flour and mix for 2 minutes.", "flour", duration="2 minutes"),
             step("Add the remaining ½ cup flour.", "flour", condition="Once ½ cup flour is ready"),
         ])
-        result = adapt_recipe(source, servings=6)
+        result = adapt_recipe(source, servings=6, scaling_plan=scaling_plan(source, scaling_rule("flour")))
         self.assertEqual(result["status"], "applied")
         self.assertEqual(result["recipe"]["ingredients"][0]["quantity"]["value"], "4½")
         first, second = result["recipe"]["steps"]
@@ -238,7 +264,7 @@ class AdaptationTests(unittest.TestCase):
             step("Pour in 250 ml milk.", "milk"),
             step("Add ¾ l milk.", "milk"),
         ])
-        result = adapt_recipe(source, servings=4)
+        result = adapt_recipe(source, servings=4, scaling_plan=scaling_plan(source, scaling_rule("milk")))
         self.assertEqual(result["status"], "applied")
         self.assertEqual(
             [item["instruction"]["value"] for item in result["recipe"]["steps"]],
@@ -252,7 +278,7 @@ class AdaptationTests(unittest.TestCase):
                     step("Add 2 cups flour.", "flour"),
                     step(f"Add {second_amount} flour.", "flour"),
                 ])
-                result = adapt_recipe(source, servings=4)
+                result = adapt_recipe(source, servings=4, scaling_plan=scaling_plan(source, scaling_rule("flour")))
                 self.assertEqual(result["recipe"]["ingredients"][0]["quantity"]["value"], "4")
                 self.assertEqual(result["recipe"]["steps"], source["steps"])
                 self.assertEqual(result["status"], "needs_review")
@@ -260,6 +286,59 @@ class AdaptationTests(unittest.TestCase):
                     {item["path"] for item in result["review_items"]},
                     {"/steps/0/instruction", "/steps/1/instruction"},
                 )
+
+    def test_uses_fixed_and_per_batch_rules_across_serving_counts(self):
+        method = "Use 20 ml oil per batch of 4 servings, then mix in 200 g flour."
+        fixed_method = "Use 50 ml water once for the whole recipe."
+        source = recipe("4", [
+            ingredient("oil", "oil", "20", "ml"),
+            ingredient("flour", "flour", "200", "g"),
+            ingredient("water", "water", "50", "ml"),
+        ], [step(method, "oil", "flour"), step(fixed_method, "water")])
+        plan = scaling_plan(source,
+                            scaling_rule("oil", "per_batch", reason="Measure once per batch.", batch_servings=4,
+                                         evidence=(("/steps/0/instruction", "20 ml oil per batch of 4 servings"),)),
+                            scaling_rule("flour"),
+                            scaling_rule("water", "fixed", reason="Measure once for the recipe.",
+                                         evidence=(("/steps/1/instruction", fixed_method),)))
+        for servings, oil, flour, batches in ((2, "20", "100", 1), (6, "40", "300", 2), (9, "60", "450", 3)):
+            with self.subTest(servings=servings):
+                result = adapt_recipe(source, servings=servings, scaling_plan=plan)
+                self.assertEqual([item["quantity"]["value"] for item in result["recipe"]["ingredients"]],
+                                 [oil, flour, "50"])
+                oil_rule, _, water_rule = result["scale"]["ingredients"]
+                self.assertEqual(oil_rule["multiplier"], str(batches))
+                self.assertEqual(oil_rule["batches"], batches)
+                self.assertEqual(oil_rule["per_batch_quantity"], "20")
+                self.assertEqual(water_rule["multiplier"], "1")
+                self.assertEqual(result["recipe"]["steps"][0]["instruction"]["value"], method)
+                self.assertIn("/steps/0/instruction", {item["path"] for item in result["review_items"]})
+                self.assertEqual(result["recipe"]["steps"][1]["instruction"]["value"], fixed_method)
+
+    def test_unsupported_nonlinear_classifications_hold_original_quantities(self):
+        method = "Cook in batches of 4 servings. Add 20 ml oil and 50 ml water."
+        source = recipe("4", [ingredient("oil", "oil", "20", "ml"), ingredient("water", "water", "50", "ml")],
+                        [step(method, "oil", "water")])
+        plan = scaling_plan(source,
+                            scaling_rule("oil", "per_batch", reason="Assume a batch amount.", batch_servings=4,
+                                         evidence=(("/steps/0/instruction", method),)),
+                            scaling_rule("water", "fixed", reason="Assume a fixed amount.",
+                                         evidence=(("/ingredients/1/quantity", "50"),)))
+        self.assertEqual([rule["mode"] for rule in plan["original"]["rules"]], ["review", "review"])
+        result = adapt_recipe(source, servings=9, scaling_plan=plan)
+        self.assertEqual(result["status"], "needs_review")
+        self.assertEqual(result["recipe"]["ingredients"], source["ingredients"])
+        self.assertEqual(result["recipe"]["steps"], source["steps"])
+
+    def test_scaling_rejects_invented_evidence_and_plans_bound_to_stale_amounts(self):
+        source = recipe("4", [ingredient("oil", "oil", "20", "ml")], [step("Add 20 ml oil.", "oil")])
+        with self.assertRaisesRegex(ValueError, "quote verified text"):
+            scaling_plan(source, scaling_rule("oil", "fixed", reason="Measure once for the recipe.",
+                                             evidence=(("/steps/0/instruction", "Add 20 ml oil once for the whole recipe."),)))
+        plan = scaling_plan(source, scaling_rule("oil"))
+        source["ingredients"][0]["quantity"] = field("30", status="reviewed")
+        with self.assertRaisesRegex(ValueError, "current scaling plan"):
+            adapt_recipe(source, servings=9, scaling_plan=plan)
 
     def test_vegan_roast_uses_a_plant_sauce_and_adjusts_meat_only_steps(self):
         source = recipe(None, [ingredient("roast", "Bratenstücke")], [

@@ -18,6 +18,7 @@ from .quantities import (
     step_unit,
     unit_aliases,
 )
+from .scaling_plan import ingredient_scale_factor, scaling_plan_matches, validate_scaling_plan
 from .vegan import veganize
 
 
@@ -34,20 +35,6 @@ YIELD_INSTRUCTION = re.compile(
 QUANTITY_START = r"(?<![\w.,/⁄∕–—−-])(?<![0-9]\s)"
 ALTERNATE_AMOUNT = re.compile(r"\d\s+(?:or|oder|ou|to|bis|a|até)\s+$", re.IGNORECASE)
 REMAINING_AMOUNT = r"(?:(?:the\s+)?remaining\s+|(?:die\s+|den\s+|das\s+)?restlich\w*\s+)"
-SALT_NAMES = re.compile(
-    r"(?:(?:table|sea|kosher) salt|salt|sal(?: marinho| grosso| fino)?|"
-    r"(?:speise|meer|koch|tafel)salz|salz)", re.IGNORECASE
-)
-PEPPER_NAMES = re.compile(
-    r"(?:pepper|(?:(?:ground|cracked) )?(?:black|white) pepper|"
-    r"pimenta(?:[- ]do[- ]reino| preta| branca)|pfeffer|"
-    r"(?:(?:schwarz|weiß)er|gemahlener) pfeffer)", re.IGNORECASE
-)
-OIL_WORD = re.compile(r"\b(?:oil|[óo]leo|azeite|öl|[\w]+öl)\b", re.IGNORECASE)
-OIL_PURPOSE = (
-    r"(?:for (?:deep[- ]?)?frying|for greasing|to (?:grease|coat) the pan|"
-    r"para fritar|para untar|zum (?:frittieren|braten|einfetten))"
-)
 
 
 def _portion_count(field: dict) -> int | None:
@@ -60,48 +47,6 @@ def _portion_count(field: dict) -> int | None:
 
 def _phrase_pattern(text: str) -> str:
     return r"\s+".join(re.escape(word) for word in text.split())
-
-
-def _manual_scale_reason(ingredient: dict, steps: list[dict]) -> str | None:
-    name = ingredient["name"]["value"] or ""
-    normalized_name = " ".join(name.split())
-    unit = ingredient["unit"]["value"]
-    if SALT_NAMES.fullmatch(normalized_name) or (
-        PEPPER_NAMES.fullmatch(normalized_name)
-        and (unit or normalized_name.casefold() != "pepper")
-    ):
-        return "Check the seasoning by taste before changing its original amount."
-    if not OIL_WORD.search(normalized_name):
-        return None
-
-    preparation = ingredient["preparation"]["value"] or ""
-    if re.search(OIL_PURPOSE, f"{normalized_name} {preparation}", re.IGNORECASE):
-        return "Check how much oil is needed for the pan or frying vessel."
-
-    named_oil = _phrase_pattern(normalized_name)
-    units = "|".join(_phrase_pattern(alias) for alias in unit_aliases(unit)) if unit else ""
-    measure = rf"(?:{QUANTITY_PATTERN}\s*(?:{units})\s+(?:of\s+|de\s+)?)?" if units else ""
-    oil_reference = rf"{measure}{named_oil}(?!\w)"
-    linked_oil = re.compile(
-        rf"(?<!\w){named_oil}(?!\w)\s*[,(-]?\s*{OIL_PURPOSE}\b|"
-        rf"\b(?:fry[^.!?;,]{{0,80}}? in|fritar[^.!?;,]{{0,80}}? em|frite[^.!?;,]{{0,80}}? em)\s+{oil_reference}|"
-        rf"\b(?:grease|coat) (?:the )?pan with\s+{oil_reference}|"
-        rf"\bin\s+{oil_reference}\s+(?:braten|frittieren)\b",
-        re.IGNORECASE,
-    )
-    # Quotes may contain instructions which were extracted into a separate step.
-    quotes = [(field.get("evidence") or {}).get("quote") or "" for field in (
-        ingredient["name"], ingredient["quantity"], ingredient["unit"], ingredient["preparation"]
-    )]
-    instructions = [
-        step[key]["value"] or ""
-        for step in steps
-        if ingredient["id"] in step["ingredient_ids"]
-        for key in ("instruction", "condition")
-    ]
-    if any(linked_oil.search(text) for text in (*quotes, *instructions)):
-        return "Check how much oil is needed for the pan or frying vessel."
-    return None
 
 
 def _ingredient_measure_patterns(ingredient: dict) -> tuple[re.Pattern, ...]:
@@ -224,7 +169,7 @@ def _apply_step_edits(text, edits, warn):
     return text
 
 
-def _scale_steps(recipe, measures, original_servings, servings, factor, change, warn):
+def _scale_steps(recipe, measures, batch_ingredients, original_servings, servings, change, warn):
     edits_by_path = {}
     owners = {}
     step_amounts = {
@@ -240,13 +185,17 @@ def _scale_steps(recipe, measures, original_servings, servings, factor, change, 
             for path in dict.fromkeys(item.path for item in amounts):
                 warn(path, "A step measure could belong to more than one linked ingredient.")
             continue
-        quantity, unit, scaled, scaled_unit, _ = measures[ingredient_id]
+        quantity, unit, scaled, scaled_unit, factor, _ = measures[ingredient_id]
         for item, replacement in _step_amounts_for_scale(
             amounts, quantity, unit, scaled, scaled_unit, factor, warn
         ):
             edits_by_path.setdefault(item.path, {}).setdefault((item.start, item.end), set()).add(replacement)
 
     for index, step in enumerate(recipe["steps"]):
+        if batch_ingredients.intersection(step["ingredient_ids"]):
+            if any(f"/steps/{index}/{key}" in edits_by_path for key in ("instruction", "condition")):
+                warn(f"/steps/{index}/instruction", "Check this step's amounts for each batch. The ingredient list shows totals.")
+            continue
         for key in ("instruction", "condition"):
             field = step[key]
             text = field["value"]
@@ -260,12 +209,12 @@ def _scale_steps(recipe, measures, original_servings, servings, factor, change, 
                 else:
                     warn(path, "Check the number of portions named in this step against the recipe yield.")
             updated = _apply_step_edits(text, edits, lambda reason: warn(path, reason))
-            change(path, field, updated, "Apply the serving factor to measures identified in this step.")
+            change(path, field, updated, "Apply each ingredient's scaling rule to matched measures in this step.")
 
 
 def adapt_recipe(
     recipe: dict, *, servings: int | None = None, original_servings: int | None = None,
-    vegan: bool = False, vegan_plan: dict | None = None,
+    vegan: bool = False, vegan_plan: dict | None = None, scaling_plan: dict | None = None,
 ) -> dict:
     """Return the adapted recipe and explain the changes without mutating the extraction."""
     for count in (servings, original_servings):
@@ -304,45 +253,64 @@ def adapt_recipe(
         if recipe_count is not None and yield_field["status"] == "reviewed":
             source = "review"
         factor = Fraction(servings, source_count)
+        variant = "vegan" if vegan else "original"
+        plan = scaling_plan.get(variant) if isinstance(scaling_plan, dict) else None
+        rules = []
+        if factor != 1 and adapted["ingredients"]:
+            if not scaling_plan_matches(adapted, plan):
+                raise ValueError("A current scaling plan for this recipe is required. Generate or refresh the plan.")
+            rules = validate_scaling_plan(adapted, plan)["rules"]
         scale = {
             "original_servings": source_count,
             "original_servings_source": source,
             "target_servings": servings,
             "factor": str(factor),
+            "ingredients": [],
         }
         if factor != 1 or recipe_count is None:
             change("/servings", adapted["servings"], str(servings), "Use the requested serving count.")
         measures = {}
+        batch_ingredients = set()
         if factor != 1:
-            for index, ingredient in enumerate(adapted["ingredients"]):
+            for index, (ingredient, rule) in enumerate(zip(adapted["ingredients"], rules)):
                 path = f"/ingredients/{index}"
                 quantity_field, unit_field = ingredient["quantity"], ingredient["unit"]
                 quantity, unit = quantity_field["value"], unit_field["value"]
-                if any(field["status"] == "needs_review" for field in (
-                    ingredient["name"], quantity_field, unit_field
-                )):
+                multiplier = ingredient_scale_factor(rule, source_count, servings)
+                applied = {**rule, "multiplier": str(multiplier) if multiplier is not None else None}
+                scale["ingredients"].append(applied)
+                if any(ingredient[key]["status"] == "needs_review" for key in ("name", "quantity", "unit")):
                     warn(path, "Resolve the source measure before scaling this ingredient.")
                     continue
-                if quantity is None:
+                if multiplier is None:
+                    reason = rule["reason"] if rule["mode"] == "review" else (
+                        "The original serving count differs from the documented single-batch yield. Check the batch amount."
+                    )
+                    applied["reason"] = reason
+                    warn(f"{path}/quantity", reason)
                     continue
-                adjusted = scale_quantity(quantity, unit, factor)
+                if rule["mode"] == "per_batch":
+                    # The ingredient list needs a total. The method still uses the original amount per batch.
+                    applied.update(batches=int(multiplier), per_batch_quantity=quantity, per_batch_unit=unit)
+                    batch_ingredients.add(ingredient["id"])
+                    warn(path, f"Batches required: {int(multiplier)}. Keep the written amount in the method per batch.")
+                if multiplier == 1:
+                    continue
+                adjusted = scale_quantity(quantity, unit, multiplier)
                 if adjusted is None:
                     warn(f"{path}/quantity", "The source measure cannot be scaled numerically.")
                     continue
-                review_reason = _manual_scale_reason(ingredient, adapted["steps"])
-                if review_reason:
-                    warn(f"{path}/quantity", review_reason)
-                    continue
                 scaled, scaled_unit = adjusted
-                measures[ingredient["id"]] = (
-                    quantity, unit, scaled, scaled_unit, _ingredient_measure_patterns(ingredient)
-                )
-                change(f"{path}/quantity", quantity_field, scaled, "Multiply by the serving factor.")
+                if rule["mode"] != "per_batch":
+                    measures[ingredient["id"]] = (
+                        quantity, unit, scaled, scaled_unit, multiplier, _ingredient_measure_patterns(ingredient)
+                    )
+                change(f"{path}/quantity", quantity_field, scaled, rule["reason"])
                 change(f"{path}/unit", unit_field, scaled_unit, "Convert within the same metric dimension.")
                 count = parse_number(scaled) if unit is None else None
                 if count is not None and count.denominator != 1:
                     warn(f"{path}/quantity", "The scaled count is fractional. Check how to divide this ingredient.")
-            _scale_steps(adapted, measures, source_count, servings, factor, change, warn)
+            _scale_steps(adapted, measures, batch_ingredients, source_count, servings, change, warn)
             review_vessel_capacity(adapted, factor, warn)
 
     return {

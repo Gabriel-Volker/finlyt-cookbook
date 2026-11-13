@@ -15,6 +15,7 @@ flowchart TD
         compare["Compare texts A and B with Luna"]
         extract["Extract with Luna and validate evidence"]
         plan["Ask Luna for a vegan plan"]
+        scalePlan["Ask Luna for each ingredient's scaling rule"]
         example["Load the example report"]
         upload -->|"Parallel OCR"| gemini
         upload -->|"Parallel OCR"| luna
@@ -24,6 +25,7 @@ flowchart TD
         unreadable -->|"No or uncertain"| compare
         compare --> extract
         extract --> plan
+        plan --> scalePlan
     end
 
     entry -->|"Upload file"| upload
@@ -34,7 +36,7 @@ flowchart TD
         inspect["Inspect excerpts and source page"]
         resolve["Confirm or correct a flagged field"]
         saveReview["Save decision and original evidence"]
-        refreshPlan["Refresh the plan for the reviewed recipe"]
+        refreshPlan["Refresh plans for the reviewed recipe"]
         display -.->|"Select item"| inspect
         inspect -->|"Resolve a field"| resolve
         resolve --> saveReview
@@ -42,7 +44,7 @@ flowchart TD
         refreshPlan -.->|"Review another field"| display
     end
 
-    plan --> display
+    scalePlan --> display
     example --> display
 
     subgraph adapt ["Adapt"]
@@ -52,7 +54,7 @@ flowchart TD
         requested{"Any adaptation requested?"}
         base["Apply saved decisions to the original recipe"]
         vegan["Apply the saved Luna plan if selected"]
-        scale["Scale measures and steps if requested"]
+        scale["Apply saved scaling rules in Python"]
         changes["Show changes and warnings"]
         options --> valid
         valid -->|"No"| correct
@@ -79,4 +81,4 @@ flowchart TD
 - For PDF uploads, Gemini receives the file and Luna receives rasterized pages, with a PDF fallback above the local raster budget. Luna compares the two transcriptions, extracts the source recipe, and prepares a vegan plan from the validated fields.
 - The blur check can reject an upload only when both readers explicitly report unreadable text on every page and the image check corroborates severe blur. A PDF text layer prevents blur rejection.
 - Review keeps the original extraction and evidence alongside the reviewer's decisions. Unresolved fields and document-level alerts remain visible.
-- Adapt uses the reviewed recipe when decisions exist. Scaling requires a usable original serving count. Python applies the stored vegan plan before scaling if both options are selected. The export includes the original report, review decisions, the plan, and any adaptation.
+- Adapt uses the reviewed recipe when decisions exist. Scaling requires a usable original serving count. Python applies the stored vegan plan before using the scaling rules for that variant. The export includes the original report, review decisions, both plans, and any adaptation.

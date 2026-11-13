@@ -1228,5 +1228,523 @@
         "reason": "Braising time for seitan depends on its form and size; the recipe provides no duration, so confirm the appropriate time while using the stated doneness cue."
       }
     ]
+  },
+  "scaling_plan": {
+    "original": {
+      "status": "needs_review",
+      "recipe_fingerprint": "8c02fb31660235ec8e1950e1e5a7dae4cd1efe99d1b54f330fdf92a0432bea9f",
+      "rules": [
+        {
+          "ingredient_id": "ingredient-1",
+          "mode": "proportional",
+          "reason": "Measured vinegar is part of the marinade mixture, so it scales with the recipe yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/0/quantity",
+              "quote": "1/2 l vinegar"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "Boil 1/2 l vinegar, 1/2 l water and 4 sliced onions"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-2",
+          "mode": "proportional",
+          "reason": "Measured water is part of the marinade mixture, so it scales with the recipe yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/1/quantity",
+              "quote": "1/2 l water"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "1/2 l water"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-3",
+          "mode": "proportional",
+          "reason": "The measured onions are boiled into the marinade mixture and scale with its yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/2/quantity",
+              "quote": "4 sliced onions"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "4 sliced onions"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-4",
+          "mode": "review",
+          "reason": "The amount is missing; a person should determine an appropriate amount of pepper for the marinade.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/0/instruction",
+              "quote": "with pepper"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-5",
+          "mode": "review",
+          "reason": "The amount is missing; a person should determine an appropriate amount of cloves for the marinade.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/0/instruction",
+              "quote": "cloves"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-6",
+          "mode": "review",
+          "reason": "The amount is missing and seasoning may need adjustment; a person should decide how much salt the marinade needs.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/0/instruction",
+              "quote": "salt"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-7",
+          "mode": "review",
+          "reason": "The amount is missing; a person should determine an appropriate amount of bay leaves for the marinade.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/0/instruction",
+              "quote": "bay leaves"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-8",
+          "mode": "review",
+          "reason": "The roast quantity is missing; a person should establish the intended roast size and serving yield before scaling it.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/1/instruction",
+              "quote": "Pour the marinade over the beef roast"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-9",
+          "mode": "review",
+          "reason": "The amount of bacon is missing; a person should determine how much is needed to render for browning the roast.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/3/instruction",
+              "quote": "Render the bacon"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-10",
+          "mode": "review",
+          "reason": "The amount of butter is missing; a person should determine how much to use when browning the roast.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/3/instruction",
+              "quote": "add butter"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-11",
+          "mode": "review",
+          "reason": "The quantity is qualitative and optional; a person should choose whether to include apples and how much is appropriate.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/10/quantity",
+              "quote": "some"
+            },
+            {
+              "path": "/steps/5/instruction",
+              "quote": "Add apples, carrots and juniper berries to the pot if desired."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-12",
+          "mode": "review",
+          "reason": "The quantity is missing and the ingredient is optional; a person should decide whether to include carrots and how much to use.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/5/instruction",
+              "quote": "Add apples, carrots and juniper berries to the pot if desired."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-13",
+          "mode": "review",
+          "reason": "The quantity is missing and the ingredient is optional; a person should decide whether to include juniper berries and how much to use.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/5/instruction",
+              "quote": "Add apples, carrots and juniper berries to the pot if desired."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-14",
+          "mode": "review",
+          "reason": "The amount of beef drippings is missing; a person should determine the amount needed for the sauce mixture.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/7/instruction",
+              "quote": "Stir flour into the beef drippings"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-15",
+          "mode": "review",
+          "reason": "The flour amount is missing; a person should determine how much is needed to thicken the sauce.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/7/instruction",
+              "quote": "Stir flour into the beef drippings"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-16",
+          "mode": "review",
+          "reason": "The amount of red wine is missing; a person should determine how much is needed to loosen the sauce mixture.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/7/instruction",
+              "quote": "loosen the mixture with marinade and red wine"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-17",
+          "mode": "review",
+          "reason": "The currant quantity is missing; a person should determine how much to add to the sauce.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/8/instruction",
+              "quote": "Add soaked currants"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-18",
+          "mode": "review",
+          "reason": "The raisin quantity is missing; a person should determine how much to add to the sauce.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/8/instruction",
+              "quote": "raisins"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-19",
+          "mode": "review",
+          "reason": "Sugar is specified to taste and must balance sweetness with acidity, so a person should adjust it by tasting rather than scale a fixed amount.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/18/quantity",
+              "quote": "sugar to taste"
+            },
+            {
+              "path": "/steps/8/instruction",
+              "quote": "sugar to taste, balancing sweetness and acidity"
+            }
+          ]
+        }
+      ]
+    },
+    "vegan": {
+      "status": "needs_review",
+      "recipe_fingerprint": "5dfb32bc1bea87fd6ef1a636444e284a30d41c779b1ffa16a701d682b5b6ce14",
+      "rules": [
+        {
+          "ingredient_id": "ingredient-1",
+          "mode": "proportional",
+          "reason": "Measured vinegar is part of the marinade mixture, so scale it with the recipe yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/0/quantity",
+              "quote": "1/2 l vinegar"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "Boil 1/2 l vinegar, 1/2 l water"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-2",
+          "mode": "proportional",
+          "reason": "Measured water is part of the marinade mixture, so scale it with the recipe yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/1/quantity",
+              "quote": "1/2 l water"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "1/2 l water and 4 sliced onions"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-3",
+          "mode": "proportional",
+          "reason": "Measured onions are included in the marinade mixture, so scale them with the recipe yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/2/quantity",
+              "quote": "4 sliced onions"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "4 sliced onions with pepper"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-4",
+          "mode": "review",
+          "reason": "Pepper has no stated quantity; a person should determine an appropriate amount for the scaled marinade.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/0/instruction",
+              "quote": "with pepper, cloves, salt and bay leaves"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-5",
+          "mode": "review",
+          "reason": "Cloves have no stated quantity; a person should determine an appropriate amount for the scaled marinade.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/0/instruction",
+              "quote": "with pepper, cloves, salt and bay leaves"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-6",
+          "mode": "review",
+          "reason": "Salt has no stated quantity; a person should determine and adjust the seasoning for the scaled marinade.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/0/instruction",
+              "quote": "with pepper, cloves, salt and bay leaves"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-7",
+          "mode": "review",
+          "reason": "Bay leaves have no stated quantity; a person should determine an appropriate amount for the scaled marinade.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/0/instruction",
+              "quote": "with pepper, cloves, salt and bay leaves"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-8",
+          "mode": "review",
+          "reason": "The seitan roast has no stated quantity or serving yield; a person should determine the roast amount for the intended servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/1/instruction",
+              "quote": "Pour the marinade over the seitan roast for a shorter rest."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-9",
+          "mode": "review",
+          "reason": "Vegan bacon has no stated quantity; a person should determine an amount suitable for browning the roast.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/3/instruction",
+              "quote": "Cook the vegan bacon until crisp"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-10",
+          "mode": "review",
+          "reason": "Vegan butter has no stated quantity; a person should determine the amount needed for browning the roast.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/3/instruction",
+              "quote": "add vegan butter, then brown the drained seitan roast"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-11",
+          "mode": "review",
+          "reason": "The amount is qualitative and the ingredient is optional; a person should choose whether and how much to include.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/10/quantity",
+              "quote": "some apples (optional)"
+            },
+            {
+              "path": "/steps/5/instruction",
+              "quote": "Add apples, carrots and juniper berries to the pot if desired."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-12",
+          "mode": "review",
+          "reason": "Carrots are optional and have no stated quantity; a person should decide whether and how much to include.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/11/optional_when",
+              "quote": "carrots (optional)"
+            },
+            {
+              "path": "/steps/5/instruction",
+              "quote": "Add apples, carrots and juniper berries to the pot if desired."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-13",
+          "mode": "review",
+          "reason": "Juniper berries are optional and have no stated quantity; a person should decide whether and how much to include.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/12/optional_when",
+              "quote": "juniper berries (optional)"
+            },
+            {
+              "path": "/steps/5/instruction",
+              "quote": "Add apples, carrots and juniper berries to the pot if desired."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-14",
+          "mode": "review",
+          "reason": "Vegan butter has no stated quantity; a person should determine the amount needed to make the flour mixture.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/7/instruction",
+              "quote": "Stir flour into the vegan butter"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-15",
+          "mode": "review",
+          "reason": "Flour has no stated quantity; a person should determine the amount needed to thicken the sauce.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/7/instruction",
+              "quote": "Stir flour into the vegan butter"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-16",
+          "mode": "review",
+          "reason": "Red wine has no stated quantity and is used to loosen the sauce; a person should determine the amount needed.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/7/instruction",
+              "quote": "loosen the mixture with marinade and vegan-labelled red wine"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-17",
+          "mode": "review",
+          "reason": "Currants have no stated quantity; a person should determine the amount for the sauce.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/8/instruction",
+              "quote": "Add soaked currants, raisins and vegan sugar to taste"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-18",
+          "mode": "review",
+          "reason": "Raisins have no stated quantity; a person should determine the amount for the sauce.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/8/instruction",
+              "quote": "Add soaked currants, raisins and vegan sugar to taste"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-19",
+          "mode": "review",
+          "reason": "Sugar is specified only to taste and must be balanced against acidity; a person should adjust it by tasting.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/18/quantity",
+              "quote": "sugar to taste"
+            },
+            {
+              "path": "/steps/8/instruction",
+              "quote": "vegan sugar to taste, balancing sweetness and acidity"
+            }
+          ]
+        }
+      ]
+    }
   }
 }

@@ -104,3 +104,7 @@ Gabriel chose Luna to propose vegan substitutes and cooking changes in advance f
 ## 2026-11-13 16:30 · Preserve uploads when blur evidence is uncertain
 
 Gabriel asked to reject unreadable blur while preserving legible recipes. Require severe visual blur and explicit agreement from both readers on every page before asking for a sharper copy. Keep the upload eligible for review if either reader recovers any text, if the PDF has a text layer, or if a check is inconclusive. The detector uses the existing Pillow dependency and the same PDF pages sent to Luna. Keep settings that describe a particular example in the bundled example report.
+
+## 2026-11-13 16:41 · Use explicit ingredient scaling rules
+
+Gabriel chose Luna to classify each ingredient and deterministic Python to calculate target quantities. Save the rules by ingredient and recipe variant. Require explicit evidence for fixed amounts and documented batch sizes. Preserve uncertain quantities for review. Gabriel is considering a Gemini verification pass. Evaluate independent classifications on manually checked recipes before deciding whether to add the call. Track material disagreements and shared errors as well as latency and cost.

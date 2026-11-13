@@ -13,7 +13,9 @@ from unittest.mock import patch
 import pymupdf
 from PIL import Image
 
+from cookbook_ocr.adaptation import adapt_recipe
 from cookbook_ocr.raster import run_pdf_task
+from cookbook_ocr.scaling_plan import validate_scaling_plan
 from cookbook_ocr.vegan import validate_vegan_plan
 from cookbook_ocr.web import CookbookHandler
 
@@ -162,6 +164,12 @@ class WebTests(unittest.TestCase):
             }],
             "review_items": [],
         })
+        vegan_recipe = adapt_recipe(review["recipe"], vegan=True, vegan_plan=report["vegan_plan"])["recipe"]
+        report["scaling_plan"] = {"vegan": validate_scaling_plan(vegan_recipe, {"rules": [
+            {"ingredient_id": item["id"], "mode": "proportional", "reason": "Measured ingredient.",
+             "batch_servings": None, "evidence": []}
+            for item in vegan_recipe["ingredients"]
+        ]})}
         status, _, response = self.request(
             "POST", "/api/adapt", json.dumps({"report": report, "servings": 8, "vegan": True}), headers,
         )
@@ -186,11 +194,16 @@ class WebTests(unittest.TestCase):
 
         with patch("cookbook_ocr.web.load_openai_key", return_value="test"), patch(
             "cookbook_ocr.web.plan_vegan_recipe", return_value=report["vegan_plan"],
-        ) as plan_vegan:
+        ) as plan_vegan, patch(
+            "cookbook_ocr.web.refresh_scaling_plans", return_value=report["scaling_plan"],
+        ) as refresh_scaling:
             original.pop("example", None)
             original["vegan_plan"] = None
+            original["scaling_plan"] = None
             body = json.dumps({"report": original, "decisions": decisions})
             status, _, response = self.request("POST", "/api/review", body, headers)
             self.assertEqual(status, 200)
             self.assertEqual(json.loads(response)["vegan_plan"], report["vegan_plan"])
             self.assertEqual(plan_vegan.call_args.args[1], review["recipe"])
+            self.assertEqual(json.loads(response)["scaling_plan"], report["scaling_plan"])
+            self.assertEqual(refresh_scaling.call_args.args[1:3], (review["recipe"], report["vegan_plan"]))

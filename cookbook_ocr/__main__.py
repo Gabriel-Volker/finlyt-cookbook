@@ -5,9 +5,10 @@ import sys
 from pathlib import Path
 
 from .adaptation import adapt_recipe
-from .pipeline import plan_vegan_recipe, run_pipeline
+from .pipeline import plan_vegan_recipe, refresh_scaling_plans, run_pipeline
 from .providers import GeminiClient, OpenAIClient, ProviderError
 from .review import review_recipe
+from .scaling_plan import scaling_plan_matches
 from .vegan import vegan_plan_matches
 
 
@@ -94,10 +95,21 @@ def main() -> int:
                     if not vegan_plan_matches(recipe, plan):
                         reason = plan.get("reason") if isinstance(plan, dict) else None
                         raise ValueError(reason or "The vegan plan is unavailable.")
+                scaling = report.get("scaling_plan")
+                if args.servings is not None and recipe["ingredients"] and args.recipe.suffix.lower() == ".json":
+                    variant = "vegan" if args.vegan else "original"
+                    source = adapt_recipe(recipe, vegan=True, vegan_plan=plan)["recipe"] if args.vegan else recipe
+                    stored = scaling if isinstance(scaling, dict) else {}
+                    if not scaling_plan_matches(source, stored.get(variant)):
+                        scaling = report["scaling_plan"] = {
+                            **stored, **refresh_scaling_plans(OpenAIClient(load_openai_key()), recipe,
+                                                             plan if args.vegan else None, stored),
+                        }
                 report["adaptation"] = adapt_recipe(
                     recipe, servings=args.servings,
                     original_servings=args.original_servings, vegan=args.vegan,
                     vegan_plan=plan,
+                    scaling_plan=scaling,
                 )
             except (KeyError, TypeError, AttributeError):
                 raise ValueError("The extraction report contains an invalid recipe object.") from None
