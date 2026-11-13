@@ -84,3 +84,16 @@ Early runs exposed inconsistent page labels and a synthetic result that normaliz
 The final runs started at 13:28:58. With the original order (7.48 s) and with A and B swapped (10.34 s), the comparator returned exactly one review item on page 1. One text had `Josefines` and the other had `Jose[unleserlich]ines`. It classified `½ l` and `1/2 l` as equivalent in both runs.
 
 The same prompt was tested on a synthetic pear compote recipe (5.71 s). It flagged tablespoon versus teaspoon, an omitted optional ingredient, covered versus uncovered cooking, and a note marked unreadable by both readers. It accepted `¾` versus `3/4` and `0,25 l` versus `250 mL`. All three final outputs passed the verbatim excerpt check. The tests cover these examples only.
+
+## 2026-11-13 13:35:35–13:35:53 · GPT-6.1 Terra transcription and cost comparison
+
+Gabriel asked Codex to test `gpt-6.1-terra` and compare it with Luna. Codex used the same PDF, full transcription prompt, and Responses API settings as in the Luna run, changing the model. The raw output was saved locally as `Recipe-gpt-6.1-terra-full-de.md`.
+
+| Model | Input tokens | Cache write tokens | Output tokens | API time | Estimated USD |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GPT-6 Luna | 14,833 | 14,830 | 1,941 | 23.10 s | $0.00282455 |
+| GPT-6.1 Terra | 27,509 | 27,506 | 700 | 18.09 s | $0.03788550 |
+
+Both calls reported three ordinary input tokens and zero cached input tokens. Terra's output included 272 reasoning tokens. The estimates use the [standard API rates](https://developers.openai.com/api/docs/pricing) and [30-minute cache write rates](https://developers.openai.com/api/docs/guides/prompt-caching). Terra took 5.01 seconds less and cost 13.41 times as much in these single runs.
+
+The recipe body matched on both pages after joining words split across lines and normalizing whitespace and hyphen spacing. Terra read `Josefines` correctly in the illustrated header and put the second page's labels below the recipe, where they appear in the scan. It marked part of the `Korinthen` label unreadable, which Luna read in full. The models therefore had different strengths on this scan even though they agreed on all recipe content.
