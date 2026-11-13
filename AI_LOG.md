@@ -43,3 +43,13 @@ Gabriel asked about using his ChatGPT subscription for a GPT second reader and a
 Gabriel confirmed he has ChatGPT Pro and asked how to use its API credits for the project. Codex checked [OpenAI's API credits guide](https://developers.openai.com/api/docs/guides/chatgpt-api-credits) and documented how to claim the benefit, use a key from the linked API organization, and set `OPENAI_API_KEY` on Windows. This entry records setup guidance.
 
 Gabriel asked for timestamps in both logs and one Git commit per prompt from this request onward. He also proposed a conventional OCR comparison and balance-sheet reconciliation for production credit analysis. The [decision log](DECISION_LOG.md) records why both are outside the cookbook demo's scope.
+
+## 2026-11-13 11:51:22–11:51:45 · GPT-6 Luna transcription test
+
+Gabriel confirmed that his API key and credits were ready and asked Codex to test `gpt-6-luna`. Codex sent the same original two-page PDF and the exact prompt used for the full Gemini transcription, including the request for the illustrated header. The OpenAI Responses API returned a completed transcription in 23.10 seconds, with 14,833 input tokens and 1,941 output tokens, including 1,552 reasoning tokens. The raw output was saved locally as `Recipe-gpt-6-luna-full-de.md`.
+
+- **Recipe.** All eight recipe lines match Gemini after normalizing the notation for one half and the spaces around one hyphen. Both models recovered ½ L of vinegar, ½ L of water, and four sliced onions. They also preserved the marinade conditions, searing, optional ingredients, sauce, and timing before serving.
+- **Header.** GPT recovered the title, the attribution, and the year 1887, but marked the name as `Jose[unleserlich]ines`. Gemini returned `Josefines`, which agrees with the scan. This is a real difference that the proposed comparison step should flag for human review.
+- **Illustrations.** Both recovered the printed page numbers and the four readable labels. GPT grouped the second page's illustration labels before the recipe text, while Gemini followed their placement below it in the scan.
+
+Codex compared the two saved outputs and checked the differences against the original pages. These observations come from one completed run per model with the full transcription prompt.
