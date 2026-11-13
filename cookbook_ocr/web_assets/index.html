@@ -21,11 +21,20 @@
           <img src="/assets/images/chevron.svg" width="13" height="13" alt="">
           <button type="button" class="nav-item" data-screen="adapt" disabled>Adapt</button>
         </nav>
-        <div class="file-label">
-          <img src="/assets/images/document.svg" width="15" height="15" alt="">
-          <span id="workspace-name">Recipe workspace</span>
+        <div class="workspace-controls">
+          <div class="file-label">
+            <img src="/assets/images/document.svg" width="15" height="15" alt="">
+            <span id="workspace-name">Recipe workspace</span>
+          </div>
+          <div class="output-language" id="output-language-control" hidden>
+            <label for="output-english">
+              <input type="checkbox" id="output-english" aria-describedby="output-status" checked>
+              English output
+            </label>
+          </div>
         </div>
       </div>
+      <p id="output-status" class="status-message output-status" role="status" hidden></p>
     </header>
     <main class="container">
       <section id="import" class="import-layout" aria-labelledby="import-title">
@@ -107,14 +116,31 @@
             <button type="button" class="button secondary" data-screen="review">
               <img src="/assets/images/back.svg" width="15" height="15" alt=""> Back to recipe
             </button>
-            <button type="button" class="button primary" id="export-recipe">
+            <button type="button" class="button primary" id="export-recipe" disabled>
               <img src="/assets/images/download.svg" width="15" height="15" alt=""> Export JSON
             </button>
           </div>
         </div>
         <div class="workspace-grid">
           <div class="stack">
-            <section class="card" aria-labelledby="changes-title">
+            <section class="card output-card" id="recipe-output" aria-labelledby="recipe-output-title" hidden>
+              <div class="section-head">
+                <h2 id="recipe-output-title">Recipe output</h2>
+                <span class="badge info" id="recipe-output-language"></span>
+              </div>
+              <h3>Ingredients</h3>
+              <div id="output-ingredients"></div>
+              <section class="card-body" id="output-utensils" aria-labelledby="output-utensils-title" hidden>
+                <h3 id="output-utensils-title">Utensils</h3>
+                <p id="output-tools"></p>
+              </section>
+              <section class="card-body" aria-labelledby="output-steps-title">
+                <h3 id="output-steps-title">Instructions</h3>
+                <ol id="output-steps"></ol>
+                <p id="output-no-steps" hidden>No steps were extracted.</p>
+              </section>
+            </section>
+            <section class="card" id="changes-card" aria-labelledby="changes-title" hidden>
               <div class="section-head">
                 <h2 id="changes-title">Selected changes</h2>
                 <span class="badge" id="change-count">0 total</span>
@@ -149,13 +175,6 @@
                 <ul id="vegan-plan-review" class="comparison-list" hidden></ul>
                 <p id="adapt-status" class="status-message" role="status" hidden></p>
               </form>
-            </section>
-            <section class="card card-body" id="adapted-step-card" aria-labelledby="adapted-step-title" hidden>
-              <div class="card-heading">
-                <h2 id="adapted-step-title">Adapted steps</h2>
-                <span class="badge info">Adapted</span>
-              </div>
-              <div id="adapted-steps"></div>
             </section>
           </aside>
         </div>

@@ -208,6 +208,21 @@ h3 {
   white-space: nowrap;
 }
 
+.workspace-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  gap: 10px;
+}
+
+.output-status {
+  max-width: 1360px;
+  margin-inline: auto;
+  padding: 0 var(--page-gutter) 10px;
+  text-align: end;
+}
+
 .icon,
 .file-label img,
 .workflow img,
@@ -679,7 +694,7 @@ h3 {
 
 #comparison,
 #field-review-source,
-#adapted-steps {
+#output-steps {
   display: grid;
   gap: 12px;
 }
@@ -758,17 +773,16 @@ h3 {
   white-space: pre-wrap;
 }
 
-#adapted-steps .comparison-list {
-  list-style: none;
-  padding: 0;
+.output-card > h3 {
+  padding: 0 22px 10px;
 }
 
-#adapted-steps .comparison-list li + li {
-  padding-top: 8px;
+.output-card > .card-body {
   border-top: 1px solid var(--line);
 }
 
-#adapted-steps strong {
+#output-steps {
+  padding-inline-start: 21px;
   color: var(--ink);
 }
 
@@ -823,6 +837,30 @@ h3 {
   align-items: center;
   gap: 9px;
   cursor: pointer;
+}
+
+.output-language {
+  flex: none;
+  padding-inline-start: 10px;
+  border-inline-start: 1px solid var(--line);
+}
+
+.output-language label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.output-language input {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  margin: 0;
+  accent-color: var(--accent);
 }
 
 .field input,
@@ -990,7 +1028,8 @@ html:has(dialog[open]) {
 
   .card-body,
   .step-row,
-  .section-head {
+  .section-head,
+  .output-card > h3 {
     padding-inline: 16px;
   }
 
@@ -1019,6 +1058,11 @@ html:has(dialog[open]) {
 
   .file-label {
     max-width: 130px;
+  }
+
+  .workspace-controls {
+    flex-wrap: wrap;
+    row-gap: 5px;
   }
 
   .import-layout,

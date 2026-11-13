@@ -26,6 +26,8 @@ To run it directly after installing the Python dependencies, use `python -m cook
 
 In **Review**, click a value, step, or utensil to open its editor with the source evidence. The field selector shows only fields for that item. Use **Confirm value** to accept a reading or **Save correction** to supply a corrected value. You can also edit which ingredients and utensils a step uses. The report retains the original `recipe`, OCR texts, and comparison. The `review` section contains the reviewed recipe, the decisions, and paths still awaiting review. **Adapt** uses the reviewed values. Saving a correction refreshes the adaptation plans. The [activity diagram](docs/activity-diagram.md) shows these steps.
 
+**Output in English** is checked by default across Review, Adapt, and JSON export. Uncheck it to use the original recipe language. The web export stores the selected result in `output.recipe`, the display notes in `output.texts`, and the choice in `output.language`. Review edits the source values, and the original recipe, OCR excerpts, and adaptation data retain their source wording. Luna translates the displayed recipe and explanations, with protected numeric measures checked before display or export. The bundled English example works offline.
+
 For a local run, use Python 3.10 or later and the same `.env`. Environment variables take precedence. Pass the full input path if the file is outside the project.
 
 ```powershell

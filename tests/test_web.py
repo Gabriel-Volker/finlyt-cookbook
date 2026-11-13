@@ -15,6 +15,7 @@ from PIL import Image
 
 from cookbook_ocr.raster import run_pdf_task
 from cookbook_ocr.scaling_plan import validate_scaling_plan
+from cookbook_ocr.translation import TranslationError
 from cookbook_ocr.web import CookbookHandler
 
 
@@ -42,6 +43,65 @@ class WebTests(unittest.TestCase):
         status, *response_headers = header.decode("ascii").split("\r\n")
         content_type = next(line.split(": ", 1)[1] for line in response_headers if line.startswith("Content-Type:"))
         return int(status.split()[1]), content_type, data
+
+    def test_output_defaults_to_english_and_preserves_the_source_recipe(self):
+        recipe = {"title": {"value": "Sopa", "evidence": {"quote": "Sopa"}}}
+        english = {"title": {"value": "Soup", "evidence": {"quote": "Sopa"}}}
+        headers = {"Content-Type": "application/json"}
+        with patch("cookbook_ocr.web.load_openai_key", return_value="test"), patch(
+            "cookbook_ocr.web.translate_output", return_value={"recipe": english, "texts": {"reason": "Missing."}},
+        ) as translate:
+            data = {"recipe": recipe, "texts": {"reason": "Ausstehend."}}
+            status, _, response = self.request("POST", "/api/output", json.dumps(data), headers)
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(response), {"output": {"language": "english", "recipe": english,
+                                                            "texts": {"reason": "Missing."}}})
+        self.assertEqual(translate.call_args.args[1:], (recipe, data["texts"]))
+        self.assertEqual(translate.call_args.kwargs["language"], "english")
+
+    def test_original_and_known_english_outputs_need_no_model(self):
+        recipe = {"title": {"value": "Tea"}}
+        headers = {"Content-Type": "application/json"}
+        options = (("original", False), ("english", True))
+        with patch("cookbook_ocr.web.load_openai_key") as load_key:
+            for language, source_is_english in options:
+                with self.subTest(language=language):
+                    data = {"recipe": recipe, "output_language": language, "source_is_english": source_is_english}
+                    status, _, response = self.request("POST", "/api/output", json.dumps(data), headers)
+                    self.assertEqual(status, 200)
+                    self.assertEqual(json.loads(response), {"output": {"language": language, "recipe": recipe, "texts": {}}})
+        load_key.assert_not_called()
+
+    def test_output_translates_notes_into_the_original_recipe_language(self):
+        source = {"title": {"value": "Suppe"}}
+        final = {"title": {"value": "Vegane Suppe"}}
+        headers = {"Content-Type": "application/json"}
+        data = {"recipe": final, "source_recipe": source, "output_language": "original", "texts": {"reason": "Missing."}}
+        localized = {"recipe": final, "texts": {"reason": "Fehlt."}}
+        with patch("cookbook_ocr.web.load_openai_key", return_value="test"), patch(
+            "cookbook_ocr.web.translate_output", return_value=localized,
+        ) as translate:
+            status, _, response = self.request("POST", "/api/output", json.dumps(data), headers)
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(response), {"output": {"language": "original", **localized}})
+        self.assertEqual(translate.call_args.kwargs, {"language": "original", "source_recipe": source})
+
+    def test_failed_translation_is_not_returned_as_english(self):
+        headers = {"Content-Type": "application/json"}
+        data = {"recipe": {"title": {"value": "Sopa"}}}
+        with patch("cookbook_ocr.web.load_openai_key", return_value="test"), patch(
+            "cookbook_ocr.web.translate_output", side_effect=TranslationError("Could not verify the translation."),
+        ):
+            status, _, response = self.request("POST", "/api/output", json.dumps(data), headers)
+        self.assertEqual(status, 502)
+        self.assertEqual(json.loads(response), {"error": "Could not verify the translation."})
+
+    def test_output_rejects_unsupported_languages_before_calling_luna(self):
+        data = {"recipe": {"title": {"value": "Tea"}}, "output_language": "spanish"}
+        with patch("cookbook_ocr.web.load_openai_key") as load_key:
+            status, _, _ = self.request("POST", "/api/output", json.dumps(data), {"Content-Type": "application/json"})
+        self.assertEqual(status, 400)
+        load_key.assert_not_called()
 
     def test_serve_assets_without_exposing_files_above_asset_directory(self):
         with tempfile.TemporaryDirectory() as temporary:

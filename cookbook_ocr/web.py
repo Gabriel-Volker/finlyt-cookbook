@@ -20,6 +20,7 @@ from .pipeline import UnreadableRecipeError, plan_vegan_recipe, refresh_scaling_
 from .providers import GeminiClient, MIME_TYPES, OpenAIClient, ProviderError
 from .raster import run_pdf_task
 from .review import review_recipe
+from .translation import TranslationError, translate_output
 from .vegan import unavailable_vegan_plan, vegan_plan_matches, vegan_plan_usable
 from .vegan_verification import verify_vegan_plan
 
@@ -189,6 +190,9 @@ class CookbookHandler(BaseHTTPRequestHandler):
                 response, status = self._adapt()
                 self._json(response, status)
                 return
+            if url.path == "/api/output":
+                self._json(self._output())
+                return
             raise RequestError("Not found.", HTTPStatus.NOT_FOUND)
         except RequestError as error:
             self._json({"error": str(error)}, error.status)
@@ -199,19 +203,54 @@ class CookbookHandler(BaseHTTPRequestHandler):
         except ValueError as error:
             self._json({"error": str(error)}, HTTPStatus.BAD_REQUEST)
 
-    def _recipe_request(self) -> tuple[dict, dict]:
+    def _json_request(self) -> dict:
         if self.headers.get_content_type() != "application/json":
-            raise RequestError("Send the recipe report as JSON.", HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
+            raise RequestError("Send the recipe data as JSON.", HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
         try:
             data = json.loads(self._body(MAX_REPORT_BYTES))
         except (UnicodeError, json.JSONDecodeError):
             raise RequestError("The request must contain valid JSON.") from None
         if not isinstance(data, dict):
-            raise RequestError("The request must contain a recipe report.")
+            raise RequestError("The request must contain a JSON object.")
+        return data
+
+    def _recipe_request(self) -> tuple[dict, dict]:
+        data = self._json_request()
         report = data.get("report")
         if not isinstance(report, dict) or not isinstance(report.get("recipe"), dict):
             raise RequestError("The request must contain a recipe report.")
         return data, report
+
+    def _output(self) -> dict:
+        data = self._json_request()
+        recipe = data.get("recipe")
+        if not isinstance(recipe, dict):
+            raise RequestError("The request must contain a recipe to display.")
+        language = data.get("output_language", "english")
+        if language not in ("english", "original"):
+            raise RequestError("Choose English or the original recipe language.")
+        source_is_english = data.get("source_is_english", False)
+        if type(source_is_english) is not bool:
+            raise RequestError("The source language flag must be true or false.")
+        texts = data.get("texts", {})
+        if not isinstance(texts, dict) or any(not key or not isinstance(text, str) for key, text in texts.items()):
+            raise RequestError("Output notes must be an object containing text values.")
+        source_recipe = data.get("source_recipe")
+        if source_recipe is not None and not isinstance(source_recipe, dict):
+            raise RequestError("The original recipe must be an object.")
+        output = {"recipe": recipe, "texts": texts}
+        if not source_is_english and (language == "english" or texts):
+            try:
+                key = load_openai_key()
+            except (OSError, ValueError) as error:
+                raise RequestError(str(error), HTTPStatus.SERVICE_UNAVAILABLE) from None
+            try:
+                output = translate_output(OpenAIClient(key), recipe, texts, language=language, source_recipe=source_recipe)
+            except TranslationError as error:
+                raise RequestError(str(error), HTTPStatus.BAD_GATEWAY) from None
+            except (AttributeError, KeyError, TypeError):
+                raise RequestError("The request contains an invalid recipe object.") from None
+        return {"output": {"language": language, **output}}
 
     def _refresh_plan(self, report: dict, recipe: dict) -> dict:
         plan = report["vegan_plan"]

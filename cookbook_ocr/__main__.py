@@ -88,6 +88,7 @@ def main() -> int:
                 document, args.recipe.name, GeminiClient(gemini_key), OpenAIClient(openai_key)
             )
         report.pop("adaptation", None)
+        report.pop("output", None)
         recipe = report["recipe"]
         if "review" in report:
             review = report["review"]

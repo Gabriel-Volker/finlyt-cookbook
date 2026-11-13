@@ -13,13 +13,23 @@ const state = {
   tab: "ingredients", pages: 1, page: 1,
   review: null, reviewPath: "", reviewing: false,
   scalingPlan: null, veganPlan: null,
-  adaptation: null, adaptRequest: 0, previewRequest: 0, busy: false,
+  adaptation: null, adaptationReady: false, adaptRequest: 0,
+  output: null, outputRequest: 0, reviewOutput: null, reviewOutputRequest: 0,
+  localizedOutputs: new Map(), previewRequest: 0, busy: false,
   previewReading: "A",
   previews: new Map(),
 };
 
 function currentRecipe() {
   return state.review?.recipe ?? state.report.recipe;
+}
+
+function reviewDisplayRecipe() {
+  return state.reviewOutput?.recipe ?? currentRecipe();
+}
+
+function localizedText(output, key, original) {
+  return output?.texts?.[key] ?? original;
 }
 
 async function request(url, options) {
@@ -47,8 +57,11 @@ function show(screen) {
     else button.removeAttribute("aria-current");
   }
   $("#workspace-name").textContent = state.filename || "Recipe workspace";
+  $("#output-language-control").hidden = screen === "import";
+  message("#output-status");
   if (screen === "review") {
     renderReview();
+    updateReviewOutput();
   }
   if (screen === "adapt") {
     renderAdaptation();
@@ -75,19 +88,25 @@ function loadReport(report, file) {
   state.page = 1;
   state.tab = "ingredients";
   state.review = null;
+  state.reviewOutput = null;
+  state.reviewOutputRequest++;
   state.reviewPath = "";
   state.reviewing = false;
   state.scalingPlan = report.scaling_plan ?? null;
   state.veganPlan = report.vegan_plan ?? null;
   state.adaptation = null;
+  state.adaptationReady = false;
   state.adaptRequest++;
+  state.localizedOutputs = new Map();
   state.previewRequest++;
   state.previews.clear();
 
   updateOriginalServings(true);
   $("#target-servings").value = settings?.servings ?? "";
+  $("#output-english").checked = true;
   $("#vegan").setAttribute("aria-checked", String(settings?.vegan === true && hasVeganPlan()));
   renderVeganOption();
+  clearOutput();
   message("#field-review-status");
   show("review");
 }
@@ -191,7 +210,7 @@ function editableText(field, missing = "—") {
 
 function renderReview() {
   const report = state.report;
-  const recipe = currentRecipe();
+  const recipe = reviewDisplayRecipe();
   const fields = flaggedFields();
   const linkedFindings = new Set(fields.flatMap(({field}) => field.review_item_ids || []));
   const documentFindings = (report.comparison?.review_items || []).filter((item, index) => !linkedFindings.has(index + 1));
@@ -272,7 +291,7 @@ function renderPendingReview(fields) {
 
 function renderComparison() {
   const {comparison, extraction_issues: issues = []} = state.report;
-  const recipe = currentRecipe();
+  const recipe = reviewDisplayRecipe();
   const reviews = comparison?.review_items || [];
   const variations = comparison?.equivalent_variations || [];
   const intro = reviews.length || issues.length
@@ -280,12 +299,13 @@ function renderComparison() {
     : (state.review?.status ?? state.report.status) === "needs_review" ? "Some extracted fields need review."
       : state.review?.decisions.length ? "Review decisions saved."
       : `Both readings agree on the recipe.${variations.length ? ` ${countLabel(variations.length, "difference")} treated as equivalent.` : ""}`;
-  const list = [...reviews, ...issues].map((item) => {
+  const list = [...reviews, ...issues].map((item, index) => {
     const page = item.page ?? item.evidence?.page;
+    const key = index < reviews.length ? `comparison:${index}` : `extraction:${index - reviews.length}`;
     return `<li>
       ${page ? `<button class="button text" type="button" data-source-page="${escape(page)}" data-source-reading="${escape(item.evidence?.source || "A")}">Page ${escape(page)}</button>` : ""}
-      <strong>${escape(item.section || item.field || "Review")}</strong>
-      <p>${escape(item.reason)}</p>
+      <strong>${escape(localizedText(state.reviewOutput, `${key}:section`, item.section) || item.field || "Review")}</strong>
+      <p>${escape(localizedText(state.reviewOutput, key, item.reason))}</p>
       ${item.evidence?.quote ? `<blockquote><span class="evidence-meta">Reading ${escape(item.evidence.source)}</span><br>${escape(item.evidence.quote)}</blockquote>` : ""}
       ${["A", "B"].filter((source) => item[`${source.toLowerCase()}_excerpt`]).map((source) =>
         `<blockquote><span class="evidence-meta">Reading ${source}</span><br>${escape(item[`${source.toLowerCase()}_excerpt`])}</blockquote>`).join("")}
@@ -308,7 +328,7 @@ const reviewReferenceFields = {ingredient_ids: "ingredients", tool_ids: "tools"}
 
 function reviewFields() {
   const original = state.report.recipe;
-  const recipe = currentRecipe();
+  const recipe = reviewDisplayRecipe();
   const fields = [];
   function add(item, names, label, path = "") {
     for (const name of names) {
@@ -355,7 +375,7 @@ function renderFieldReview() {
   $("#field-review-links").hidden = !isReference;
   const linked = $("#field-review-references");
   linked.disabled = !isReference;
-  linked.innerHTML = isReference ? currentRecipe()[selected.collection].map((entry, index) => {
+  linked.innerHTML = isReference ? reviewDisplayRecipe()[selected.collection].map((entry, index) => {
     const name = clean(value(entry.name)) || `${selected.collection === "tools" ? "Utensil" : "Ingredient"} ${index + 1}`;
     return `<option value="${escape(entry.id)}"${sourceValue.includes(entry.id) ? " selected" : ""}>${escape(name)}</option>`;
   }).join("") : "";
@@ -366,32 +386,39 @@ function renderFieldReview() {
   const needsReview = selected.field.status === "needs_review" && !decision;
   $("#field-review-clear").hidden = !reviewOptionalFields.has(selected.name) || (reviewedValue === null && !needsReview);
   const hint = $("#field-review-hint");
-  hint.hidden = selected.path !== "/servings";
-  hint.textContent = hint.hidden ? "" : "Enter the original serving count as a positive whole number.";
+  const translated = state.reviewOutput?.language === "english"
+    ? value(selected.path.split("/").slice(1).reduce((node, key) => node?.[key], state.reviewOutput.recipe)) : "";
+  hint.textContent = selected.path === "/servings" ? "Enter the original serving count as a positive whole number."
+    : translated && translated !== reviewedValue ? "Enter the correction in the source language." : "";
+  hint.hidden = !hint.textContent;
 
   const stepIndex = isReference ? Number(selected.path.split("/")[2]) : null;
   const evidence = isReference ? state.report.recipe.steps[stepIndex].instruction.evidence : selected.field.evidence;
   const describe = (content) => {
     if (!isReference) return content ?? "Not stated";
-    const names = new Map(currentRecipe()[selected.collection].map((entry) => [entry.id, clean(value(entry.name)) || entry.id]));
+    const names = new Map(reviewDisplayRecipe()[selected.collection].map((entry) => [entry.id, clean(value(entry.name)) || entry.id]));
     return (Array.isArray(content) ? content : []).map((id) => names.get(id) || id).join(", ") || "None";
   };
+  const comparisons = state.report.comparison?.review_items || [];
   const related = (selected.field.review_item_ids || [])
-    .map((id) => state.report.comparison?.review_items[id - 1]).filter(Boolean);
-  const issue = state.report.extraction_issues?.find(({field}) => field === selected.path);
+    .flatMap((id) => comparisons[id - 1] ? [{...comparisons[id - 1], key: `comparison:${id - 1}`}] : []);
+  const issues = state.report.extraction_issues || [];
+  const issueIndex = issues.findIndex(({field}) => field === selected.path);
+  const issue = issues[issueIndex];
   const page = evidence?.page || issue?.evidence?.page || related.find((item) => item.page)?.page || 1;
   $("#field-review-source").innerHTML = `
+    ${translated && translated !== reviewedValue ? `<p><strong>English reading</strong> · ${escape(translated)}</p>` : ""}
     ${decision ? `<p><strong>${decision.action === "confirm" ? "Confirmed" : "Corrected"}</strong> · ${escape(describe(decision.value))}</p>` : ""}
     <p>Original extracted value · ${escape(describe(selected.field.value))}</p>
     ${evidence ? `<div class="evidence-box">
       <div class="evidence-meta">Original evidence${evidence.page ? ` · Page ${escape(evidence.page)}` : ""}${evidence.source ? ` · Reading ${escape(evidence.source)}` : ""}</div>
       <blockquote class="evidence-quote">${escape(evidence.quote)}</blockquote>
     </div>` : "<p>No original evidence was verified for this field.</p>"}
-    ${related.map((item) => `<div class="evidence-box"><p>${escape(item.reason)}</p>
+    ${related.map((item) => `<div class="evidence-box"><p>${escape(localizedText(state.reviewOutput, item.key, item.reason))}</p>
       ${["A", "B"].filter((source) => item[`${source.toLowerCase()}_excerpt`]).map((source) =>
         `<div class="evidence-meta">Reading ${source}</div><blockquote class="evidence-quote">${escape(item[`${source.toLowerCase()}_excerpt`])}</blockquote>`).join("")}
       </div>`).join("")}
-    ${issue ? `<p>${escape(issue.reason)}</p>` : ""}
+    ${issue ? `<p>${escape(localizedText(state.reviewOutput, `extraction:${issueIndex}`, issue.reason))}</p>` : ""}
     <button type="button" class="button text" data-source-page="${escape(page)}" data-source-reading="${escape(evidence?.source || issue?.evidence?.source || "A")}">Open source page</button>`;
 }
 
@@ -448,12 +475,13 @@ function renderVeganOption() {
   control.disabled = !available;
   if (!available) control.setAttribute("aria-checked", "false");
   const hint = available ? "The vegan plan is verified and ready to apply."
-    : state.veganPlan?.reason || "No verified vegan plan is available for this recipe.";
+    : localizedText(state.output, "vegan:reason", state.veganPlan?.reason) || "No verified vegan plan is available for this recipe.";
   message("#vegan-plan-status", hint);
   const review = available ? [] : state.veganPlan?.review_items || [];
   const details = $("#vegan-plan-review");
   details.hidden = !review.length;
-  details.innerHTML = review.map((item) => `<li>${escape(item.reason)}</li>`).join("");
+  details.innerHTML = review.map((item, index) =>
+    `<li>${escape(localizedText(state.output, `vegan:review:${index}`, item.reason))}</li>`).join("");
 }
 
 async function saveFieldReview(action, clear = false) {
@@ -489,14 +517,18 @@ async function saveFieldReview(action, clear = false) {
     });
     if (report !== state.report) return;
     state.review = result.review;
+    state.reviewOutput = null;
     state.scalingPlan = result.scaling_plan ?? null;
     state.veganPlan = result.vegan_plan ?? null;
     state.adaptation = null;
+    state.adaptationReady = false;
     state.adaptRequest++;
+    clearOutput();
     updateOriginalServings();
     renderVeganOption();
     renderReview();
     renderFieldReview();
+    updateReviewOutput();
     message("#field-review-status", action === "confirm" ? "Value confirmed."
       : action === "correct" ? "Correction saved." : "Review decision undone.");
   } catch (error) {
@@ -517,13 +549,17 @@ let adaptationTimer;
 function scheduleAdaptation() {
   window.clearTimeout(adaptationTimer);
   state.adaptRequest++;
-  $("#export-recipe").disabled = true;
+  state.adaptationReady = false;
+  clearOutput();
   adaptationTimer = window.setTimeout(updateAdaptation, 220);
 }
 
 async function updateAdaptation() {
   if (state.screen !== "adapt") return;
   const sequence = ++state.adaptRequest;
+  state.adaptation = null;
+  state.adaptationReady = false;
+  clearOutput();
   const original = $("#original-servings");
   const target = $("#target-servings");
   const servings = quantityField(target);
@@ -531,30 +567,24 @@ async function updateAdaptation() {
   const vegan = veganSelected();
   const invalid = !target.checkValidity() || (servings !== null && !original.checkValidity());
   if (servings !== null && !hasScalingPlan(vegan)) {
-    state.adaptation = null;
     renderAdaptation();
     const recovery = vegan && hasScalingPlan(false)
       ? "Clear the target servings to make the recipe vegan, or turn off Make vegan to scale the original."
       : "Clear the target servings to continue.";
     message("#adapt-status", recovery, true);
-    $("#export-recipe").disabled = true;
     return;
   }
   if (invalid || (servings !== null && !original.readOnly && baseline === null)) {
-    state.adaptation = null;
     renderAdaptation();
     message("#adapt-status", invalid ? "Enter positive whole numbers for servings." : "Enter the original servings to scale the recipe.", true);
-    $("#export-recipe").disabled = true;
     return;
   }
   if (servings === null && !vegan) {
-    state.adaptation = null;
-    renderAdaptation();
+    state.adaptationReady = true;
     message("#adapt-status");
-    $("#export-recipe").disabled = false;
+    updateOutput();
     return;
   }
-  $("#export-recipe").disabled = true;
   message("#adapt-status", "Updating recipe…");
   try {
     const report = await request("/api/adapt", {
@@ -570,23 +600,147 @@ async function updateAdaptation() {
         original_servings: servings === null ? null : baseline, vegan,
       }),
     });
-    if (sequence !== state.adaptRequest) return;
+    if (sequence !== state.adaptRequest || state.screen !== "adapt") return;
     state.adaptation = report.adaptation;
-    renderAdaptation();
+    state.adaptationReady = true;
     message("#adapt-status");
-    $("#export-recipe").disabled = false;
+    updateOutput();
   } catch (error) {
-    if (sequence !== state.adaptRequest) return;
-    state.adaptation = null;
+    if (sequence !== state.adaptRequest || state.screen !== "adapt") return;
     renderAdaptation();
     message("#adapt-status", error.message, true);
   }
 }
 
-function reviewLabel(path) {
+function clearOutput() {
+  state.outputRequest++;
+  state.output = null;
+  $("#recipe-output").hidden = true;
+  $("#changes-card").hidden = true;
+  $("#adaptation-review").hidden = true;
+  $("#export-recipe").disabled = true;
+  message("#output-status");
+}
+
+function displayLanguage() {
+  return $("#output-english").checked ? "english" : "original";
+}
+
+function outputTexts(adapted = false) {
+  const texts = {};
+  const add = (key, text) => {
+    if (typeof text === "string" && text.trim()) texts[key] = text;
+  };
+  (state.report.comparison?.review_items || []).forEach((item, index) => {
+    add(`comparison:${index}`, item.reason);
+    add(`comparison:${index}:section`, item.section);
+  });
+  (state.report.extraction_issues || []).forEach((item, index) => add(`extraction:${index}`, item.reason));
+  if (adapted) {
+    add("vegan:reason", state.veganPlan?.reason);
+    (state.veganPlan?.review_items || []).forEach((item, index) => add(`vegan:review:${index}`, item.reason));
+    for (const variant of ["original", "vegan"]) add(`scaling-plan:${variant}`, state.scalingPlan?.[variant]?.reason);
+    (state.adaptation?.changes || []).forEach(({path, reason}) => add(`change:${path}`, reason));
+    (state.adaptation?.scale?.ingredients || []).forEach(({ingredient_id, reason}) => add(`scale:${ingredient_id}`, reason));
+    (state.adaptation?.review_items || []).forEach((item, index) => add(`adaptation:${index}`, item.reason));
+  }
+  return texts;
+}
+
+function localizeOutput(recipe, language, texts) {
+  const payload = {recipe, output_language: language, texts, source_is_english: state.example && !state.review?.decisions.length};
+  if (language === "original" && state.adaptation?.recipe === recipe) payload.source_recipe = currentRecipe();
+  const key = JSON.stringify(payload);
+  const cache = state.localizedOutputs;
+  if (cache.has(key)) return cache.get(key);
+  const pending = request("/api/output", {
+    method: "POST", headers: {"Content-Type": "application/json"}, body: key,
+  }).then(({output}) => {
+    if (output?.language !== language || !output.recipe) throw new Error("The selected output language was not returned.");
+    return output;
+  }).catch((error) => {
+    if (cache.get(key) === pending) cache.delete(key);
+    throw error;
+  });
+  if (cache.size >= 8) cache.delete(cache.keys().next().value);
+  cache.set(key, pending);
+  return pending;
+}
+
+function renderReviewOutput() {
+  renderReview();
+  if (!$("#field-review").open || state.reviewing) return;
+  const input = $("#field-review-value");
+  const references = $("#field-review-references");
+  const draft = input.value;
+  const selection = [input.selectionStart, input.selectionEnd];
+  const linked = new Set([...references.selectedOptions].map(({value}) => value));
+  renderFieldReview();
+  input.value = draft;
+  input.setSelectionRange(...selection);
+  for (const option of references.options) option.selected = linked.has(option.value);
+}
+
+async function updateReviewOutput() {
+  if (state.screen !== "review") return;
+  const sequence = ++state.reviewOutputRequest;
+  const recipe = currentRecipe();
+  const language = displayLanguage();
+  const texts = outputTexts();
+  state.reviewOutput = null;
+  renderReviewOutput();
+  message("#output-status");
+  if (language === "original" && !Object.keys(texts).length) return;
+  if (language === "english" && !state.example) message("#output-status", "Preparing the English recipe. The source is shown during translation.");
+  try {
+    const output = await localizeOutput(recipe, language, texts);
+    if (sequence !== state.reviewOutputRequest || state.screen !== "review") return;
+    state.reviewOutput = output;
+    renderReviewOutput();
+    message("#output-status");
+  } catch (error) {
+    if (sequence !== state.reviewOutputRequest || state.screen !== "review") return;
+    message("#output-status", `${error.message} The source is shown.`, true);
+  }
+}
+
+async function updateOutput() {
+  if (state.screen !== "adapt" || !state.adaptationReady) return;
+  clearOutput();
+  const sequence = state.outputRequest;
+  const recipe = state.adaptation?.recipe ?? currentRecipe();
+  const language = displayLanguage();
+  const texts = outputTexts(true);
+  renderAdaptation();
+  renderVeganOption();
+  const applyOutput = (output) => {
+    state.output = output;
+    renderAdaptation();
+    renderVeganOption();
+    $("#export-recipe").disabled = false;
+  };
+  if (language === "original") {
+    applyOutput({language, recipe});
+    if (!Object.keys(texts).length) return;
+  } else if (!state.example) {
+    message("#output-status", "Preparing the English recipe…");
+  }
+  try {
+    const output = await localizeOutput(recipe, language, texts);
+    if (sequence !== state.outputRequest || state.screen !== "adapt") return;
+    applyOutput(output);
+    message("#output-status");
+  } catch (error) {
+    if (sequence !== state.outputRequest || state.screen !== "adapt") return;
+    const recovery = language === "english" ? "Uncheck English output to view and export the original language." : "The original recipe is available with the recorded notes.";
+    message("#output-status", `${error.message} ${recovery}`, true);
+  }
+}
+
+function reviewLabel(path, recipe) {
   const match = /^\/(ingredients|tools|steps)\/(\d+)/.exec(path);
   if (!match) return "Recipe";
-  const item = currentRecipe()[match[1]][Number(match[2])];
+  const item = recipe[match[1]][Number(match[2])];
   if (match[1] === "ingredients") return ingredientLabel(item);
   if (match[1] === "tools") return clean(value(item?.name)) || "Utensil";
   return stepLabel(item || {}, Number(match[2]));
@@ -599,7 +753,7 @@ const scalingLabels = {
   review: "Review required",
 };
 
-function scalingExplanation(rule) {
+function scalingExplanation(rule, output) {
   if (!rule) return "";
   const label = scalingLabels[rule.mode];
   const count = rule.batches ? `${rule.batches} ${rule.batches === 1 ? "batch" : "batches"}` : "";
@@ -612,32 +766,38 @@ function scalingExplanation(rule) {
   };
   const difference = check?.materially_different
     ? `Luna ${describeOutcome(check.luna_outcome)} · Gemini ${describeOutcome(check.gemini_outcome)}` : "";
-  const details = [label, count || factor, perBatch && `${perBatch} each`, difference, rule.reason].filter(Boolean).join(" · ");
+  const reason = localizedText(output, `scale:${rule.ingredient_id}`, rule.reason);
+  const details = [label, count || factor, perBatch && `${perBatch} each`, difference, reason].filter(Boolean).join(" · ");
   return `<small class="change-reason">${escape(details)}</small>`;
 }
 
 function renderAdaptation() {
   const original = currentRecipe();
   const adapted = state.adaptation;
-  const title = clean(value(original.title)) || "recipe";
+  const output = state.output;
+  const title = clean(value((output?.recipe ?? adapted?.recipe ?? original).title)) || "recipe";
   $("#adapt-title").textContent = `Adapt ${title}`;
   const target = adapted?.scale?.target_servings;
   const adaptationLabel = adapted?.vegan_requested
     ? adapted.status === "needs_review" ? "Vegan proposal · Review needed" : "Vegan proposal"
-    : "Recipe adaptation";
-  $("#adapt-subtitle").textContent = [adaptationLabel,
-    target ? countLabel(target, "serving") : ""].filter(Boolean).join(" · ");
+    : adapted ? "Recipe adaptation" : "Reviewed recipe";
+  const yieldText = target ? countLabel(target, "serving") : clean(value(output?.recipe.servings));
+  $("#adapt-subtitle").textContent = [adaptationLabel, yieldText].filter(Boolean).join(" · ");
   const factor = adapted?.scale?.factor;
   const vegan = veganSelected();
   const canScale = hasScalingPlan(vegan);
-  const hasVegan = hasVeganPlan();
   const scaleHint = !canScale
-    ? currentScalingPlan(vegan)?.reason || (vegan ? "Serving adjustment is unavailable for the vegan recipe."
+    ? localizedText(output, `scaling-plan:${vegan ? "vegan" : "original"}`, currentScalingPlan(vegan)?.reason)
+      || (vegan ? "Serving adjustment is unavailable for the vegan recipe."
       : "Serving adjustment is unavailable for this recipe.")
     : factor ? `Serving scale factor: ${factor}.` : "Enter a target to scale quantities.";
   const verification = adapted?.scale?.verification ?? currentScalingPlan(vegan)?.verification;
   $("#target-hint").textContent = verification?.status === "unavailable" && canScale
     ? `${scaleHint} Gemini verification is unavailable.` : scaleHint;
+
+  if (!output) return;
+  renderRecipeOutput(output);
+  $("#changes-card").hidden = !adapted;
   const changes = adapted?.changes || [];
   const changeReasons = new Map(changes.map(({path, reason}) => [path, reason]));
   const scalingRules = new Map((adapted?.scale?.ingredients || []).map((rule) => [rule.ingredient_id, rule]));
@@ -647,40 +807,50 @@ function renderAdaptation() {
     const changed = adapted?.recipe.ingredients[index];
     if (!changed) return [];
     const beforeName = ingredientLabel(item);
-    const afterName = ingredientLabel(changed);
+    const changedName = ingredientLabel(changed);
     const beforeAmount = ingredientAmount(item);
-    const afterAmount = ingredientAmount(changed);
+    const changedAmount = ingredientAmount(changed);
     const rule = scalingRules.get(item.id);
-    if (beforeName === afterName && beforeAmount === afterAmount && !rule) return [];
-    const showName = beforeName !== afterName;
+    if (beforeName === changedName && beforeAmount === changedAmount && !rule) return [];
+    const localized = output.recipe.ingredients[index];
+    const afterName = ingredientLabel(localized);
+    const afterAmount = ingredientAmount(localized);
+    const showName = beforeName !== changedName;
     const before = showName ? [beforeName, beforeAmount].filter(Boolean).join(" · ") : beforeAmount;
     const after = showName ? [afterName, afterAmount].filter(Boolean).join(" · ") : afterAmount;
-    const reason = showName ? changeReasons.get(`/ingredients/${index}/name`) : null;
-    return `<tr><th scope="row">${escape(beforeName)}</th><td>${escape(before || "—")}</td>
-      <td class="changed-value">${escape(after || "—")}${reason ? `<small class="change-reason">${escape(reason)}</small>` : ""}${scalingExplanation(rule)}</td></tr>`;
+    const path = `/ingredients/${index}/name`;
+    const reason = showName ? localizedText(output, `change:${path}`, changeReasons.get(path)) : null;
+    return `<tr><th scope="row">${escape(afterName)}</th><td>${escape(before || "—")}</td>
+      <td class="changed-value">${escape(after || "—")}${reason ? `<small class="change-reason">${escape(reason)}</small>` : ""}${scalingExplanation(rule, output)}</td></tr>`;
   }).join("");
-  let emptyMessage = "No adaptation is available for this recipe.";
-  if (adapted) emptyMessage = "No ingredient changes.";
-  else if (canScale && hasVegan) emptyMessage = "Adjust servings or enable Make vegan to see changes.";
-  else if (canScale) emptyMessage = "Adjust servings to see ingredient changes.";
-  else if (hasVegan) emptyMessage = "Enable Make vegan to see substitutions.";
   $("#changes").innerHTML = rows ? table(["Ingredient", "Original", "Adapted"], rows)
-    : `<p class="empty">${emptyMessage}</p>`;
+    : '<p class="empty">No ingredient changes.</p>';
   const reviews = adapted?.review_items || [];
   const banner = $("#adaptation-review");
   banner.hidden = !reviews.length;
   banner.innerHTML = reviews.length ? `<h2>${icon("warning")} ${countLabel(reviews.length, "item")} to review</h2>
-    <ul>${reviews.map((item) => `<li><strong>${escape(reviewLabel(item.path))}</strong> · ${escape(item.reason)}</li>`).join("")}</ul>` : "";
-  const steps = (adapted?.recipe.steps || []).flatMap((step, index) => {
-    const old = original.steps[index];
-    const updated = ["instruction", "condition", "duration"].some((field) => value(step[field]) !== value(old?.[field]));
-    return updated ? [`<li><strong>${escape(stepLabel(step, index))}</strong><p>${escape(stepDescription(step))}</p></li>`] : [];
-  });
-  $("#adapted-step-card").hidden = !steps.length;
-  $("#adapted-steps").innerHTML = `<ul class="comparison-list">${steps.join("")}</ul>`;
+    <ul>${reviews.map((item, index) => `<li><strong>${escape(reviewLabel(item.path, output.recipe))}</strong> · ${escape(localizedText(output, `adaptation:${index}`, item.reason))}</li>`).join("")}</ul>` : "";
+}
+
+function renderRecipeOutput({language, recipe}) {
+  $("#recipe-output").hidden = false;
+  $("#recipe-output-language").textContent = language === "english" ? "English" : "Original language";
+  const rows = recipe.ingredients.map((item) => `<tr>
+    <th scope="row">${escape(ingredientLabel(item))}</th>
+    <td>${escape(ingredientAmount(item) || "—")}</td>
+    <td>${escape([clean(value(item.preparation)), clean(value(item.optional_when))].filter(Boolean).join(" · ") || "—")}</td>
+  </tr>`).join("");
+  $("#output-ingredients").innerHTML = rows ? table(["Ingredient", "Amount", "Preparation"], rows)
+    : '<p class="empty">No ingredients were extracted.</p>';
+  const tools = recipe.tools.map((tool) => clean(value(tool.name)) || "Needs review");
+  $("#output-utensils").hidden = !tools.length;
+  $("#output-tools").textContent = tools.join(", ");
+  $("#output-steps").innerHTML = recipe.steps.map((step) => `<li>${escape(stepDescription(step))}</li>`).join("");
+  $("#output-no-steps").hidden = Boolean(recipe.steps.length);
 }
 
 function exportReport() {
+  if (!state.output) return;
   const report = {...state.report};
   if (state.review) report.review = state.review;
   if (state.scalingPlan) report.scaling_plan = state.scalingPlan;
@@ -688,6 +858,8 @@ function exportReport() {
   if (state.veganPlan) report.vegan_plan = state.veganPlan;
   else delete report.vegan_plan;
   if (state.adaptation) report.adaptation = state.adaptation;
+  else delete report.adaptation;
+  report.output = state.output;
   const blob = new Blob([JSON.stringify(report, null, 2) + "\n"], {type: "application/json"});
   const href = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -806,7 +978,11 @@ $("#previous-page").addEventListener("click", () => openPage(state.page - 1));
 $("#next-page").addEventListener("click", () => openPage(state.page + 1));
 $("#source-dialog").addEventListener("close", () => { state.previewRequest++; });
 $("#adapt-settings").addEventListener("submit", (event) => { event.preventDefault(); updateAdaptation(); });
-$("#adapt-settings").addEventListener("input", scheduleAdaptation);
+for (const selector of ["#original-servings", "#target-servings"]) $(selector).addEventListener("input", scheduleAdaptation);
+$("#output-english").addEventListener("change", () => {
+  if (state.screen === "review") updateReviewOutput();
+  if (state.screen === "adapt") updateOutput();
+});
 $("#vegan").addEventListener("click", (event) => {
   const control = event.currentTarget;
   control.setAttribute("aria-checked", String(control.getAttribute("aria-checked") !== "true"));

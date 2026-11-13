@@ -44,7 +44,7 @@ flowchart TD
     entry -->|"Try example"| example
 
     subgraph review ["Review"]
-        display["Show recipe and review flags"]
+        display["Show recipe and review flags in the selected language"]
         inspect["Inspect excerpts and source page"]
         resolve["Confirm or correct a recipe field"]
         saveReview["Save decision and original evidence"]
@@ -60,13 +60,16 @@ flowchart TD
     example --> display
 
     subgraph adapt ["Adapt"]
-        options["Choose servings and vegan option"]
+        options["Choose servings, vegan option, and output language"]
         valid{"Serving counts valid?"}
         correct["Ask for valid serving counts"]
         requested{"Any adaptation requested?"}
         base["Apply saved decisions to the original recipe"]
         vegan["Apply the verified vegan plan if selected"]
         scale["Compare outcomes and apply scaling rules in Python"]
+        outputLanguage{"Output in English?"}
+        translate["Translate the final recipe and validate measures"]
+        output["Show recipe and keep original evidence"]
         changes["Show changes and warnings"]
         options --> valid
         valid -->|"No"| correct
@@ -76,13 +79,17 @@ flowchart TD
         base --> vegan
         vegan --> scale
         scale --> changes
+        changes --> outputLanguage
+        requested -->|"No"| outputLanguage
+        outputLanguage -->|"Yes"| translate
+        outputLanguage -->|"No"| output
+        translate --> output
         changes -.->|"Change options"| options
     end
 
     display -->|"Open Adapt"| options
     refreshPlan -->|"Open Adapt"| options
-    requested -->|"No"| download(["Export JSON report"])
-    changes -->|"Include adaptation"| download
+    output --> download(["Export JSON report"])
 
     style reading fill:#E9F2FA,stroke:#8AA9C6,color:#1E1E1E
     style review fill:#F0F4FA,stroke:#9AAFC8,color:#1E1E1E
