@@ -179,9 +179,10 @@ class WebTests(unittest.TestCase):
 
         def respond(**payload):
             request = json.loads(payload["input"][1]["content"])
+            self.assertEqual(request["language"], "bilingual")
             return json.dumps({"translations": [
                 {"path": item["path"], "text": translations.get(item["text"], item["text"])
-                 if request["language"] == "english" else item["text"].replace("Check the amounts.", "Mengen prüfen.")}
+                 if item["path"].startswith("/english/") else item["text"].replace("Check the amounts.", "Mengen prüfen.")}
                 for item in request["fields"]
             ]})
 
@@ -197,7 +198,12 @@ class WebTests(unittest.TestCase):
             self.assertEqual(set(prepared["outputs"]), {"english", "original"})
             self.assertEqual(prepared["output_errors"], {})
             self.assertEqual(prepared["outputs"]["original"]["texts"]["notice"], "Mengen prüfen.")
-            self.assertEqual(model.respond.call_count, 2)
+            model.respond.assert_called_once()
+            status, _, _ = self.request("POST", "/api/prepare-output", json.dumps({
+                **context, "recipe": source, "can_scale": True,
+            }), headers)
+            self.assertEqual(status, 200)
+            model.respond.assert_called_once()
             load_key.reset_mock()
             model.respond.reset_mock(side_effect=True)
             model.respond.side_effect = AssertionError("Changing servings must not call the model.")
@@ -214,6 +220,52 @@ class WebTests(unittest.TestCase):
                     self.assertIn(f"{amount} {unit} {name}", output["steps"][0]["instruction"]["value"])
             load_key.assert_not_called()
             model.respond.assert_not_called()
+
+    def test_reimport_reuses_successful_report_by_content(self):
+        first_path = "/api/extract?filename=recipe.pdf"
+        source = b"%PDF-1.7\nsame document"
+        pipeline_result = {"recipe": recipe("2", [], []), "status": "needs_review"}
+        with patch("cookbook_ocr.web._IMPORTS", OrderedDict()), patch(
+            "cookbook_ocr.web.run_pipeline", return_value=pipeline_result,
+        ) as pipeline, patch("cookbook_ocr.web.load_api_keys", return_value=("gemini", "openai")):
+            first = self.request("POST", first_path, source)
+            second = self.request("POST", "/api/extract?filename=copy.pdf", source)
+            third = self.request("POST", first_path, source + b" changed")
+            self.assertEqual((first[0], second[0], third[0]), (200, 200, 200))
+            self.assertEqual(first[2], second[2])
+            self.assertNotEqual(json.loads(first[2])["translation_session"], json.loads(third[2])["translation_session"])
+            self.assertEqual(pipeline.call_count, 2)
+
+    def test_translation_retry_sends_only_fields_that_failed_validation(self):
+        source = recipe("1", [ingredient("water", "Wasser", "½", "l")],
+                        [step("½ l Wasser kochen.", "water")])
+        source["title"] = field("Sud")
+        data = {"recipe": source, "translation_session": "retry-bilingual", "texts": {"note": "Check the amount."}}
+        headers = {"Content-Type": "application/json"}
+        attempts = []
+        model = Mock()
+
+        def respond(**payload):
+            fields = json.loads(payload["input"][1]["content"])["fields"]
+            paths = [item["path"] for item in fields]
+            attempts.append(paths)
+            return json.dumps({"translations": [
+                {"path": item["path"], "text": (
+                    None if len(attempts) == 1 and item["path"] == "/english/steps/0/instruction" else item["text"]
+                )} for item in fields
+            ]})
+
+        model.respond.side_effect = respond
+        with patch("cookbook_ocr.web._TRANSLATION_CACHE", OrderedDict()), patch(
+            "cookbook_ocr.web.load_openai_key", return_value="test",
+        ), patch("cookbook_ocr.web.OpenAIClient", return_value=model):
+            _, _, first = self.request("POST", "/api/prepare-output", json.dumps(data), headers)
+            _, _, retry = self.request("POST", "/api/prepare-output", json.dumps(data), headers)
+        self.assertEqual(set(json.loads(first)["outputs"]), {"original"})
+        self.assertEqual(set(json.loads(retry)["outputs"]), {"english", "original"})
+        self.assertEqual(len(attempts), 2)
+        self.assertIn("/original/display/0", attempts[0])
+        self.assertEqual(attempts[1], ["/english/steps/0/instruction"])
 
     def test_serve_assets_without_exposing_files_above_asset_directory(self):
         with tempfile.TemporaryDirectory() as temporary:

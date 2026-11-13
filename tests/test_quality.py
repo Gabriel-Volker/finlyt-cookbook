@@ -90,10 +90,11 @@ class UnreadableImportTests(unittest.TestCase):
         self.luna = Mock()
         self.gemini.transcribe.return_value = UNREADABLE_PAGE
         self.luna.transcribe.return_value = UNREADABLE_PAGE
-        self.luna.respond.side_effect = [
-            json.dumps({"review_items": [], "equivalent_variations": []}),
-            json.dumps(EMPTY_EXTRACTION),
-        ]
+        outputs = {
+            "transcription_comparison": {"review_items": [], "equivalent_variations": []},
+            "recipe_extraction": EMPTY_EXTRACTION,
+        }
+        self.luna.respond.side_effect = lambda **request: json.dumps(outputs[request["text"]["format"]["name"]])
 
     def run_import(self, document, filename="recipe.png"):
         return run_pipeline(document, filename, self.gemini, self.luna)
@@ -126,7 +127,8 @@ class UnreadableImportTests(unittest.TestCase):
         self.assertEqual(report["transcriptions"], {"A": UNREADABLE_PAGE, "B": UNREADABLE_PAGE})
         self.assertEqual(report["status"], "needs_review")
         self.assertEqual(report["extraction_issues"][0]["field"], "/recipe")
-        self.assertEqual(self.luna.respond.call_count, 2)
+        self.luna.respond.assert_called_once()
+        self.assertTrue(report["comparison"]["review_items"])
 
     def test_keeps_a_blurred_page_when_either_reader_recovers_text(self):
         self.luna.transcribe.return_value = READABLE_PAGE
@@ -188,5 +190,5 @@ class UnreadableImportTests(unittest.TestCase):
         with patch("cookbook_ocr.pipeline.assess_blur", return_value=false_positive):
             report = self.run_import(recipe_pdf(recipe_image(blur=18), None), "mixed.pdf")
 
-        self.assertEqual(self.luna.respond.call_count, 2)
+        self.luna.respond.assert_called_once()
         self.assertIn("[page: 2]", report["transcriptions"]["B"])

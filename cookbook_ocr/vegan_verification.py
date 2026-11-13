@@ -104,9 +104,6 @@ def verify_vegan_plan(gemini: GeminiClient | None, recipe: dict, plan: dict) -> 
         return unavailable("Gemini needs a current vegan plan to verify.")
     if plan["status"] != "ready" or vegan_plan_usable(recipe, plan):
         return plan
-    if gemini is None:
-        return unavailable("Gemini verification is unavailable.")
-
     try:
         plan = validate_vegan_plan(recipe, plan)
     except ValueError:
@@ -115,6 +112,12 @@ def verify_vegan_plan(gemini: GeminiClient | None, recipe: dict, plan: dict) -> 
         return plan
     replacements = proposed_vegan_substitutions(plan["changes"])
     ingredient_names = vegan_ingredient_names(recipe, plan["changes"])
+    if review_items := vegan_animal_review(ingredient_names):
+        return unavailable_vegan_plan(
+            recipe, "verification_failed", "An animal ingredient remains in the proposed recipe.", review_items,
+        )
+    if gemini is None:
+        return unavailable("Gemini verification is unavailable.")
     changes = {change["path"]: change["after"] for change in plan["changes"]}
     steps_to_check = {}
     for index, step in enumerate(recipe["steps"]):
@@ -152,9 +155,6 @@ def verify_vegan_plan(gemini: GeminiClient | None, recipe: dict, plan: dict) -> 
             or not vegan_substitutions_approved(plan["changes"], result["approved_substitutions"])
         ):
             return unavailable("Gemini did not explicitly approve every vegan substitution.")
-        if review_items := vegan_animal_review(ingredient_names):
-            reason = "An animal ingredient remains in the proposed recipe."
-            return unavailable_vegan_plan(recipe, "verification_failed", reason, review_items)
         return {**plan, "verification": {
             "provider": "gemini", "status": status, "reason_code": None, "reason": None,
             "findings": [], "approved_substitutions": result["approved_substitutions"],

@@ -9,7 +9,7 @@ from hashlib import sha256
 
 from .extraction import UNREADABLE
 from .quantities import QUANTITY_PATTERN, known_units
-from .review import REVIEW_FIELDS
+from .review import REVIEW_FIELDS, same_recipe_inputs
 
 
 EDITABLE_FIELDS = {
@@ -136,16 +136,22 @@ def vegan_plan_usable(recipe: dict, plan: dict | None) -> bool:
 
 
 def rebind_vegan_plan(previous_recipe: dict, recipe: dict, plan: dict | None) -> dict | None:
-    """Retain verified ingredient and method decisions after a title or yield edit."""
+    """Retain verified ingredient and method decisions when their inputs are unchanged."""
     if not vegan_plan_usable(previous_recipe, plan):
         return None
     relevant = set(previous_recipe) | set(recipe)
     relevant.discard("servings")
     if all(change["path"] != "/title" for change in plan["changes"]):
         relevant.discard("title")
-    if any(previous_recipe.get(key) != recipe.get(key) for key in relevant):
+    if not all(same_recipe_inputs(previous_recipe.get(key), recipe.get(key)) for key in relevant):
         return None
-    return {**plan, "recipe_fingerprint": _fingerprint(recipe)}
+    try:
+        rebound = validate_vegan_plan(recipe, plan)
+    except ValueError:
+        return None
+    if rebound["status"] != "ready":
+        return None
+    return {**plan, **rebound}
 
 
 def _vegan_plan(recipe: dict, status: str, reason_code: str | None, reason: str | None,

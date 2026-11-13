@@ -377,28 +377,35 @@ class VeganVerificationTests(unittest.TestCase):
         self.gemini.respond_structured.return_value = clear_verdict()
         self.assertTrue(vegan_plan_usable(source, verify_vegan_plan(self.gemini, source, plan)))
 
-    def test_blocks_clear_verdict_when_final_ingredient_list_still_contains_butter(self):
+    def test_blocks_known_animal_ingredient_without_calling_the_verifier(self):
         plan = validate_vegan_plan(self.recipe, proposal())
         self.gemini.respond_structured.return_value = clear_verdict()
         verified = verify_vegan_plan(self.gemini, self.recipe, plan)
         self.assertEqual(verified["status"], "unavailable")
         self.assertEqual(verified["reason_code"], "verification_failed")
         self.assertEqual([item["path"] for item in verified["review_items"]], ["/ingredients/0/name"])
-        sent = self.gemini.respond_structured.call_args.args[2]
-        self.assertEqual(sent["ingredients_to_check"], [{"path": "/ingredients/0/name", "ingredient": "butter"}])
+        self.gemini.respond_structured.assert_not_called()
         self.assertFalse(vegan_plan_usable(self.recipe, {**plan, "verification": {"provider": "gemini", **clear_verdict()}}))
 
     def test_omission_requires_an_ingredient_still_present_after_the_changes(self):
+        source = recipe("2", [ingredient("fat", "unsalted cultured dairy butter")],
+                        [step("Melt unsalted cultured dairy butter.", "fat")])
         finding = {
             "path": "/ingredients/0/name", "kind": "animal_ingredient",
             "reason": "The recipe still uses dairy butter.",
-            "evidence": [{"path": "/ingredients/0/name", "quote": "butter"}],
+            "evidence": [{"path": "/ingredients/0/name", "quote": "unsalted cultured dairy butter"}],
         }
         self.gemini.respond_structured.return_value = finding_verdict(finding)
-        unchanged = validate_vegan_plan(self.recipe, proposal())
+        unchanged = validate_vegan_plan(source, proposal())
+        changed = validate_vegan_plan(source, proposal([
+            {"path": "/ingredients/0/name", "before": "unsalted cultured dairy butter", "after": "vegan butter",
+             "reason": "Use a plant fat."},
+            {"path": "/steps/0/instruction", "before": "Melt unsalted cultured dairy butter.",
+             "after": "Melt vegan butter.", "reason": "Use the replacement in the step."},
+        ]))
 
-        valid = verify_vegan_plan(self.gemini, self.recipe, unchanged)
-        invalid = verify_vegan_plan(self.gemini, self.recipe, self.plan("vegan butter"))
+        valid = verify_vegan_plan(self.gemini, source, unchanged)
+        invalid = verify_vegan_plan(self.gemini, source, changed)
 
         self.assertEqual(valid["verification"]["findings"], [finding])
         self.assertEqual(valid["status"], "unavailable")

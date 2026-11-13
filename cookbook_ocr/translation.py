@@ -3,6 +3,7 @@
 import json
 import re
 from copy import deepcopy
+from dataclasses import dataclass
 from pathlib import Path
 
 from .pipeline import _structured_response
@@ -14,6 +15,16 @@ from .translation_constraints import preserves_constraints
 
 class TranslationError(ValueError):
     """The English display recipe could not be produced or verified."""
+
+
+@dataclass
+class _TranslationTask:
+    recipe: dict
+    pending: dict
+    templates: dict
+    fields: dict
+    notes: dict
+    note_paths: dict
 
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
@@ -139,6 +150,33 @@ def translate_output(
     """Translate display values, or render them with previously validated templates."""
     if language not in ("english", "original"):
         raise TranslationError("Choose English or the original recipe language.")
+    task = _prepare_translation(recipe, texts, language, source_recipe, templates, variant, prefetch_texts, cache_only)
+    errors = _request_translations(openai, {language: task}, source_recipe or recipe)
+    return _render_translation(task, errors[language])
+
+
+def prepare_bilingual_output(openai: OpenAIClient, recipe: dict, texts: dict, *,
+                             templates: dict, variant: dict | None, prefetch: tuple) -> dict:
+    """Batch both target languages and save independently validated fields."""
+    tasks = {
+        language: _prepare_translation(recipe, texts, language, None, templates[language], variant, prefetch, False)
+        for language in ("english", "original")
+    }
+    errors = _request_translations(openai, tasks, recipe, bilingual=True)
+    result = {"outputs": {}, "output_errors": {}}
+    for language, task in tasks.items():
+        try:
+            output = _render_translation(task, errors[language])
+        except TranslationError as error:
+            result["output_errors"][language] = str(error)
+            if language == "english":
+                continue
+            output = {"recipe": recipe, "texts": texts}
+        result["outputs"][language] = {"language": language, **output}
+    return result
+
+
+def _prepare_translation(recipe, texts, language, source_recipe, templates, variant, prefetch_texts, cache_only):
     try:
         translated = deepcopy(recipe)
         fields = _recipe_fields(translated) if language == "english" else {}
@@ -155,7 +193,6 @@ def translate_output(
             for index, text in enumerate(prefetch_texts)
         }
         requested_fields = {**fields, **notes}
-        entries = []
         pending = {}
         cached = templates if templates is not None else {}
         translations = {}
@@ -183,31 +220,42 @@ def translate_output(
                 translations[path] = (key, measures)
             if not cache_only and key not in cached and key not in pending:
                 pending[key] = path
-                entries.append({"path": path, "text": text})
     except (KeyError, TypeError, AttributeError):
         raise TranslationError("The recipe cannot be prepared for translation.") from None
+    fields = {path: (requested_fields[path], key, measures) for path, (key, measures) in translations.items()}
+    return _TranslationTask(translated, pending, cached, fields, notes, note_paths)
 
-    required = {key for key, _ in translations.values() if key in pending}
-    fresh = _translate_missing(openai, entries, pending, required, language, source_recipe or recipe) if entries else {}
-    for path, (key, measures) in translations.items():
-        text = fresh.get(key) or cached.get(key)
+
+def _render_translation(task: _TranslationTask, errors: dict) -> dict:
+    for path, (field, key, measures) in task.fields.items():
+        text = task.templates.get(key)
         if text is None:
-            if path in notes:
+            if key in task.pending:
+                raise errors.get(key, TranslationError("The translation omitted one or more recipe fields."))
+            if path in task.notes:
                 continue
             raise TranslationError("The English translation for the current recipe is not ready.")
-        requested_fields[path]["value"] = _PLACEHOLDER.sub(lambda match: measures.get(match.group(), match.group()), text).strip()
-    if fresh:
-        cached.update(fresh)
-    return {"recipe": translated, "texts": {key: notes[path]["value"] for path, key in note_paths.items()}}
+        field["value"] = _PLACEHOLDER.sub(lambda match: measures.get(match.group(), match.group()), text).strip()
+    return {"recipe": task.recipe, "texts": {key: task.notes[path]["value"] for path, key in task.note_paths.items()}}
 
 
-def _translate_missing(openai, entries, pending, required, language, source_recipe):
-    paths = {path: key for key, path in pending.items()}
+def _request_translations(openai, tasks, source_recipe, *, bilingual=False):
+    paths = {}
+    entries = []
+    errors = {language: {} for language in tasks}
+    for language, task in tasks.items():
+        for key, path in task.pending.items():
+            request_path = f"/{language}{path}" if bilingual else path
+            paths[request_path] = (language, key)
+            entries.append({"path": request_path, "text": key[1]})
+    if not entries:
+        return errors
+
     prompt = (PROMPTS_DIR / "translate_recipe.system.txt").read_text(encoding="utf-8")
     schema = json.loads((PROMPTS_DIR / "translate_recipe.schema.json").read_text(encoding="utf-8"))
     schema["properties"]["translations"]["items"]["properties"]["path"]["enum"] = list(paths)
-    data = {"fields": entries, "language": language}
-    if language == "original":
+    data = {"fields": entries, "language": "bilingual" if bilingual else next(iter(tasks))}
+    if "original" in tasks and tasks["original"].pending:
         try:
             source_fields = _recipe_fields(source_recipe)
             source_text = {path: field["value"][:350] for path, field in source_fields.items()
@@ -223,7 +271,7 @@ def _translate_missing(openai, entries, pending, required, language, source_reci
             raise TranslationError("The original language could not be determined.")
     try:
         response = _structured_response(
-            openai, prompt, schema, "recipe_translation", data, max_output_tokens=8192,
+            openai, prompt, schema, "recipe_translation", data, max_output_tokens=16384 if bilingual else 8192,
         )
     except json.JSONDecodeError:
         raise TranslationError("The translation response was invalid.") from None
@@ -231,7 +279,7 @@ def _translate_missing(openai, entries, pending, required, language, source_reci
     translations = response.get("translations") if isinstance(response, dict) else None
     if not isinstance(translations, list):
         raise TranslationError("The translation response was invalid.")
-    translated = {}
+    valid = {}
     seen = set()
     for entry in translations:
         path = entry.get("path") if isinstance(entry, dict) else None
@@ -239,7 +287,7 @@ def _translate_missing(openai, entries, pending, required, language, source_reci
             raise TranslationError("The translation did not match the recipe fields.")
         seen.add(path)
         text = entry.get("text")
-        key = paths[path]
+        language, key = paths[path]
         source = key[1]
         try:
             if not isinstance(text, str) or not text.strip():
@@ -248,14 +296,14 @@ def _translate_missing(openai, entries, pending, required, language, source_reci
                     or any(char.isnumeric() for char in _PLACEHOLDER.sub("", text))):
                 raise TranslationError("The translation changed a protected recipe measure.")
             _validate_translation_semantics(source, text)
-        except TranslationError:
-            if key in required:
-                raise
+        except TranslationError as error:
+            errors[language][key] = error
             continue
-        translated[key] = text
-    if not required <= translated.keys():
-        raise TranslationError("The translation omitted one or more recipe fields.")
-    return translated
+        valid[path] = text
+    for path, text in valid.items():
+        language, key = paths[path]
+        tasks[language].templates[key] = text
+    return errors
 
 
 def translate_recipe(openai: OpenAIClient, recipe: dict) -> dict:

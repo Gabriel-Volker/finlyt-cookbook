@@ -6,7 +6,8 @@ import json
 import mimetypes
 import re
 from collections import OrderedDict
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future
+from hashlib import sha256
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from io import BytesIO
@@ -25,8 +26,8 @@ from .pipeline import UnreadableRecipeError, plan_vegan_recipe, refresh_scaling_
 from .providers import GeminiClient, MIME_TYPES, OpenAIClient, ProviderError
 from .raster import run_pdf_task
 from .review import review_recipe, reviewed_step_links
-from .scaling_plan import SCALING_RULE_DISPLAY_TEXTS, rebase_scaling_plan
-from .translation import TranslationError, translate_output
+from .scaling_plan import SCALING_RULE_DISPLAY_TEXTS, rebase_scaling_plan, rebind_scaling_plan
+from .translation import TranslationError, prepare_bilingual_output, translate_output
 from .vegan import (
     VEGAN_AMOUNT_WARNING, VEGAN_UNIT_WARNING, rebind_vegan_plan, unavailable_vegan_plan,
     vegan_plan_matches, vegan_plan_usable,
@@ -42,6 +43,38 @@ LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 STATIC_TYPES = {".js": "application/javascript", ".svg": "image/svg+xml", ".woff2": "font/woff2"}
 _TRANSLATION_CACHE: OrderedDict[tuple[str, str], tuple[Lock, dict]] = OrderedDict()
 _TRANSLATION_CACHE_LOCK = Lock()
+_IMPORTS: OrderedDict[str, dict] = OrderedDict()
+_IMPORTS_PENDING: dict[str, Future] = {}
+_IMPORTS_LOCK = Lock()
+
+
+def _import_recipe(document: bytes, filename: str, mime_type: str, gemini_key: str, openai_key: str) -> dict:
+    session = sha256(mime_type.encode("ascii") + b"\0" + document).hexdigest()
+    with _IMPORTS_LOCK:
+        if session in _IMPORTS:
+            _IMPORTS.move_to_end(session)
+            return _IMPORTS[session]
+        pending = _IMPORTS_PENDING.get(session)
+        leader = pending is None
+        if leader:
+            pending = _IMPORTS_PENDING[session] = Future()
+    if not leader:
+        return pending.result()
+    try:
+        report = run_pipeline(document, filename, GeminiClient(gemini_key), OpenAIClient(openai_key))
+        result = {**report, "translation_session": session}
+        with _IMPORTS_LOCK:
+            _IMPORTS[session] = result
+            if len(_IMPORTS) > 8:
+                _IMPORTS.popitem(last=False)
+        pending.set_result(result)
+        return result
+    except Exception as error:
+        pending.set_exception(error)
+        raise
+    finally:
+        with _IMPORTS_LOCK:
+            del _IMPORTS_PENDING[session]
 
 
 def _translation_session(session: str, language: str) -> tuple[Lock, dict]:
@@ -93,29 +126,33 @@ def _bilingual_output(
     def localized(language):
         if source_is_english or (language == "original" and not (texts or prefetch)):
             return {"language": language, **plain}, None
-        lock, templates = _translation_session(session, language)
-        options = {
-            "language": language, "source_recipe": source_recipe, "templates": templates,
-            "variant": variant, "prefetch_texts": prefetch,
-        }
+        _, templates = _translation_session(session, language)
         try:
-            if client is None:
-                output = translate_output(None, recipe, texts, **options, cache_only=True)
-            else:
-                with lock:
-                    output = translate_output(client, recipe, texts, **options)
-                    while len(templates) > 2048:
-                        del templates[next(iter(templates))]
+            output = translate_output(None, recipe, texts, language=language, source_recipe=source_recipe,
+                                      templates=templates, cache_only=True)
             return {"language": language, **output}, None
         except (TranslationError, ProviderError) as error:
             return ({"language": language, **plain} if language == "original" else None), str(error)
 
     languages = ("english", "original")
     if client is not None and not source_is_english:
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            results = list(executor.map(localized, languages))
-    else:
-        results = [localized(language) for language in languages]
+        english_lock, english = _translation_session(session, "english")
+        original_lock, original = _translation_session(session, "original")
+        try:
+            with english_lock, original_lock:
+                result = prepare_bilingual_output(client, recipe, texts, templates={"english": english, "original": original},
+                                                  variant=variant, prefetch=prefetch)
+                for templates in (english, original):
+                    while len(templates) > 2048:
+                        del templates[next(iter(templates))]
+            return result
+        except (TranslationError, ProviderError) as error:
+            results = [localized(language) for language in languages]
+            return {
+                "outputs": {language: output for language, (output, _) in zip(languages, results) if output is not None},
+                "output_errors": {language: str(error) for language in languages},
+            }
+    results = [localized(language) for language in languages]
     return {
         "outputs": {language: output for language, (output, _) in zip(languages, results) if output is not None},
         "output_errors": {language: error for language, (_, error) in zip(languages, results) if error is not None},
@@ -261,7 +298,7 @@ class CookbookHandler(BaseHTTPRequestHandler):
                     gemini_key, openai_key = load_api_keys()
                 except (OSError, ValueError) as error:
                     raise RequestError(str(error), HTTPStatus.SERVICE_UNAVAILABLE) from None
-                self._json(run_pipeline(document, filename, GeminiClient(gemini_key), OpenAIClient(openai_key)))
+                self._json(_import_recipe(document, filename, mime_type, gemini_key, openai_key))
                 return
             if url.path == "/api/review":
                 data, report = self._recipe_request()
@@ -422,7 +459,9 @@ class CookbookHandler(BaseHTTPRequestHandler):
             example = json.loads((ASSETS / "example.json").read_text(encoding="utf-8"))
             if vegan_plan_matches(recipe, example.get("vegan_plan")):
                 return example["vegan_plan"]
-        retryable = isinstance(plan, dict) and plan.get("status") in {"needs_review", "unavailable"}
+        retryable = isinstance(plan, dict) and plan.get("reason_code") in {
+            "invalid_output", "provider_unavailable", "verification_unavailable",
+        }
         if not vegan_plan_matches(recipe, plan) or (retry and retryable):
             try:
                 key = load_openai_key()
@@ -458,20 +497,13 @@ class CookbookHandler(BaseHTTPRequestHandler):
                 )
             for variant, (before, after) in versions.items():
                 prior = stored.get(variant)
-                if client is None or {key: value for key, value in before.items() if key != "title"} == {
-                    key: value for key, value in after.items() if key != "title"
-                }:
-                    stored[variant] = rebase_scaling_plan(before, after, prior) or prior
-            if retry and client is not None:
-                for variant, plan in list(stored.items()):
-                    if not isinstance(plan, dict):
-                        continue
-                    if plan.get("recovered_ingredients"):
-                        del stored[variant]
-                    elif (plan.get("verification") or {}).get("recovered_ingredients"):
-                        stored[variant] = {key: value for key, value in plan.items() if key != "verification"}
+                rebound = rebind_scaling_plan(before, after, prior)
+                if rebound is None and client is None:
+                    rebound = rebase_scaling_plan(before, after, prior)
+                stored[variant] = rebound or prior
         return refresh_scaling_plans(
             client, recipe, vegan_plan, stored, gemini=optional_gemini_client() if client else None,
+            retry_verification=retry, retry_recovered=retry,
         )
 
     def _adapt(self) -> tuple[dict, HTTPStatus]:

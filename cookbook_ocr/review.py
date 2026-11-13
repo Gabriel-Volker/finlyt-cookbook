@@ -15,6 +15,21 @@ OPTIONAL_FIELDS = {"title", "servings", "quantity", "unit", "preparation", "opti
 REFERENCE_FIELDS = {"ingredient_ids": "ingredients", "tool_ids": "tools"}
 
 
+def same_recipe_inputs(before, after) -> bool:
+    """Compare recipe data while ignoring confirmation of an identical stated field."""
+    if isinstance(before, dict) and isinstance(after, dict):
+        if before.keys() != after.keys():
+            return False
+        confirmed = "value" in before and {before.get("status"), after.get("status")} == {"stated", "reviewed"}
+        return all(
+            same_recipe_inputs(value, after[key])
+            for key, value in before.items() if not (confirmed and key == "status")
+        )
+    if isinstance(before, list) and isinstance(after, list):
+        return len(before) == len(after) and all(same_recipe_inputs(left, right) for left, right in zip(before, after))
+    return before == after
+
+
 def reviewed_step_links(decisions: list[dict]) -> set[int]:
     """Identify steps whose ingredient links were explicitly reviewed."""
     indexes = set()

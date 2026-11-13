@@ -7,7 +7,7 @@ from hashlib import sha256
 
 from .extraction import UNREADABLE, _source_quotes
 from .quantities import QUANTITY_PATTERN, quantity_matches, scale_quantity, unit_aliases
-from .review import REVIEW_FIELDS
+from .review import REVIEW_FIELDS, same_recipe_inputs
 
 
 MODES = {"proportional", "fixed", "per_batch", "review"}
@@ -294,6 +294,33 @@ def recover_scaling_plan(recipe: dict, proposals: list[dict]) -> dict:
 
 def _review_rule(ingredient_id: str, reason: str) -> dict:
     return {"ingredient_id": ingredient_id, "mode": "review", "batch_servings": None, "evidence": [], "reason": reason}
+
+
+def rebind_scaling_plan(previous_recipe: dict, recipe: dict, plan: dict | None) -> dict | None:
+    """Reuse classifications when the reviewed recipe has the same scaling inputs."""
+    if not scaling_plan_matches(previous_recipe, plan):
+        return None
+    if scaling_plan_matches(recipe, plan):
+        return plan
+    relevant = (set(previous_recipe) | set(recipe)) - {"title"}
+    # An entered baseline is used by the arithmetic. It is not evidence for
+    # a per-batch yield and cannot change rules cited against the source.
+    if (previous_recipe["servings"]["status"] == "missing" and previous_recipe["servings"]["value"] is None
+            and recipe["servings"]["status"] == "reviewed"):
+        relevant.discard("servings")
+    if not all(same_recipe_inputs(previous_recipe.get(key), recipe.get(key)) for key in relevant):
+        return None
+    try:
+        revised = validate_scaling_plan(recipe, plan)
+        if revised["rules"] != plan["rules"]:
+            return None
+        verification = plan.get("verification")
+        if isinstance(verification, dict) and verification.get("status") == "completed":
+            if validate_scaling_plan(recipe, verification)["rules"] != verification["rules"]:
+                return None
+    except ValueError:
+        return None
+    return {**plan, **revised}
 
 
 def rebase_scaling_plan(previous_recipe: dict, recipe: dict, plan: dict | None) -> dict | None:

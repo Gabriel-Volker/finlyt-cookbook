@@ -10,7 +10,7 @@ from .providers import GeminiClient, OpenAIClient, ProviderError
 from .quality import assess_blur
 from .quantities import QUANTITY_PATTERN, known_units, quantity_matches
 from .raster import prepare_pdf
-from .scaling_plan import recover_scaling_plan, scaling_plan_matches, validate_scaling_plan
+from .scaling_plan import rebind_scaling_plan, recover_scaling_plan, scaling_plan_matches, validate_scaling_plan
 from .vegan import unavailable_vegan_plan, validate_vegan_plan, vegan_plan_usable, vegan_source_review
 from .vegan_verification import verify_vegan_plan
 
@@ -149,21 +149,23 @@ def _check_numeric_equivalences(result: dict, a_source: str, b_source: str) -> d
 def compare_transcriptions(
     openai: OpenAIClient, prompt: str, schema: dict, a: str, b: str
 ) -> dict:
-    transcriptions = {"A": a, "B": b}
-    result = _structured_response(openai, prompt, schema, "transcription_comparison", transcriptions)
-    try:
-        validate_comparison(result, a, b)
-    except ValueError:
-        retry_prompt = (
-            prompt + "\n\nThe previous response failed evidence validation. "
-            "Use the shortest exact excerpts that show the issue. "
-            "Keep spaces and line breaks unchanged inside each excerpt. "
-            "Verify the page for each excerpt, or use null when the readings place it on different pages."
-        )
-        result = _structured_response(
-            openai, retry_prompt, schema, "transcription_comparison", transcriptions
-        )
-        validate_comparison(result, a, b)
+    result = {"review_items": [], "equivalent_variations": []}
+    if a.strip() != b.strip():
+        transcriptions = {"A": a, "B": b}
+        result = _structured_response(openai, prompt, schema, "transcription_comparison", transcriptions)
+        try:
+            validate_comparison(result, a, b)
+        except ValueError:
+            retry_prompt = (
+                prompt + "\n\nThe previous response failed evidence validation. "
+                "Use the shortest exact excerpts that show the issue. "
+                "Keep spaces and line breaks unchanged inside each excerpt. "
+                "Verify the page for each excerpt, or use null when the readings place it on different pages."
+            )
+            result = _structured_response(
+                openai, retry_prompt, schema, "transcription_comparison", transcriptions
+            )
+            validate_comparison(result, a, b)
     result = flag_ocr_uncertainty(result, _transcription_pages(a) or {None: a}, _transcription_pages(b) or {None: b})
     return _check_numeric_equivalences(result, a, b)
 
@@ -323,6 +325,7 @@ def _verify_scaling(gemini: GeminiClient, recipe: dict) -> dict:
 def refresh_scaling_plans(
     openai: OpenAIClient | None, recipe: dict, vegan_plan: dict | None,
     stored: dict | None = None, *, gemini: GeminiClient | None = None,
+    retry_verification: bool = False, retry_recovered: bool = False,
 ) -> dict:
     """Reuse matching plans and classify the original and vegan recipes independently."""
     stored = stored if isinstance(stored, dict) else {}
@@ -330,9 +333,15 @@ def refresh_scaling_plans(
     if vegan_plan_usable(recipe, vegan_plan):
         variants["vegan"] = adapt_recipe(recipe, vegan=True, vegan_plan=vegan_plan)["recipe"]
 
-    same_variant = variants.get("vegan") == recipe
+    same_variant = "vegan" in variants and all(
+        variants["vegan"].get(key) == recipe.get(key)
+        for key in (variants["vegan"].keys() | recipe.keys()) - {"title"}
+    )
     if same_variant:
-        del variants["vegan"]
+        vegan_recipe = variants.pop("vegan")
+        if not scaling_plan_matches(recipe, stored.get("original")):
+            if shared := rebind_scaling_plan(vegan_recipe, recipe, stored.get("vegan")):
+                stored = {**stored, "original": shared}
     plans = {}
     with ThreadPoolExecutor(max_workers=4) as executor:
         generations = {}
@@ -342,7 +351,12 @@ def refresh_scaling_plans(
             if scaling_plan_matches(source, existing):
                 plans[variant] = existing
                 verification = existing.get("verification")
-                if isinstance(verification, dict) and verification.get("status") == "completed":
+                if retry_recovered and existing.get("recovered_ingredients") and openai is not None:
+                    generations[variant] = executor.submit(plan_recipe_scaling, openai, source)
+                if not retry_verification or (
+                    isinstance(verification, dict) and verification.get("status") == "completed"
+                    and not (retry_recovered and verification.get("recovered_ingredients"))
+                ):
                     continue
             elif openai is not None and source["ingredients"]:
                 generations[variant] = executor.submit(plan_recipe_scaling, openai, source)
@@ -358,13 +372,21 @@ def refresh_scaling_plans(
                 verifications[variant] = executor.submit(_verify_scaling, gemini, source)
 
         for variant, future in generations.items():
-            plans[variant] = future.result()
+            result = future.result()
+            existing = plans.get(variant)
+            if not existing or scaling_plan_matches(variants[variant], result):
+                verification = existing.get("verification") if existing else None
+                if verification:
+                    result = {**result, "verification": verification}
+                plans[variant] = result
         for variant, future in verifications.items():
             verification = future.result()
             if scaling_plan_matches(variants[variant], plans[variant]):
-                plans[variant] = {**plans[variant], "verification": verification}
+                prior = plans[variant].get("verification")
+                if not prior or prior.get("status") != "completed" or verification["status"] == "completed":
+                    plans[variant] = {**plans[variant], "verification": verification}
     if same_variant:
-        plans["vegan"] = plans["original"]
+        plans["vegan"] = rebind_scaling_plan(recipe, vegan_recipe, plans["original"]) or plans["original"]
     return plans
 
 
@@ -379,9 +401,9 @@ def run_pipeline(
         (PROMPTS_DIR / "compare_transcriptions.schema.json").read_text(encoding="utf-8")
     )
 
+    prepared = prepare_pdf(document) if Path(filename).suffix.lower() == ".pdf" else None
     with ThreadPoolExecutor(max_workers=2) as executor:
         gemini_reading = executor.submit(gemini.transcribe, document, filename, transcription_prompt)
-        prepared = prepare_pdf(document) if Path(filename).suffix.lower() == ".pdf" else None
         options = {"prepared_pdf": prepared} if prepared is not None else {}
         openai_reading = executor.submit(openai.transcribe, document, filename, transcription_prompt, **options)
         a, b = gemini_reading.result(), openai_reading.result()

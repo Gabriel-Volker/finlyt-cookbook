@@ -82,6 +82,12 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(payload["text"]["format"]["schema"], schema)
         self.assertEqual(result, comparison)
 
+    def test_invalid_pdf_stops_before_either_ocr_call(self):
+        with self.assertRaises(ValueError):
+            run_pipeline(b"%PDF-1.7 unreadable document", "recipe.pdf", self.gemini, self.openai)
+        self.gemini.transcribe.assert_not_called()
+        self.openai.transcribe.assert_not_called()
+
     def test_review_items_set_pipeline_status(self):
         comparison = comparison_with_uncertainty()
         self.openai.respond.side_effect = [json.dumps(comparison), json.dumps(EMPTY_RECIPE)]
@@ -280,7 +286,10 @@ class PipelineTests(unittest.TestCase):
 
         self.gemini.respond_structured.side_effect = gemini_check
         report = run_pipeline(DOCUMENT, "recipe.pdf", self.gemini, self.openai)
-        call = self.openai.respond.call_args_list[2].kwargs
+        calls = self.openai.respond.call_args_list
+        self.assertEqual([call.kwargs["text"]["format"]["name"] for call in calls[:2]],
+                         ["recipe_extraction", "vegan_plan"])
+        call = calls[1].kwargs
         self.assertEqual(call["text"]["format"]["name"], "vegan_plan")
         supplied = json.loads(call["input"][1]["content"])["recipe"]
         self.assertEqual(supplied["ingredients"][0]["name"], {"value": "bacon", "status": "stated"})

@@ -14,9 +14,9 @@ const state = {
   review: null, reviewPath: "", reviewing: false, reviewDrafts: new Map(),
   scalingPlan: null, veganPlan: null, planDecisions: [],
   plansStatus: "current", planRequest: 0, plansError: "", savedPlans: new Map(),
-  adaptation: null, adaptationReady: false, adaptRequest: 0,
+  adaptation: null, adaptationReady: false, adaptRequest: 0, adaptResponses: new Map(),
   output: null, reviewOutput: null, preparedOutput: null, adaptedOutput: null,
-  preparingOutput: false, preparationRequest: 0, translationSession: null,
+  preparingOutput: false, preparationRequest: 0, preparation: null, translationSession: null,
   previewRequest: 0, busy: false,
   previewReading: "A",
   previews: new Map(),
@@ -87,6 +87,7 @@ function pageCount(report) {
 }
 
 async function loadReport(report, file) {
+  window.clearTimeout(preparationTimer);
   state.report = report;
   state.file = file;
   state.example = !file;
@@ -113,7 +114,9 @@ async function loadReport(report, file) {
   state.adaptation = null;
   state.adaptationReady = false;
   state.adaptRequest++;
-  state.translationSession = [...crypto.getRandomValues(new Uint8Array(16))]
+  state.adaptResponses.clear();
+  state.preparation = null;
+  state.translationSession = report.translation_session ?? [...crypto.getRandomValues(new Uint8Array(16))]
     .map((byte) => byte.toString(16).padStart(2, "0")).join("");
   state.previewRequest++;
   state.previews.clear();
@@ -594,14 +597,17 @@ function applyPlans(plans) {
   state.planDecisions = reviewDecisions();
   state.plansStatus = "current";
   state.plansError = "";
+  state.adaptResponses.clear();
 }
 
 async function refreshPlans(retry = false) {
   if (state.plansStatus === "pending") return;
+  window.clearTimeout(preparationTimer);
   const sequence = ++state.planRequest;
   const key = reviewPlanKey();
   state.plansStatus = "pending";
   state.plansError = "";
+  state.adaptResponses.clear();
   if (state.screen === "adapt") updateAdaptation();
   try {
     const result = await request("/api/plans", {
@@ -618,6 +624,8 @@ async function refreshPlans(retry = false) {
     if (sequence !== state.planRequest) return;
     state.plansStatus = "failed";
     state.plansError = error.message;
+    await prepareOutput({refreshAdaptation: false});
+    if (sequence !== state.planRequest) return;
   }
   if (state.screen === "adapt") updateAdaptation();
 }
@@ -658,12 +666,13 @@ async function saveFieldReview(action, clear = false) {
     state.adaptation = null;
     state.adaptationReady = false;
     state.adaptRequest++;
+    state.adaptResponses.clear();
     clearOutput();
     updateOriginalServings();
     renderVeganOption();
     renderReview();
     renderFieldReview();
-    prepareOutput();
+    schedulePreparation();
     message("#field-review-status", action === "confirm" ? "Value confirmed."
       : action === "correct" ? "Correction saved." : "Review decision undone.");
   } catch (error) {
@@ -723,9 +732,11 @@ async function updateAdaptation() {
   }
   message("#adapt-status", "Updating recipe…");
   try {
-    const adapt = (requested) => request("/api/adapt", {
-      method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
+    const adapt = (requested) => {
+      const responses = state.adaptResponses;
+      const key = JSON.stringify([requested, requested === null ? null : baseline, vegan]);
+      if (responses.has(key)) return responses.get(key);
+      const payload = {
         report: {
           recipe: state.report.recipe,
           ...(state.review ? {review: {decisions: state.review.decisions}} : {}),
@@ -735,8 +746,18 @@ async function updateAdaptation() {
         servings: requested, original_servings: requested === null ? null : baseline, vegan,
         translation_session: state.translationSession, source_is_english: sourceIsEnglish(),
         texts: outputTexts(),
-      }),
-    });
+      };
+      const pending = request("/api/adapt", {
+        method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload),
+      }).then(({adaptation, outputs, output_errors}) => ({adaptation, outputs, output_errors}))
+        .catch((error) => {
+          if (responses.get(key) === pending) responses.delete(key);
+          throw error;
+        });
+      if (responses.size === 3) responses.delete(responses.keys().next().value);
+      responses.set(key, pending);
+      return pending;
+    };
     let report;
     try {
       report = await adapt(requestedServings);
@@ -811,7 +832,17 @@ function unpackOutputs(result, recipe, texts) {
   };
 }
 
-async function prepareOutput({refreshAdaptation = true} = {}) {
+let preparationTimer;
+function schedulePreparation() {
+  window.clearTimeout(preparationTimer);
+  state.preparationRequest++;
+  state.preparingOutput = true;
+  updateReviewOutput();
+  preparationTimer = window.setTimeout(prepareOutput, 400);
+}
+
+async function prepareOutput({refreshAdaptation = true, retry = false} = {}) {
+  window.clearTimeout(preparationTimer);
   const sequence = ++state.preparationRequest;
   const recipe = currentRecipe();
   const texts = outputTexts();
@@ -838,17 +869,21 @@ async function prepareOutput({refreshAdaptation = true} = {}) {
     prefetch_texts: state.plansStatus === "current" ? [...new Set(planReasons)] : [],
   };
   if (hasVeganPlan()) payload.vegan_plan = state.veganPlan;
-  let result;
-  try {
-    result = await request("/api/prepare-output", {
-      method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload),
-    });
-  } catch (error) {
-    result = {output_errors: {english: error.message, original: error.message}};
+  const key = JSON.stringify(payload);
+  let preparation = state.preparation;
+  if (preparation?.key !== key || (retry && !preparation.pending)) {
+    preparation = {key, pending: true};
+    preparation.result = request("/api/prepare-output", {
+      method: "POST", headers: {"Content-Type": "application/json"}, body: key,
+    }).catch((error) => ({output_errors: {english: error.message, original: error.message}}))
+      .finally(() => { preparation.pending = false; });
+    state.preparation = preparation;
   }
+  const result = await preparation.result;
   if (sequence !== state.preparationRequest) return;
   state.preparedOutput = unpackOutputs(result, recipe, texts);
   state.preparingOutput = false;
+  state.adaptResponses.clear();
   if (state.screen === "review") updateReviewOutput();
   if (refreshAdaptation && state.screen === "adapt") {
     if (!state.adaptationReady || state.adaptation) updateAdaptation();
@@ -1218,7 +1253,7 @@ $("#output-english").addEventListener("change", () => {
 $("#retry-output").addEventListener("click", async () => {
   $("#retry-output").hidden = true;
   message("#output-status", "Preparing both output languages…");
-  await prepareOutput();
+  await prepareOutput({retry: true});
 });
 $("#vegan").addEventListener("click", (event) => {
   const control = event.currentTarget;
