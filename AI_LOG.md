@@ -1,14 +1,45 @@
-# Decision log
+# AI collaboration log
 
-## 2026-11-13 · Handwriting recognition
+Gabriel's ideas and project decisions are in the [decision log](DECISION_LOG.md).
 
-Times are local to São Paulo (UTC−03:00).
+Times are local to São Paulo (UTC−03:00). Earlier chat entries use the date when the exact time was not recorded.
 
-- **10:31–10:32** — Generated the German OCR test outputs with Docling. EasyOCR produced Markdown at 10:31, and Tesseract produced a second output at 10:32.
-- **10:47** — Recorded the initial decision to prioritize handwriting recognition and evaluate ways to detect extraction errors.
+## 2026-11-13 · Gemini transcription test
 
-After reading the challenge brief, I ran a quick Docling test with German OCR on the handwritten recipe. The output lost both half-liter measurements in the marinade and misread the eight-day timing. Based on that result, I set local OCR aside for this manuscript. Handwriting recognition falls outside the main use case I had in mind for Docling and the document processing work I did in SynapseFlux.
+The transcription was saved at **10:57:58**.
 
-My first priority is to get the text recognition stage working. I plan to try a vision-capable LLM or a cloud service built for handwriting recognition. My initial idea is to send the same pages to two different recognition tools, then ask an LLM to compare their outputs and flag inconsistencies in quantities, units, times, and ingredient names. A disagreement would point me to a passage to check against the original page. This may catch more errors, at the cost of another recognition pass and a comparison call. I want to see which errors it catches before deciding whether the extra cost is worth it.
+Codex sent the original two-page PDF to `gemini-3.1-flash-lite` in a single API call. The prompt asked for a German transcription in page order and gave no reference answers. I used the manuscript as the reference for the comparison with Docling's German EasyOCR and Tesseract runs.
 
-In a production pipeline, I would consider using Docling with OCR disabled for documents that already have a usable text layer. I am leaving that route for future work and focusing this project on the handwritten input first.
+- **Quantities.** Gemini recovered all three ingredient–quantity pairs: ½ L vinegar, ½ L water, and four sliced onions. Neither Docling run recovered a complete pair reliably.
+- **Preparation.** Gemini preserved the hot and cold marinade conditions, the searing sequence, the optional additions, the sauce preparation, and the instruction to put the unsliced roast in the sauce one hour before serving. The OCR outputs retained fragments of these instructions.
+- **Missing values.** Gemini left out the meat weight and serving count, both absent from the manuscript.
+- **Timing.** The Gemini API call took 3.71 seconds. The earlier local Docling runs took 25.0 seconds with EasyOCR and 23.6 seconds with Tesseract.
+
+## 2026-11-13 · Codex chat log begins
+
+Gabriel asked Codex to add the Gemini comparison to this log and to start recording brief summaries of project conversations from that request onward.
+
+- Gabriel asked about the illustrated header on page 1. Codex checked the saved transcription, which starts at “Sauerbraten.” The test prompt asked Gemini to skip artwork labels and decorative headings outside the recipe, so the run did not evaluate transcription of the header or the cookbook attribution.
+- Gabriel asked for separate files for AI conversations and his own ideas. Codex kept the test and chat summaries here and moved the project reasoning to the decision log. Both logs will be updated as the project progresses.
+
+## 2026-11-13 · Full PDF transcription and second VLM
+
+The full transcription was saved at **11:14:46**.
+
+Gabriel asked Codex to rerun Gemini with the illustrated header included and to research a second reader for the comparison workflow. Codex sent the original two-page PDF to `gemini-3.1-flash-lite` with a prompt requesting all readable text in German, including page numbers, the illustrated header, and illustration labels. The prompt supplied no expected text. It requested separate sections for decorative text and recipe content.
+
+The first request reached its 50-second timeout. A retry with the same prompt succeeded in 42.53 seconds and reported 1,178 input tokens and 403 output tokens.
+
+Codex checked the output against the scan. Gemini recovered the illustrated title, the cookbook attribution to Großmutter Josefine and the year 1887, both printed page numbers, and the labels Rosinen, Essig, Korinthen, and Rotwein. All eight lines of recipe content from the earlier run also matched exactly. The raw output is stored locally with the other test results.
+
+Codex proposed Claude Haiku 5.5 as the second VLM based on its PDF support, published price, and performance on a handwriting benchmark. Gabriel described a third call to a text LLM to compare the two transcriptions, with human review for disagreements. The workflow and possible escalation to a stronger VLM are recorded in the [decision log](DECISION_LOG.md).
+
+## 2026-11-13 · GPT access and Consensus Entropy OCR
+
+Gabriel asked about using his ChatGPT subscription for a GPT second reader and asked to record Consensus Entropy OCR with automatic rejection of scans that are too blurred. Codex checked the OpenAI documentation and the authors' CVPR 2026 project page. A separate ChatGPT or Codex session can be used for a comparison under the subscription. Automated Responses API calls need a Platform API key and use API billing or eligible subscription credits. The proposed blur policy is recorded in the [decision log](DECISION_LOG.md) as an extension to the paper's uncertainty routing. This discussion produced no new transcription run.
+
+## 2026-11-13 11:42 · ChatGPT Pro API setup and logging
+
+Gabriel confirmed he has ChatGPT Pro and asked how to use its API credits for the project. Codex checked [OpenAI's API credits guide](https://developers.openai.com/api/docs/guides/chatgpt-api-credits) and documented how to claim the benefit, use a key from the linked API organization, and set `OPENAI_API_KEY` on Windows. This entry records setup guidance.
+
+Gabriel asked for timestamps in both logs and one Git commit per prompt from this request onward. He also proposed a conventional OCR comparison and balance-sheet reconciliation for production credit analysis. The [decision log](DECISION_LOG.md) records why both are outside the cookbook demo's scope.
