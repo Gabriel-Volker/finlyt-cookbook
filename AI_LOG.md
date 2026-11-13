@@ -438,3 +438,7 @@ Gabriel asked whether he had reached ten hours. The earliest local Docling test 
 ## 2026-11-13 20:28 · Verify the upload cache in the activity diagram
 
 Gabriel asked whether previous uploads are cached. Codex confirmed that the web server keeps up to eight successfully processed reports in memory, keyed by the hash of the file type and bytes. Concurrent identical requests share the same processing. A restart clears the cache. The existing reimport test passed and verified that identical bytes under a different filename bypass processing, while changed bytes start a new import. Prepared translations use a separate cache and may retry fields that still need translation.
+
+## 2026-11-13 20:31 · Diagnose the Pastèizinhos translation warning
+
+Gabriel asked why the app showed the Portuguese recipe with English output selected. Codex recovered the cached import and replayed its recipe translation once with Luna. The response translated `uva passa sem sementes` as `seedless raisins` at `/english/ingredients/11/name`. The validator counted Portuguese `sem` as a negation and missed English `-less`, so it rejected this one ingredient name and the UI displayed the original recipe. Replaying the same response with `raisins without seeds` in that field produced both languages with no errors. The original rejected provider response was unavailable. The live replay reproduced the warning independently.
