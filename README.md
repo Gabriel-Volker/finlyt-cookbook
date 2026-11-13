@@ -71,6 +71,19 @@ For a vegan plan, `needs_review` asks the user to resolve missing or ambiguous s
 
 The original `recipe` and OCR evidence remain in the report. Read the result in `adaptation.recipe`, the before and after values and reasons in `adaptation.changes`, and any open questions in `adaptation.review_items`. Adapting an exported report reapplies the saved review decisions to the original `recipe` before running the adaptation.
 
+## Example outputs
+
+The Sauerbraten examples use the saved extraction from `Recipe.pdf`. The source gives no serving count, so the six-serving run uses four as a demonstration baseline. Both vegan requests return `needs_review` because the roast quantity is unknown. The CLI writes the same blocked report for both requests, with the reason in `vegan_plan` and no `adaptation`.
+
+| Recipe | Saved results |
+| --- | --- |
+| Sauerbraten | [Extraction](examples/sauerbraten-extraction.json), [six servings](examples/sauerbraten-6-servings.json), [vegan request](examples/sauerbraten-vegan.json), [vegan for six request](examples/sauerbraten-vegan-6-servings.json) |
+| Torta de coco | [Extraction and scaling from 10 to 20 portions](examples/torta-de-coco.json) |
+| Casadinhos | [Extraction and scaling from 55 to 110 pieces](examples/casadinhos.json) |
+| Pé-de-moleque | [Extraction and scaling from 30 to 60 pieces](examples/pe-de-moleque.json) |
+
+The three Portuguese scans use the recorded extractions and scaling rules from the live runs. For Casadinhos and Pé-de-moleque, the baseline was entered manually using the source yield in pieces. Their stored vegan proposals predate the current verification protocol, so these reports expose the original scaling and mark vegan adaptation as unavailable.
+
 Run the local tests with `python -m unittest discover -s tests -v`.
 
 To run the tests in Docker from PowerShell, build the image and mount the test directory.

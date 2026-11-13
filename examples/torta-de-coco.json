@@ -1,0 +1,1977 @@
+{
+  "status": "no_discrepancies",
+  "transcriptions": {
+    "A": "[page: 1]\nTorta de côco\n\nMassa:\n2 xícaras (chá) de farinha de trigo - 4 colheres (sopa) de gordura - ½ lata de Creme de Leite Nestlé (gelado e sem sôro) - 1 colher (café) de sal - 1 colher (chá) de fermento em pó\n\nPeneire a farinha de trigo, faça uma cova no centro e coloque aí o restante dos ingredientes; misture-os com as pontas dos dedos e depois vá aos poucos pegando a farinha até que seja tôda incorporada à massa e que solte completamente das mãos. Deixe descansar por 1 hora.\n\nRecheio:\n1 côco grande ralado - 1 lata de Leite Moça-pedacinhos de manteiga\n\nPrepare a massa da torta, forre o fundo e os lados de uma fôrma redonda de 27 cms. de diâmetro, furando todo o fundo com um garfo. Asse em forno quente (225°C) por 20 minutos. Retire do forno e espalhe o côco. Despeje devagar o Leite Moça, cobrindo todo o côco, distribua pedacinhos de manteiga por cima e volte ao forno por mais 30 minutos, para terminar de assar. Rendimento: 10 porções.",
+    "B": "[page: 1]\nTorta de côco\n\nMassa:\n2 xícaras (chá) de farinha de trigo - 4 colheres (sopa) de gordura - ½ lata de Creme de Leite Nestlé (gelado e sem sôro) - 1 colher (café) de sal - 1 colher (chá) de fermento em pó\n\nPeneire a farinha de trigo, faça uma cova no centro e coloque aí o restante dos ingredientes; misture-os com as pontas dos dedos e depois vá aos poucos pegando a farinha até que seja tôda incorporada à massa e que solte completamente das mãos. Deixe descansar por 1 hora.\n\nRecheio:\n1 côco grande ralado - 1 lata de Leite Moça-pedacinhos de manteiga\n\nPrepare a massa da torta, forre o fundo e os lados de uma fôrma redonda de 27 cms. de diâmetro, furando todo o fundo com um garfo. Asse em forno quente (225ºC) por 20 minutos. Retire do forno e espalhe o côco. Despeje devagar o Leite Moça, cobrindo todo o côco, distribua pedacinhos de manteiga por cima e volte ao forno por mais 30 minutos, para terminar de assar. Rendimento: 10 porções."
+  },
+  "comparison": {
+    "review_items": [],
+    "equivalent_variations": [
+      {
+        "page": "1",
+        "kind": "formatting",
+        "a_excerpt": "225°C",
+        "b_excerpt": "225ºC",
+        "reason": "The temperature uses different symbols for the degree mark; the value and Celsius unit are otherwise the same."
+      }
+    ]
+  },
+  "recipe": {
+    "title": {
+      "value": "Torta de côco",
+      "status": "stated",
+      "evidence": {
+        "source": "A",
+        "page": "1",
+        "quote": "Torta de côco"
+      },
+      "review_item_ids": []
+    },
+    "servings": {
+      "value": "10 porções",
+      "status": "stated",
+      "evidence": {
+        "source": "A",
+        "page": "1",
+        "quote": "Rendimento: 10 porções."
+      },
+      "review_item_ids": []
+    },
+    "ingredients": [
+      {
+        "id": "ingredient-1",
+        "name": {
+          "value": "farinha de trigo",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "2 xícaras (chá) de farinha de trigo"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "2",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "2 xícaras (chá) de farinha de trigo"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": "xícaras (chá)",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "2 xícaras (chá) de farinha de trigo"
+          },
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-2",
+        "name": {
+          "value": "gordura",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "4 colheres (sopa) de gordura"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "4",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "4 colheres (sopa) de gordura"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": "colheres (sopa)",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "4 colheres (sopa) de gordura"
+          },
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-3",
+        "name": {
+          "value": "Creme de Leite Nestlé",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "½ lata de Creme de Leite Nestlé (gelado e sem sôro)"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "½",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "½ lata de Creme de Leite Nestlé"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": "lata",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "½ lata de Creme de Leite Nestlé"
+          },
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": "gelado e sem sôro",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "(gelado e sem sôro)"
+          },
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-4",
+        "name": {
+          "value": "sal",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "1 colher (café) de sal"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "1",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "1 colher (café) de sal"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": "colher (café)",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "1 colher (café) de sal"
+          },
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-5",
+        "name": {
+          "value": "fermento em pó",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "1 colher (chá) de fermento em pó"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "1",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "1 colher (chá) de fermento em pó"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": "colher (chá)",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "1 colher (chá) de fermento em pó"
+          },
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-6",
+        "name": {
+          "value": "côco grande",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "1 côco grande ralado"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "1",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "1 côco grande ralado"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": "ralado",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "1 côco grande ralado"
+          },
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-7",
+        "name": {
+          "value": "Leite Moça",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "1 lata de Leite Moça"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "1",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "1 lata de Leite Moça"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": "lata",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "1 lata de Leite Moça"
+          },
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-8",
+        "name": {
+          "value": "manteiga",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "pedacinhos de manteiga"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "pedacinhos",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "pedacinhos de manteiga"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      }
+    ],
+    "tools": [
+      {
+        "id": "tool-1",
+        "name": {
+          "value": "fôrma",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "de uma fôrma redonda de 27 cms. de diâmetro"
+          },
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "tool-2",
+        "name": {
+          "value": "garfo",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "furando todo o fundo com um garfo"
+          },
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "tool-3",
+        "name": {
+          "value": "forno",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "Asse em forno quente (225°C) por 20 minutos."
+          },
+          "review_item_ids": []
+        }
+      }
+    ],
+    "steps": [
+      {
+        "instruction": {
+          "value": "Peneire a farinha de trigo, faça uma cova no centro e coloque aí o restante dos ingredientes; misture-os com as pontas dos dedos e depois vá aos poucos pegando a farinha até que seja tôda incorporada à massa e que solte completamente das mãos.",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "Peneire a farinha de trigo, faça uma cova no centro e coloque aí o restante dos ingredientes; misture-os com as pontas dos dedos e depois vá aos poucos pegando a farinha até que seja tôda incorporada à massa e que solte completamente das mãos."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-1",
+          "ingredient-2",
+          "ingredient-3",
+          "ingredient-4",
+          "ingredient-5"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "Deixe descansar por 1 hora.",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "Deixe descansar por 1 hora."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": "1 hora",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "Deixe descansar por 1 hora."
+          },
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-1",
+          "ingredient-2",
+          "ingredient-3",
+          "ingredient-4",
+          "ingredient-5"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "Prepare a massa da torta, forre o fundo e os lados de uma fôrma redonda de 27 cms. de diâmetro, furando todo o fundo com um garfo.",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "Prepare a massa da torta, forre o fundo e os lados de uma fôrma redonda de 27 cms. de diâmetro, furando todo o fundo com um garfo."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-1",
+          "ingredient-2",
+          "ingredient-3",
+          "ingredient-4",
+          "ingredient-5"
+        ],
+        "tool_ids": [
+          "tool-1",
+          "tool-2"
+        ]
+      },
+      {
+        "instruction": {
+          "value": "Asse em forno quente (225°C) por 20 minutos.",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "Asse em forno quente (225°C) por 20 minutos."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": "20 minutos",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "Asse em forno quente (225°C) por 20 minutos."
+          },
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": "forno quente (225°C)",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "Asse em forno quente (225°C) por 20 minutos."
+          },
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-1",
+          "ingredient-2",
+          "ingredient-3",
+          "ingredient-4",
+          "ingredient-5"
+        ],
+        "tool_ids": [
+          "tool-3"
+        ]
+      },
+      {
+        "instruction": {
+          "value": "Retire do forno e espalhe o côco.",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "Retire do forno e espalhe o côco."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-6"
+        ],
+        "tool_ids": [
+          "tool-3"
+        ]
+      },
+      {
+        "instruction": {
+          "value": "Despeje devagar o Leite Moça, cobrindo todo o côco, distribua pedacinhos de manteiga por cima e volte ao forno por mais 30 minutos, para terminar de assar.",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "Despeje devagar o Leite Moça, cobrindo todo o côco, distribua pedacinhos de manteiga por cima e volte ao forno por mais 30 minutos, para terminar de assar."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": "30 minutos",
+          "status": "stated",
+          "evidence": {
+            "source": "A",
+            "page": "1",
+            "quote": "volte ao forno por mais 30 minutos"
+          },
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-6",
+          "ingredient-7",
+          "ingredient-8"
+        ],
+        "tool_ids": [
+          "tool-3"
+        ]
+      }
+    ]
+  },
+  "extraction_issues": [],
+  "vegan_plan": {
+    "protocol_version": 2,
+    "status": "unavailable",
+    "reason_code": "verification_unavailable",
+    "reason": "A verificação desta execução antecede o protocolo atual. Reimporte a receita para verificar as substituições.",
+    "recipe_fingerprint": "67dd5b544da24dfd08d3fd8af8e0b1b514f840ccd998dc1f8d0bad8cf4d013d7",
+    "changes": [],
+    "review_items": [
+      {
+        "path": "/ingredients/2/quantity",
+        "reason": "Confirme se ½ lata de creme culinário vegano corresponde ao volume necessário; o tamanho da embalagem pode diferir do produto original."
+      },
+      {
+        "path": "/ingredients/6/quantity",
+        "reason": "Confirme se 1 lata de leite condensado vegano tem volume equivalente ao produto original; tamanhos de embalagem podem variar."
+      }
+    ]
+  },
+  "scaling_plan": {
+    "original": {
+      "status": "needs_review",
+      "recipe_fingerprint": "67dd5b544da24dfd08d3fd8af8e0b1b514f840ccd998dc1f8d0bad8cf4d013d7",
+      "rules": [
+        {
+          "ingredient_id": "ingredient-1",
+          "mode": "proportional",
+          "reason": "Measured flour is incorporated into the dough mixture, so it scales with the servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/0/quantity",
+              "quote": "2 xícaras (chá) de farinha de trigo"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "vá aos poucos pegando a farinha até que seja tôda incorporada à massa"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-2",
+          "mode": "proportional",
+          "reason": "Measured fat is mixed into the dough, so it scales with the servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/1/quantity",
+              "quote": "4 colheres (sopa) de gordura"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "coloque aí o restante dos ingredientes; misture-os"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-3",
+          "mode": "proportional",
+          "reason": "The measured cream is an ingredient in the dough mixture, so it scales with the servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/2/quantity",
+              "quote": "½ lata de Creme de Leite Nestlé"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "coloque aí o restante dos ingredientes; misture-os"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-4",
+          "mode": "proportional",
+          "reason": "The measured salt is mixed into the dough, so it scales with the servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/3/quantity",
+              "quote": "1 colher (café) de sal"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "coloque aí o restante dos ingredientes; misture-os"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-5",
+          "mode": "proportional",
+          "reason": "The measured baking powder is mixed into the dough, so it scales with the servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/4/quantity",
+              "quote": "1 colher (chá) de fermento em pó"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "coloque aí o restante dos ingredientes; misture-os"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-6",
+          "mode": "proportional",
+          "reason": "The grated coconut is spread over the tart, so its measured amount scales with the servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/5/quantity",
+              "quote": "1 côco grande ralado"
+            },
+            {
+              "path": "/steps/4/instruction",
+              "quote": "espalhe o côco"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-7",
+          "mode": "proportional",
+          "reason": "The measured condensed milk covers the coconut topping, so its amount scales with the servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/6/quantity",
+              "quote": "1 lata de Leite Moça"
+            },
+            {
+              "path": "/steps/5/instruction",
+              "quote": "Despeje devagar o Leite Moça, cobrindo todo o côco"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-8",
+          "mode": "review",
+          "reason": "The amount is qualitative rather than numeric; a person should determine how many butter pieces are needed for the chosen tart size.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/7/quantity",
+              "quote": "pedacinhos"
+            },
+            {
+              "path": "/steps/5/instruction",
+              "quote": "distribua pedacinhos de manteiga por cima"
+            }
+          ]
+        }
+      ],
+      "verification": {
+        "provider": "gemini",
+        "status": "completed",
+        "rules": [
+          {
+            "ingredient_id": "ingredient-1",
+            "mode": "proportional",
+            "reason": "This is a primary ingredient in the dough mixture and should scale proportionally with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-2",
+            "mode": "proportional",
+            "reason": "This is a primary ingredient in the dough mixture and should scale proportionally with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-3",
+            "mode": "proportional",
+            "reason": "This is a primary ingredient in the dough mixture and should scale proportionally with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-4",
+            "mode": "proportional",
+            "reason": "This is a seasoning ingredient in the dough mixture and should scale proportionally with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-5",
+            "mode": "proportional",
+            "reason": "This is a leavening agent in the dough mixture and should scale proportionally with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-6",
+            "mode": "proportional",
+            "reason": "This is a primary filling ingredient and should scale proportionally with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-7",
+            "mode": "proportional",
+            "reason": "This is a primary filling ingredient and should scale proportionally with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-8",
+            "mode": "review",
+            "reason": "The quantity is qualitative ('pedacinhos') and not defined by a specific measurement, making it impossible to scale automatically.",
+            "batch_servings": null,
+            "evidence": []
+          }
+        ]
+      }
+    }
+  },
+  "adaptation": {
+    "recipe": {
+      "title": {
+        "value": "Torta de côco",
+        "status": "stated",
+        "evidence": {
+          "source": "A",
+          "page": "1",
+          "quote": "Torta de côco"
+        },
+        "review_item_ids": []
+      },
+      "servings": {
+        "value": "20",
+        "status": "derived",
+        "evidence": null,
+        "review_item_ids": []
+      },
+      "ingredients": [
+        {
+          "id": "ingredient-1",
+          "name": {
+            "value": "farinha de trigo",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "2 xícaras (chá) de farinha de trigo"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "4",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": "xícaras (chá)",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "2 xícaras (chá) de farinha de trigo"
+            },
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-2",
+          "name": {
+            "value": "gordura",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "4 colheres (sopa) de gordura"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "8",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": "colheres (sopa)",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "4 colheres (sopa) de gordura"
+            },
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-3",
+          "name": {
+            "value": "Creme de Leite Nestlé",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "½ lata de Creme de Leite Nestlé (gelado e sem sôro)"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "1",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": "lata",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "½ lata de Creme de Leite Nestlé"
+            },
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": "gelado e sem sôro",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "(gelado e sem sôro)"
+            },
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-4",
+          "name": {
+            "value": "sal",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "1 colher (café) de sal"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "2",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": "colher (café)",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "1 colher (café) de sal"
+            },
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-5",
+          "name": {
+            "value": "fermento em pó",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "1 colher (chá) de fermento em pó"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "2",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": "colher (chá)",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "1 colher (chá) de fermento em pó"
+            },
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-6",
+          "name": {
+            "value": "côco grande",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "1 côco grande ralado"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "2",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": "ralado",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "1 côco grande ralado"
+            },
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-7",
+          "name": {
+            "value": "Leite Moça",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "1 lata de Leite Moça"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "2",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": "lata",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "1 lata de Leite Moça"
+            },
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-8",
+          "name": {
+            "value": "manteiga",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "pedacinhos de manteiga"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "pedacinhos",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "pedacinhos de manteiga"
+            },
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        }
+      ],
+      "tools": [
+        {
+          "id": "tool-1",
+          "name": {
+            "value": "fôrma",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "de uma fôrma redonda de 27 cms. de diâmetro"
+            },
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "tool-2",
+          "name": {
+            "value": "garfo",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "furando todo o fundo com um garfo"
+            },
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "tool-3",
+          "name": {
+            "value": "forno",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "Asse em forno quente (225°C) por 20 minutos."
+            },
+            "review_item_ids": []
+          }
+        }
+      ],
+      "steps": [
+        {
+          "instruction": {
+            "value": "Peneire a farinha de trigo, faça uma cova no centro e coloque aí o restante dos ingredientes; misture-os com as pontas dos dedos e depois vá aos poucos pegando a farinha até que seja tôda incorporada à massa e que solte completamente das mãos.",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "Peneire a farinha de trigo, faça uma cova no centro e coloque aí o restante dos ingredientes; misture-os com as pontas dos dedos e depois vá aos poucos pegando a farinha até que seja tôda incorporada à massa e que solte completamente das mãos."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-1",
+            "ingredient-2",
+            "ingredient-3",
+            "ingredient-4",
+            "ingredient-5"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "Deixe descansar por 1 hora.",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "Deixe descansar por 1 hora."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": "1 hora",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "Deixe descansar por 1 hora."
+            },
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-1",
+            "ingredient-2",
+            "ingredient-3",
+            "ingredient-4",
+            "ingredient-5"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "Prepare a massa da torta, forre o fundo e os lados de uma fôrma redonda de 27 cms. de diâmetro, furando todo o fundo com um garfo.",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "Prepare a massa da torta, forre o fundo e os lados de uma fôrma redonda de 27 cms. de diâmetro, furando todo o fundo com um garfo."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-1",
+            "ingredient-2",
+            "ingredient-3",
+            "ingredient-4",
+            "ingredient-5"
+          ],
+          "tool_ids": [
+            "tool-1",
+            "tool-2"
+          ]
+        },
+        {
+          "instruction": {
+            "value": "Asse em forno quente (225°C) por 20 minutos.",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "Asse em forno quente (225°C) por 20 minutos."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": "20 minutos",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "Asse em forno quente (225°C) por 20 minutos."
+            },
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": "forno quente (225°C)",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "Asse em forno quente (225°C) por 20 minutos."
+            },
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-1",
+            "ingredient-2",
+            "ingredient-3",
+            "ingredient-4",
+            "ingredient-5"
+          ],
+          "tool_ids": [
+            "tool-3"
+          ]
+        },
+        {
+          "instruction": {
+            "value": "Retire do forno e espalhe o côco.",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "Retire do forno e espalhe o côco."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-6"
+          ],
+          "tool_ids": [
+            "tool-3"
+          ]
+        },
+        {
+          "instruction": {
+            "value": "Despeje devagar o Leite Moça, cobrindo todo o côco, distribua pedacinhos de manteiga por cima e volte ao forno por mais 30 minutos, para terminar de assar.",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "Despeje devagar o Leite Moça, cobrindo todo o côco, distribua pedacinhos de manteiga por cima e volte ao forno por mais 30 minutos, para terminar de assar."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": "30 minutos",
+            "status": "stated",
+            "evidence": {
+              "source": "A",
+              "page": "1",
+              "quote": "volte ao forno por mais 30 minutos"
+            },
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-6",
+            "ingredient-7",
+            "ingredient-8"
+          ],
+          "tool_ids": [
+            "tool-3"
+          ]
+        }
+      ]
+    },
+    "scale": {
+      "original_servings": 10,
+      "original_servings_source": "recipe",
+      "target_servings": 20,
+      "factor": "2",
+      "ingredients": [
+        {
+          "ingredient_id": "ingredient-1",
+          "mode": "proportional",
+          "reason": "Measured flour is incorporated into the dough mixture, so it scales with the servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/0/quantity",
+              "quote": "2 xícaras (chá) de farinha de trigo"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "vá aos poucos pegando a farinha até que seja tôda incorporada à massa"
+            }
+          ],
+          "multiplier": "2",
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-1",
+              "mode": "proportional",
+              "reason": "Measured flour is incorporated into the dough mixture, so it scales with the servings.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/0/quantity",
+                  "quote": "2 xícaras (chá) de farinha de trigo"
+                },
+                {
+                  "path": "/steps/0/instruction",
+                  "quote": "vá aos poucos pegando a farinha até que seja tôda incorporada à massa"
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-1",
+              "mode": "proportional",
+              "reason": "This is a primary ingredient in the dough mixture and should scale proportionally with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "4",
+              "unit": "xícaras (chá)",
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "4",
+              "unit": "xícaras (chá)",
+              "batches": null
+            },
+            "materially_different": false
+          }
+        },
+        {
+          "ingredient_id": "ingredient-2",
+          "mode": "proportional",
+          "reason": "Measured fat is mixed into the dough, so it scales with the servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/1/quantity",
+              "quote": "4 colheres (sopa) de gordura"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "coloque aí o restante dos ingredientes; misture-os"
+            }
+          ],
+          "multiplier": "2",
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-2",
+              "mode": "proportional",
+              "reason": "Measured fat is mixed into the dough, so it scales with the servings.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/1/quantity",
+                  "quote": "4 colheres (sopa) de gordura"
+                },
+                {
+                  "path": "/steps/0/instruction",
+                  "quote": "coloque aí o restante dos ingredientes; misture-os"
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-2",
+              "mode": "proportional",
+              "reason": "This is a primary ingredient in the dough mixture and should scale proportionally with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "8",
+              "unit": "colheres (sopa)",
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "8",
+              "unit": "colheres (sopa)",
+              "batches": null
+            },
+            "materially_different": false
+          }
+        },
+        {
+          "ingredient_id": "ingredient-3",
+          "mode": "proportional",
+          "reason": "The measured cream is an ingredient in the dough mixture, so it scales with the servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/2/quantity",
+              "quote": "½ lata de Creme de Leite Nestlé"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "coloque aí o restante dos ingredientes; misture-os"
+            }
+          ],
+          "multiplier": "2",
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-3",
+              "mode": "proportional",
+              "reason": "The measured cream is an ingredient in the dough mixture, so it scales with the servings.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/2/quantity",
+                  "quote": "½ lata de Creme de Leite Nestlé"
+                },
+                {
+                  "path": "/steps/0/instruction",
+                  "quote": "coloque aí o restante dos ingredientes; misture-os"
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-3",
+              "mode": "proportional",
+              "reason": "This is a primary ingredient in the dough mixture and should scale proportionally with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "1",
+              "unit": "lata",
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "1",
+              "unit": "lata",
+              "batches": null
+            },
+            "materially_different": false
+          }
+        },
+        {
+          "ingredient_id": "ingredient-4",
+          "mode": "proportional",
+          "reason": "The measured salt is mixed into the dough, so it scales with the servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/3/quantity",
+              "quote": "1 colher (café) de sal"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "coloque aí o restante dos ingredientes; misture-os"
+            }
+          ],
+          "multiplier": "2",
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-4",
+              "mode": "proportional",
+              "reason": "The measured salt is mixed into the dough, so it scales with the servings.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/3/quantity",
+                  "quote": "1 colher (café) de sal"
+                },
+                {
+                  "path": "/steps/0/instruction",
+                  "quote": "coloque aí o restante dos ingredientes; misture-os"
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-4",
+              "mode": "proportional",
+              "reason": "This is a seasoning ingredient in the dough mixture and should scale proportionally with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "2",
+              "unit": "colher (café)",
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "2",
+              "unit": "colher (café)",
+              "batches": null
+            },
+            "materially_different": false
+          }
+        },
+        {
+          "ingredient_id": "ingredient-5",
+          "mode": "proportional",
+          "reason": "The measured baking powder is mixed into the dough, so it scales with the servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/4/quantity",
+              "quote": "1 colher (chá) de fermento em pó"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "coloque aí o restante dos ingredientes; misture-os"
+            }
+          ],
+          "multiplier": "2",
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-5",
+              "mode": "proportional",
+              "reason": "The measured baking powder is mixed into the dough, so it scales with the servings.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/4/quantity",
+                  "quote": "1 colher (chá) de fermento em pó"
+                },
+                {
+                  "path": "/steps/0/instruction",
+                  "quote": "coloque aí o restante dos ingredientes; misture-os"
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-5",
+              "mode": "proportional",
+              "reason": "This is a leavening agent in the dough mixture and should scale proportionally with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "2",
+              "unit": "colher (chá)",
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "2",
+              "unit": "colher (chá)",
+              "batches": null
+            },
+            "materially_different": false
+          }
+        },
+        {
+          "ingredient_id": "ingredient-6",
+          "mode": "proportional",
+          "reason": "The grated coconut is spread over the tart, so its measured amount scales with the servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/5/quantity",
+              "quote": "1 côco grande ralado"
+            },
+            {
+              "path": "/steps/4/instruction",
+              "quote": "espalhe o côco"
+            }
+          ],
+          "multiplier": "2",
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-6",
+              "mode": "proportional",
+              "reason": "The grated coconut is spread over the tart, so its measured amount scales with the servings.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/5/quantity",
+                  "quote": "1 côco grande ralado"
+                },
+                {
+                  "path": "/steps/4/instruction",
+                  "quote": "espalhe o côco"
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-6",
+              "mode": "proportional",
+              "reason": "This is a primary filling ingredient and should scale proportionally with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "2",
+              "unit": null,
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "2",
+              "unit": null,
+              "batches": null
+            },
+            "materially_different": false
+          }
+        },
+        {
+          "ingredient_id": "ingredient-7",
+          "mode": "proportional",
+          "reason": "The measured condensed milk covers the coconut topping, so its amount scales with the servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/6/quantity",
+              "quote": "1 lata de Leite Moça"
+            },
+            {
+              "path": "/steps/5/instruction",
+              "quote": "Despeje devagar o Leite Moça, cobrindo todo o côco"
+            }
+          ],
+          "multiplier": "2",
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-7",
+              "mode": "proportional",
+              "reason": "The measured condensed milk covers the coconut topping, so its amount scales with the servings.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/6/quantity",
+                  "quote": "1 lata de Leite Moça"
+                },
+                {
+                  "path": "/steps/5/instruction",
+                  "quote": "Despeje devagar o Leite Moça, cobrindo todo o côco"
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-7",
+              "mode": "proportional",
+              "reason": "This is a primary filling ingredient and should scale proportionally with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "2",
+              "unit": "lata",
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "2",
+              "unit": "lata",
+              "batches": null
+            },
+            "materially_different": false
+          }
+        },
+        {
+          "ingredient_id": "ingredient-8",
+          "mode": "review",
+          "reason": "The amount is qualitative rather than numeric; a person should determine how many butter pieces are needed for the chosen tart size.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/7/quantity",
+              "quote": "pedacinhos"
+            },
+            {
+              "path": "/steps/5/instruction",
+              "quote": "distribua pedacinhos de manteiga por cima"
+            }
+          ],
+          "multiplier": null,
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-8",
+              "mode": "review",
+              "reason": "The amount is qualitative rather than numeric; a person should determine how many butter pieces are needed for the chosen tart size.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/7/quantity",
+                  "quote": "pedacinhos"
+                },
+                {
+                  "path": "/steps/5/instruction",
+                  "quote": "distribua pedacinhos de manteiga por cima"
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-8",
+              "mode": "review",
+              "reason": "The quantity is qualitative ('pedacinhos') and not defined by a specific measurement, making it impossible to scale automatically.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "pedacinhos",
+              "unit": null,
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "pedacinhos",
+              "unit": null,
+              "batches": null
+            },
+            "materially_different": false
+          }
+        }
+      ],
+      "verification": {
+        "provider": "gemini",
+        "status": "completed",
+        "material_conflicts": []
+      }
+    },
+    "vegan_requested": false,
+    "status": "needs_review",
+    "changes": [
+      {
+        "path": "/servings",
+        "before": "10 porções",
+        "after": "20",
+        "reason": "Use the requested serving count."
+      },
+      {
+        "path": "/ingredients/0/quantity",
+        "before": "2",
+        "after": "4",
+        "reason": "Measured flour is incorporated into the dough mixture, so it scales with the servings."
+      },
+      {
+        "path": "/ingredients/1/quantity",
+        "before": "4",
+        "after": "8",
+        "reason": "Measured fat is mixed into the dough, so it scales with the servings."
+      },
+      {
+        "path": "/ingredients/2/quantity",
+        "before": "½",
+        "after": "1",
+        "reason": "The measured cream is an ingredient in the dough mixture, so it scales with the servings."
+      },
+      {
+        "path": "/ingredients/3/quantity",
+        "before": "1",
+        "after": "2",
+        "reason": "The measured salt is mixed into the dough, so it scales with the servings."
+      },
+      {
+        "path": "/ingredients/4/quantity",
+        "before": "1",
+        "after": "2",
+        "reason": "The measured baking powder is mixed into the dough, so it scales with the servings."
+      },
+      {
+        "path": "/ingredients/5/quantity",
+        "before": "1",
+        "after": "2",
+        "reason": "The grated coconut is spread over the tart, so its measured amount scales with the servings."
+      },
+      {
+        "path": "/ingredients/6/quantity",
+        "before": "1",
+        "after": "2",
+        "reason": "The measured condensed milk covers the coconut topping, so its amount scales with the servings."
+      }
+    ],
+    "review_items": [
+      {
+        "path": "/ingredients/7/quantity",
+        "reason": "The amount is qualitative rather than numeric; a person should determine how many butter pieces are needed for the chosen tart size."
+      }
+    ]
+  }
+}

@@ -1,0 +1,1817 @@
+{
+  "status": "no_discrepancies",
+  "transcriptions": {
+    "A": "[page: 1]\nCasadinhos\nMassa: 5 ovos - 1 xícara (chá) de açúcar - raspas de 1 limão - 1½ xícaras (chá) de farinha de trigo\nRecheio: 1 lata de Leite Moça cozido em banho-maria por 1½ horas\n\nBata as claras em neve, junte a metade do açúcar e continue a bater até conseguir ponto de suspiro bem firme. À parte, bata as gemas, acrescente o restante do açúcar e as raspas de limão, continuando a bater até obter uma gemada bem clara. Sem parar de bater, vá acrescentando a massa das claras à gemada, lentamente. Coloque a farinha de trigo peneirada e mexa tudo. Com o auxílio do bico de confeitar ou com 2 colheres de café, vá pingando porções desta massa em um tabuleiro untado e polvilhado com farinha. Pulverize açúcar refinado sôbre cada casadinho e leve ao forno regular, deixando a porta entreaberta ou com uma pequena fresta. Depois de assados, una dois a dois, com o doce de\nLeite Moça. Querendo, polvilhe açúcar refinado por cima. Rendimento: 55 casadinhos.",
+    "B": "[page: 1]\nCasadinhos\n\nMassa: 5 ovos - 1 xícara (chá) de açúcar - raspas de 1 limão - 1½ xícaras (chá) de farinha de trigo\nRecheio: 1 lata de Leite Moça cozido em banho-maria por 1½ horas\n\nBata as claras em neve, junte a metade do açúcar e continue a bater até conseguir ponto de suspiro bem firme. À parte, bata as gemas, acrescente o restante do açúcar e as raspas de limão, continuando a bater até obter uma gemada bem clara. Sem parar de bater, vá acrescentando a massa das claras à gemada, lentamente. Coloque a farinha de trigo peneirada e mexa tudo. Com o auxílio do bico de confeitar ou com 2 colheres de café, vá pingando porções desta massa em um tabuleiro untado e polvilhado com farinha. Pulverize açúcar refinado sobre cada casadinho e leve ao forno regular, deixando a porta entreaberta ou com uma pequena fresta. Depois de assados, una dois a dois, com o doce de Leite Moça. Querendo, polvilhe açúcar refinado por cima. Rendimento: 55 casadinhos."
+  },
+  "comparison": {
+    "review_items": [],
+    "equivalent_variations": [
+      {
+        "page": "1",
+        "kind": "formatting",
+        "a_excerpt": "sôbre",
+        "b_excerpt": "sobre",
+        "reason": "Orthographic variation; the instruction to sprinkle refined sugar over each casadinho is unchanged."
+      }
+    ]
+  },
+  "recipe": {
+    "title": {
+      "value": "Casadinhos",
+      "status": "stated",
+      "evidence": {
+        "source": "B",
+        "page": "1",
+        "quote": "Casadinhos"
+      },
+      "review_item_ids": []
+    },
+    "servings": {
+      "value": "55 casadinhos",
+      "status": "stated",
+      "evidence": {
+        "source": "B",
+        "page": "1",
+        "quote": "Rendimento: 55 casadinhos."
+      },
+      "review_item_ids": []
+    },
+    "ingredients": [
+      {
+        "id": "ingredient-1",
+        "name": {
+          "value": "ovos",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Massa: 5 ovos"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "5",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Massa: 5 ovos"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-2",
+        "name": {
+          "value": "açúcar",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 xícara (chá) de açúcar"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "1",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 xícara (chá) de açúcar"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": "xícara (chá)",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 xícara (chá) de açúcar"
+          },
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-3",
+        "name": {
+          "value": "limão",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "raspas de 1 limão"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "1",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "raspas de 1 limão"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": "raspas de",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "raspas de 1 limão"
+          },
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-4",
+        "name": {
+          "value": "farinha de trigo",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1½ xícaras (chá) de farinha de trigo"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "1½",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1½ xícaras (chá) de farinha de trigo"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": "xícaras (chá)",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1½ xícaras (chá) de farinha de trigo"
+          },
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": "peneirada",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Coloque a farinha de trigo peneirada"
+          },
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-5",
+        "name": {
+          "value": "Leite Moça",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 lata de Leite Moça"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "1",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 lata de Leite Moça"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": "lata",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 lata de Leite Moça"
+          },
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": "cozido em banho-maria por 1½ horas",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 lata de Leite Moça cozido em banho-maria por 1½ horas"
+          },
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-6",
+        "name": {
+          "value": "açúcar refinado",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Pulverize açúcar refinado sobre cada casadinho"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      }
+    ],
+    "tools": [
+      {
+        "id": "tool-1",
+        "name": {
+          "value": "bico de confeitar",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Com o auxílio do bico de confeitar"
+          },
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "tool-2",
+        "name": {
+          "value": "2 colheres de café",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "com 2 colheres de café"
+          },
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "tool-3",
+        "name": {
+          "value": "tabuleiro",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "em um tabuleiro untado"
+          },
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "tool-4",
+        "name": {
+          "value": "forno",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "leve ao forno regular"
+          },
+          "review_item_ids": []
+        }
+      }
+    ],
+    "steps": [
+      {
+        "instruction": {
+          "value": "Bata as claras em neve, junte a metade do açúcar e continue a bater até conseguir ponto de suspiro bem firme.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Bata as claras em neve, junte a metade do açúcar e continue a bater até conseguir ponto de suspiro bem firme."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-1",
+          "ingredient-2"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "À parte, bata as gemas, acrescente o restante do açúcar e as raspas de limão, continuando a bater até obter uma gemada bem clara.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "À parte, bata as gemas, acrescente o restante do açúcar e as raspas de limão, continuando a bater até obter uma gemada bem clara."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-1",
+          "ingredient-2",
+          "ingredient-3"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "Sem parar de bater, vá acrescentando a massa das claras à gemada, lentamente.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Sem parar de bater, vá acrescentando a massa das claras à gemada, lentamente."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-1",
+          "ingredient-2",
+          "ingredient-3"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "Coloque a farinha de trigo peneirada e mexa tudo.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Coloque a farinha de trigo peneirada e mexa tudo."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-4"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "Com o auxílio do bico de confeitar ou com 2 colheres de café, vá pingando porções desta massa em um tabuleiro untado e polvilhado com farinha.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Com o auxílio do bico de confeitar ou com 2 colheres de café, vá pingando porções desta massa em um tabuleiro untado e polvilhado com farinha."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-1",
+          "ingredient-2",
+          "ingredient-3",
+          "ingredient-4"
+        ],
+        "tool_ids": [
+          "tool-1",
+          "tool-2",
+          "tool-3"
+        ]
+      },
+      {
+        "instruction": {
+          "value": "Pulverize açúcar refinado sobre cada casadinho",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Pulverize açúcar refinado sobre cada casadinho"
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-6"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "leve ao forno regular,",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "leve ao forno regular, deixando a porta entreaberta ou com uma pequena fresta."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": "deixando a porta entreaberta ou com uma pequena fresta",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "deixando a porta entreaberta ou com uma pequena fresta."
+          },
+          "review_item_ids": []
+        },
+        "ingredient_ids": [],
+        "tool_ids": [
+          "tool-4"
+        ]
+      },
+      {
+        "instruction": {
+          "value": "una dois a dois, com o doce de Leite Moça.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Depois de assados, una dois a dois, com o doce de Leite Moça."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": "Depois de assados",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Depois de assados, una dois a dois, com o doce de Leite Moça."
+          },
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-5"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "polvilhe açúcar refinado por cima.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Querendo, polvilhe açúcar refinado por cima."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": "Querendo",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Querendo, polvilhe açúcar refinado por cima."
+          },
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-6"
+        ],
+        "tool_ids": []
+      }
+    ]
+  },
+  "extraction_issues": [],
+  "vegan_plan": {
+    "protocol_version": 2,
+    "status": "unavailable",
+    "reason_code": "verification_unavailable",
+    "reason": "A verificação desta execução antecede o protocolo atual. Reimporte a receita para verificar as substituições.",
+    "recipe_fingerprint": "3416eb11ddf4922ff611977e706c3a8261ab832c46135a8278dd364a4f63a2a8",
+    "changes": [],
+    "review_items": [
+      {
+        "path": "/ingredients/0/name",
+        "reason": "Ovos cumprem funções distintas de claras em neve e gemas; não há substituição única confiável sem escolher produtos específicos."
+      },
+      {
+        "path": "/ingredients/0/quantity",
+        "reason": "A quantidade de ovos não informa volumes separados de claras e gemas, necessários para determinar substitutos veganos sem inventar medidas."
+      },
+      {
+        "path": "/steps/0/instruction",
+        "reason": "A técnica de bater claras em neve exige uma substituição vegana e proporção adequadas; a quantidade necessária não pode ser inferida."
+      },
+      {
+        "path": "/steps/1/instruction",
+        "reason": "A etapa depende de gemas para formar a gemada; é necessário determinar um substituto e sua quantidade."
+      },
+      {
+        "path": "/steps/2/instruction",
+        "reason": "A incorporação da mistura de claras à gemada depende das substituições e proporções a definir."
+      },
+      {
+        "path": "/steps/3/instruction",
+        "reason": "A consistência da massa após acrescentar a farinha depende da substituição dos ovos."
+      },
+      {
+        "path": "/steps/4/instruction",
+        "reason": "A massa a pingar no tabuleiro depende da substituição dos ovos; a textura adequada requer validação."
+      },
+      {
+        "path": "/ingredients/4/preparation",
+        "reason": "Check the proposed vegan change. It would change a measure or add a number."
+      },
+      {
+        "path": "/ingredients/0/name",
+        "reason": "A receita original utiliza 5 ovos inteiros, cujas claras e gemas são batidas separadamente para criar a estrutura da massa. A proposta não substitui os ovos, mantendo o ingrediente de origem animal na lista."
+      }
+    ]
+  },
+  "scaling_plan": {
+    "original": {
+      "status": "needs_review",
+      "recipe_fingerprint": "3416eb11ddf4922ff611977e706c3a8261ab832c46135a8278dd364a4f63a2a8",
+      "rules": [
+        {
+          "ingredient_id": "ingredient-1",
+          "mode": "proportional",
+          "reason": "Eggs are part of the batter and scale with the recipe yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/0/quantity",
+              "quote": "Massa: 5 ovos"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-2",
+          "mode": "proportional",
+          "reason": "Sugar is mixed into the batter in two portions, so its measured amount scales with the yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/1/quantity",
+              "quote": "1 xícara (chá) de açúcar"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "junte a metade do açúcar"
+            },
+            {
+              "path": "/steps/1/instruction",
+              "quote": "acrescente o restante do açúcar"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-3",
+          "mode": "proportional",
+          "reason": "Lemon zest is mixed into the batter and scales with the yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/2/quantity",
+              "quote": "raspas de 1 limão"
+            },
+            {
+              "path": "/steps/1/instruction",
+              "quote": "as raspas de limão"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-4",
+          "mode": "proportional",
+          "reason": "Flour is incorporated into the batter, so its measured amount scales with the yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/3/quantity",
+              "quote": "1½ xícaras (chá) de farinha de trigo"
+            },
+            {
+              "path": "/steps/3/instruction",
+              "quote": "Coloque a farinha de trigo peneirada"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-5",
+          "mode": "proportional",
+          "reason": "Leite Moça is used as filling between the baked pieces, so its measured amount scales with the yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/4/quantity",
+              "quote": "1 lata de Leite Moça"
+            },
+            {
+              "path": "/steps/7/instruction",
+              "quote": "una dois a dois, com o doce de Leite Moça."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-6",
+          "mode": "review",
+          "reason": "No quantity is given; a person should determine how much optional finishing sugar is needed for the desired coverage.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/5/instruction",
+              "quote": "Pulverize açúcar refinado sobre cada casadinho"
+            },
+            {
+              "path": "/steps/8/condition",
+              "quote": "Querendo"
+            }
+          ]
+        }
+      ],
+      "verification": {
+        "provider": "gemini",
+        "status": "completed",
+        "rules": [
+          {
+            "ingredient_id": "ingredient-1",
+            "mode": "proportional",
+            "reason": "The eggs are a primary component of the batter and should scale with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-2",
+            "mode": "proportional",
+            "reason": "The sugar is a primary component of the batter and should scale with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-3",
+            "mode": "proportional",
+            "reason": "The lemon zest is a flavoring component of the batter and should scale with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-4",
+            "mode": "proportional",
+            "reason": "The flour is a primary component of the batter and should scale with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-5",
+            "mode": "proportional",
+            "reason": "The dulce de leche is used to fill the cookies and should scale with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-6",
+            "mode": "review",
+            "reason": "The amount of sugar for dusting is not specified and depends on the number of cookies prepared.",
+            "batch_servings": null,
+            "evidence": []
+          }
+        ]
+      }
+    }
+  },
+  "adaptation": {
+    "recipe": {
+      "title": {
+        "value": "Casadinhos",
+        "status": "stated",
+        "evidence": {
+          "source": "B",
+          "page": "1",
+          "quote": "Casadinhos"
+        },
+        "review_item_ids": []
+      },
+      "servings": {
+        "value": "110",
+        "status": "derived",
+        "evidence": null,
+        "review_item_ids": []
+      },
+      "ingredients": [
+        {
+          "id": "ingredient-1",
+          "name": {
+            "value": "ovos",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Massa: 5 ovos"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "10",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-2",
+          "name": {
+            "value": "açúcar",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1 xícara (chá) de açúcar"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "2",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": "xícara (chá)",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1 xícara (chá) de açúcar"
+            },
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-3",
+          "name": {
+            "value": "limão",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "raspas de 1 limão"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "2",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": "raspas de",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "raspas de 1 limão"
+            },
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-4",
+          "name": {
+            "value": "farinha de trigo",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1½ xícaras (chá) de farinha de trigo"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "3",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": "xícaras (chá)",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1½ xícaras (chá) de farinha de trigo"
+            },
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": "peneirada",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Coloque a farinha de trigo peneirada"
+            },
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-5",
+          "name": {
+            "value": "Leite Moça",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1 lata de Leite Moça"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "2",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": "lata",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1 lata de Leite Moça"
+            },
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": "cozido em banho-maria por 1½ horas",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1 lata de Leite Moça cozido em banho-maria por 1½ horas"
+            },
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-6",
+          "name": {
+            "value": "açúcar refinado",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Pulverize açúcar refinado sobre cada casadinho"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        }
+      ],
+      "tools": [
+        {
+          "id": "tool-1",
+          "name": {
+            "value": "bico de confeitar",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Com o auxílio do bico de confeitar"
+            },
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "tool-2",
+          "name": {
+            "value": "2 colheres de café",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "com 2 colheres de café"
+            },
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "tool-3",
+          "name": {
+            "value": "tabuleiro",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "em um tabuleiro untado"
+            },
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "tool-4",
+          "name": {
+            "value": "forno",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "leve ao forno regular"
+            },
+            "review_item_ids": []
+          }
+        }
+      ],
+      "steps": [
+        {
+          "instruction": {
+            "value": "Bata as claras em neve, junte a metade do açúcar e continue a bater até conseguir ponto de suspiro bem firme.",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Bata as claras em neve, junte a metade do açúcar e continue a bater até conseguir ponto de suspiro bem firme."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-1",
+            "ingredient-2"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "À parte, bata as gemas, acrescente o restante do açúcar e as raspas de limão, continuando a bater até obter uma gemada bem clara.",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "À parte, bata as gemas, acrescente o restante do açúcar e as raspas de limão, continuando a bater até obter uma gemada bem clara."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-1",
+            "ingredient-2",
+            "ingredient-3"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "Sem parar de bater, vá acrescentando a massa das claras à gemada, lentamente.",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Sem parar de bater, vá acrescentando a massa das claras à gemada, lentamente."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-1",
+            "ingredient-2",
+            "ingredient-3"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "Coloque a farinha de trigo peneirada e mexa tudo.",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Coloque a farinha de trigo peneirada e mexa tudo."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-4"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "Com o auxílio do bico de confeitar ou com 2 colheres de café, vá pingando porções desta massa em um tabuleiro untado e polvilhado com farinha.",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Com o auxílio do bico de confeitar ou com 2 colheres de café, vá pingando porções desta massa em um tabuleiro untado e polvilhado com farinha."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-1",
+            "ingredient-2",
+            "ingredient-3",
+            "ingredient-4"
+          ],
+          "tool_ids": [
+            "tool-1",
+            "tool-2",
+            "tool-3"
+          ]
+        },
+        {
+          "instruction": {
+            "value": "Pulverize açúcar refinado sobre cada casadinho",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Pulverize açúcar refinado sobre cada casadinho"
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-6"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "leve ao forno regular,",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "leve ao forno regular, deixando a porta entreaberta ou com uma pequena fresta."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": "deixando a porta entreaberta ou com uma pequena fresta",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "deixando a porta entreaberta ou com uma pequena fresta."
+            },
+            "review_item_ids": []
+          },
+          "ingredient_ids": [],
+          "tool_ids": [
+            "tool-4"
+          ]
+        },
+        {
+          "instruction": {
+            "value": "una dois a dois, com o doce de Leite Moça.",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Depois de assados, una dois a dois, com o doce de Leite Moça."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": "Depois de assados",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Depois de assados, una dois a dois, com o doce de Leite Moça."
+            },
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-5"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "polvilhe açúcar refinado por cima.",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Querendo, polvilhe açúcar refinado por cima."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": "Querendo",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Querendo, polvilhe açúcar refinado por cima."
+            },
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-6"
+          ],
+          "tool_ids": []
+        }
+      ]
+    },
+    "scale": {
+      "original_servings": 55,
+      "original_servings_source": "user",
+      "target_servings": 110,
+      "factor": "2",
+      "ingredients": [
+        {
+          "ingredient_id": "ingredient-1",
+          "mode": "proportional",
+          "reason": "Eggs are part of the batter and scale with the recipe yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/0/quantity",
+              "quote": "Massa: 5 ovos"
+            }
+          ],
+          "multiplier": "2",
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-1",
+              "mode": "proportional",
+              "reason": "Eggs are part of the batter and scale with the recipe yield.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/0/quantity",
+                  "quote": "Massa: 5 ovos"
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-1",
+              "mode": "proportional",
+              "reason": "The eggs are a primary component of the batter and should scale with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "10",
+              "unit": null,
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "10",
+              "unit": null,
+              "batches": null
+            },
+            "materially_different": false
+          }
+        },
+        {
+          "ingredient_id": "ingredient-2",
+          "mode": "proportional",
+          "reason": "Sugar is mixed into the batter in two portions, so its measured amount scales with the yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/1/quantity",
+              "quote": "1 xícara (chá) de açúcar"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "junte a metade do açúcar"
+            },
+            {
+              "path": "/steps/1/instruction",
+              "quote": "acrescente o restante do açúcar"
+            }
+          ],
+          "multiplier": "2",
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-2",
+              "mode": "proportional",
+              "reason": "Sugar is mixed into the batter in two portions, so its measured amount scales with the yield.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/1/quantity",
+                  "quote": "1 xícara (chá) de açúcar"
+                },
+                {
+                  "path": "/steps/0/instruction",
+                  "quote": "junte a metade do açúcar"
+                },
+                {
+                  "path": "/steps/1/instruction",
+                  "quote": "acrescente o restante do açúcar"
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-2",
+              "mode": "proportional",
+              "reason": "The sugar is a primary component of the batter and should scale with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "2",
+              "unit": "xícara (chá)",
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "2",
+              "unit": "xícara (chá)",
+              "batches": null
+            },
+            "materially_different": false
+          }
+        },
+        {
+          "ingredient_id": "ingredient-3",
+          "mode": "proportional",
+          "reason": "Lemon zest is mixed into the batter and scales with the yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/2/quantity",
+              "quote": "raspas de 1 limão"
+            },
+            {
+              "path": "/steps/1/instruction",
+              "quote": "as raspas de limão"
+            }
+          ],
+          "multiplier": "2",
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-3",
+              "mode": "proportional",
+              "reason": "Lemon zest is mixed into the batter and scales with the yield.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/2/quantity",
+                  "quote": "raspas de 1 limão"
+                },
+                {
+                  "path": "/steps/1/instruction",
+                  "quote": "as raspas de limão"
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-3",
+              "mode": "proportional",
+              "reason": "The lemon zest is a flavoring component of the batter and should scale with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "2",
+              "unit": null,
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "2",
+              "unit": null,
+              "batches": null
+            },
+            "materially_different": false
+          }
+        },
+        {
+          "ingredient_id": "ingredient-4",
+          "mode": "proportional",
+          "reason": "Flour is incorporated into the batter, so its measured amount scales with the yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/3/quantity",
+              "quote": "1½ xícaras (chá) de farinha de trigo"
+            },
+            {
+              "path": "/steps/3/instruction",
+              "quote": "Coloque a farinha de trigo peneirada"
+            }
+          ],
+          "multiplier": "2",
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-4",
+              "mode": "proportional",
+              "reason": "Flour is incorporated into the batter, so its measured amount scales with the yield.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/3/quantity",
+                  "quote": "1½ xícaras (chá) de farinha de trigo"
+                },
+                {
+                  "path": "/steps/3/instruction",
+                  "quote": "Coloque a farinha de trigo peneirada"
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-4",
+              "mode": "proportional",
+              "reason": "The flour is a primary component of the batter and should scale with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "3",
+              "unit": "xícaras (chá)",
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "3",
+              "unit": "xícaras (chá)",
+              "batches": null
+            },
+            "materially_different": false
+          }
+        },
+        {
+          "ingredient_id": "ingredient-5",
+          "mode": "proportional",
+          "reason": "Leite Moça is used as filling between the baked pieces, so its measured amount scales with the yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/4/quantity",
+              "quote": "1 lata de Leite Moça"
+            },
+            {
+              "path": "/steps/7/instruction",
+              "quote": "una dois a dois, com o doce de Leite Moça."
+            }
+          ],
+          "multiplier": "2",
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-5",
+              "mode": "proportional",
+              "reason": "Leite Moça is used as filling between the baked pieces, so its measured amount scales with the yield.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/4/quantity",
+                  "quote": "1 lata de Leite Moça"
+                },
+                {
+                  "path": "/steps/7/instruction",
+                  "quote": "una dois a dois, com o doce de Leite Moça."
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-5",
+              "mode": "proportional",
+              "reason": "The dulce de leche is used to fill the cookies and should scale with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "2",
+              "unit": "lata",
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "2",
+              "unit": "lata",
+              "batches": null
+            },
+            "materially_different": false
+          }
+        },
+        {
+          "ingredient_id": "ingredient-6",
+          "mode": "review",
+          "reason": "No quantity is given; a person should determine how much optional finishing sugar is needed for the desired coverage.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/5/instruction",
+              "quote": "Pulverize açúcar refinado sobre cada casadinho"
+            },
+            {
+              "path": "/steps/8/condition",
+              "quote": "Querendo"
+            }
+          ],
+          "multiplier": null,
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-6",
+              "mode": "review",
+              "reason": "No quantity is given; a person should determine how much optional finishing sugar is needed for the desired coverage.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/steps/5/instruction",
+                  "quote": "Pulverize açúcar refinado sobre cada casadinho"
+                },
+                {
+                  "path": "/steps/8/condition",
+                  "quote": "Querendo"
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-6",
+              "mode": "review",
+              "reason": "The amount of sugar for dusting is not specified and depends on the number of cookies prepared.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": null,
+              "unit": null,
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": null,
+              "unit": null,
+              "batches": null
+            },
+            "materially_different": false
+          }
+        }
+      ],
+      "verification": {
+        "provider": "gemini",
+        "status": "completed",
+        "material_conflicts": []
+      }
+    },
+    "vegan_requested": false,
+    "status": "needs_review",
+    "changes": [
+      {
+        "path": "/servings",
+        "before": "55 casadinhos",
+        "after": "110",
+        "reason": "Use the requested serving count."
+      },
+      {
+        "path": "/ingredients/0/quantity",
+        "before": "5",
+        "after": "10",
+        "reason": "Eggs are part of the batter and scale with the recipe yield."
+      },
+      {
+        "path": "/ingredients/1/quantity",
+        "before": "1",
+        "after": "2",
+        "reason": "Sugar is mixed into the batter in two portions, so its measured amount scales with the yield."
+      },
+      {
+        "path": "/ingredients/2/quantity",
+        "before": "1",
+        "after": "2",
+        "reason": "Lemon zest is mixed into the batter and scales with the yield."
+      },
+      {
+        "path": "/ingredients/3/quantity",
+        "before": "1½",
+        "after": "3",
+        "reason": "Flour is incorporated into the batter, so its measured amount scales with the yield."
+      },
+      {
+        "path": "/ingredients/4/quantity",
+        "before": "1",
+        "after": "2",
+        "reason": "Leite Moça is used as filling between the baked pieces, so its measured amount scales with the yield."
+      }
+    ],
+    "review_items": [
+      {
+        "path": "/ingredients/5/quantity",
+        "reason": "No quantity is given; a person should determine how much optional finishing sugar is needed for the desired coverage."
+      }
+    ]
+  }
+}

@@ -285,3 +285,9 @@ All 113 tests passed in Docker. Codex replaced the local container at `127.0.0.1
 Gabriel asked to keep Torta de coco, Casadinhos, and Pé-de-moleque under `examples/` and asked whether the failed Gemini transcription of Doce de leite Moça ran out of tokens. Codex copied the three cropped PDFs, verified each copy against its source hash, and reopened each as a one-page PDF.
 
 The original run recorded a generic incomplete-transcription error. The client emits that error when there is no candidate or the candidate does not report `STOP`, so the original finish reason is unknown. Codex replayed the failed PDF once using the original prompt, Gemini model, temperature and 4,096-token output ceiling. The API returned `STOP` after 18.76 s with 103 output tokens and 844 input tokens. The replay did not reproduce the failure or reach the output limit.
+
+## 2026-11-13 17:41–17:43 · Save generated reports in examples
+
+Gabriel clarified that `examples/` should contain the recipe outputs. Codex removed the PDFs from the unpublished commit and saved the recorded extraction and original scaling reports for Torta de coco, Casadinhos, and Pé-de-moleque. Python replayed their adaptations and reproduced the saved results. The older vegan proposals were withheld because they predate the current approval contract.
+
+The four Sauerbraten files cover extraction, scaling to six servings, the vegan request, and the vegan request at six servings. The scaling result uses a demo baseline of four. Both vegan requests produced `needs_review` because the original gives no roast quantity, and neither produced an adaptation. These examples replayed the saved extraction with the current CLI. No new provider calls were needed.

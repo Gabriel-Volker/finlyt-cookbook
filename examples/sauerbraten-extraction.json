@@ -1,0 +1,1535 @@
+{
+  "status": "no_discrepancies",
+  "transcriptions": {
+    "A": "[page: 1]\nSauerbraten\n\nIngredients\n1/2 l vinegar\n1/2 l water\n4 sliced onions\npepper\ncloves\nsalt\nbay leaves\nbeef roast\n\nMethod\nBoil 1/2 l vinegar, 1/2 l water and 4 sliced onions with pepper, cloves,\nsalt and bay leaves.\nPour the marinade over the beef roast for a shorter rest.\nFor a longer rest, cool the marinade before adding the beef roast.\n\n[page: 2]\nbacon\nbutter\nsome apples (optional)\ncarrots (optional)\njuniper berries (optional)\nbeef drippings\nflour\nred wine\nsoaked currants\nraisins\nsugar to taste\n\nMethod\nRender the bacon, add butter, then brown the dried beef roast on all sides.\nWhen the roast is browned, pour in a little of the marinade.\nAdd apples, carrots and juniper berries to the pot if desired.\nCover the pot and braise the beef roast gently until tender.\nStir flour into the beef drippings and loosen the mixture with marinade and red wine.\nAdd soaked currants, raisins and sugar to taste, balancing sweetness and acidity.\nLet the beef roast rest in the sauce before slicing and serving.",
+    "B": "[page: 1]\nSauerbraten\n\nIngredients\n1/2 l vinegar\n1/2 l water\n4 sliced onions\npepper\ncloves\nsalt\nbay leaves\nbeef roast\n\nMethod\nBoil 1/2 l vinegar, 1/2 l water and 4 sliced onions with pepper, cloves, salt and bay leaves.\nPour the marinade over the beef roast for a shorter rest.\nFor a longer rest, cool the marinade before adding the beef roast.\n\n[page: 2]\nbacon\nbutter\nsome apples (optional)\ncarrots (optional)\njuniper berries (optional)\nbeef drippings\nflour\nred wine\nsoaked currants\nraisins\nsugar to taste\n\nMethod\nRender the bacon, add butter, then brown the dried beef roast on all sides.\nWhen the roast is browned, pour in a little of the marinade.\nAdd apples, carrots and juniper berries to the pot if desired.\nCover the pot and braise the beef roast gently until tender.\nStir flour into the beef drippings and loosen the mixture with marinade and red wine.\nAdd soaked currants, raisins and sugar to taste, balancing sweetness and acidity.\nLet the beef roast rest in the sauce before slicing and serving."
+  },
+  "comparison": {
+    "review_items": [],
+    "equivalent_variations": [
+      {
+        "page": "1",
+        "kind": "formatting",
+        "a_excerpt": "cloves,\nsalt",
+        "b_excerpt": "cloves, salt",
+        "reason": "The example readings differ only in the placement of a line break."
+      }
+    ]
+  },
+  "recipe": {
+    "title": {
+      "value": "Sauerbraten",
+      "status": "stated",
+      "evidence": {
+        "source": "B",
+        "page": "1",
+        "quote": "Sauerbraten"
+      },
+      "review_item_ids": []
+    },
+    "servings": {
+      "value": null,
+      "status": "missing",
+      "evidence": null,
+      "review_item_ids": []
+    },
+    "ingredients": [
+      {
+        "id": "ingredient-1",
+        "name": {
+          "value": "vinegar",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1/2 l vinegar"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "1/2",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1/2 l vinegar"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": "l",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1/2 l vinegar"
+          },
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-2",
+        "name": {
+          "value": "water",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1/2 l water"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "1/2",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1/2 l water"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": "l",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1/2 l water"
+          },
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-3",
+        "name": {
+          "value": "onions",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "4 sliced onions"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "4",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "4 sliced onions"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": "sliced",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "4 sliced onions"
+          },
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-4",
+        "name": {
+          "value": "pepper",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "pepper"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-5",
+        "name": {
+          "value": "cloves",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "cloves"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-6",
+        "name": {
+          "value": "salt",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "salt"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-7",
+        "name": {
+          "value": "bay leaves",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "bay leaves"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-8",
+        "name": {
+          "value": "beef roast",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "beef roast"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-9",
+        "name": {
+          "value": "bacon",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "bacon"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-10",
+        "name": {
+          "value": "butter",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "butter"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-11",
+        "name": {
+          "value": "apples",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "some apples (optional)"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "some",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "some apples (optional)"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": "optional",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "some apples (optional)"
+          },
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-12",
+        "name": {
+          "value": "carrots",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "carrots (optional)"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": "optional",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "carrots (optional)"
+          },
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-13",
+        "name": {
+          "value": "juniper berries",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "juniper berries (optional)"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": "optional",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "juniper berries (optional)"
+          },
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-14",
+        "name": {
+          "value": "beef drippings",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "beef drippings"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-15",
+        "name": {
+          "value": "flour",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "flour"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-16",
+        "name": {
+          "value": "red wine",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "red wine"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-17",
+        "name": {
+          "value": "currants",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "soaked currants"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": "soaked",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "soaked currants"
+          },
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-18",
+        "name": {
+          "value": "raisins",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "raisins"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-19",
+        "name": {
+          "value": "sugar",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "sugar to taste"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "to taste",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "sugar to taste"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      }
+    ],
+    "tools": [
+      {
+        "id": "tool-1",
+        "name": {
+          "value": "pot",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "Add apples, carrots and juniper berries to the pot if desired."
+          },
+          "review_item_ids": []
+        }
+      }
+    ],
+    "steps": [
+      {
+        "instruction": {
+          "value": "Boil 1/2 l vinegar, 1/2 l water and 4 sliced onions with pepper, cloves, salt and bay leaves.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Boil 1/2 l vinegar, 1/2 l water and 4 sliced onions with pepper, cloves, salt and bay leaves."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-1",
+          "ingredient-2",
+          "ingredient-3",
+          "ingredient-4",
+          "ingredient-5",
+          "ingredient-6",
+          "ingredient-7"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "Pour the marinade over the beef roast for a shorter rest.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Pour the marinade over the beef roast for a shorter rest."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": "for a shorter rest",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Pour the marinade over the beef roast for a shorter rest."
+          },
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-8"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "For a longer rest, cool the marinade before adding the beef roast.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "For a longer rest, cool the marinade before adding the beef roast."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": "For a longer rest",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "For a longer rest, cool the marinade before adding the beef roast."
+          },
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-8"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "Render the bacon, add butter, then brown the dried beef roast on all sides.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "Render the bacon, add butter, then brown the dried beef roast on all sides."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-9",
+          "ingredient-10",
+          "ingredient-8"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "When the roast is browned, pour in a little of the marinade.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "When the roast is browned, pour in a little of the marinade."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": "When the roast is browned",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "When the roast is browned, pour in a little of the marinade."
+          },
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-8"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "Add apples, carrots and juniper berries to the pot if desired.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "Add apples, carrots and juniper berries to the pot if desired."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": "if desired",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "Add apples, carrots and juniper berries to the pot if desired."
+          },
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-11",
+          "ingredient-12",
+          "ingredient-13"
+        ],
+        "tool_ids": [
+          "tool-1"
+        ]
+      },
+      {
+        "instruction": {
+          "value": "Cover the pot and braise the beef roast gently until tender.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "Cover the pot and braise the beef roast gently until tender."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": "until tender",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "Cover the pot and braise the beef roast gently until tender."
+          },
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-8"
+        ],
+        "tool_ids": [
+          "tool-1"
+        ]
+      },
+      {
+        "instruction": {
+          "value": "Stir flour into the beef drippings and loosen the mixture with marinade and red wine.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "Stir flour into the beef drippings and loosen the mixture with marinade and red wine."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-15",
+          "ingredient-14",
+          "ingredient-16"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "Add soaked currants, raisins and sugar to taste, balancing sweetness and acidity.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "Add soaked currants, raisins and sugar to taste, balancing sweetness and acidity."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-17",
+          "ingredient-18",
+          "ingredient-19"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "Let the beef roast rest in the sauce before slicing and serving.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "2",
+            "quote": "Let the beef roast rest in the sauce before slicing and serving."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-8"
+        ],
+        "tool_ids": []
+      }
+    ]
+  },
+  "extraction_issues": [],
+  "vegan_plan": {
+    "protocol_version": 2,
+    "status": "needs_review",
+    "reason_code": "insufficient_information",
+    "reason": "The recipe gives no roast quantity. Confirm the original amount before preparing a vegan version.",
+    "recipe_fingerprint": "8c02fb31660235ec8e1950e1e5a7dae4cd1efe99d1b54f330fdf92a0432bea9f",
+    "changes": [],
+    "review_items": [
+      {
+        "path": "/ingredients/7/quantity",
+        "reason": "The recipe gives no beef-roast quantity, so the amount of seitan roast needed cannot be determined."
+      }
+    ]
+  },
+  "scaling_plan": {
+    "original": {
+      "status": "needs_review",
+      "recipe_fingerprint": "8c02fb31660235ec8e1950e1e5a7dae4cd1efe99d1b54f330fdf92a0432bea9f",
+      "rules": [
+        {
+          "ingredient_id": "ingredient-1",
+          "mode": "proportional",
+          "reason": "Measured vinegar is part of the marinade mixture, so it scales with the recipe yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/0/quantity",
+              "quote": "1/2 l vinegar"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "Boil 1/2 l vinegar, 1/2 l water and 4 sliced onions"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-2",
+          "mode": "proportional",
+          "reason": "Measured water is part of the marinade mixture, so it scales with the recipe yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/1/quantity",
+              "quote": "1/2 l water"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "1/2 l water"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-3",
+          "mode": "proportional",
+          "reason": "The measured onions are boiled into the marinade mixture and scale with its yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/2/quantity",
+              "quote": "4 sliced onions"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "4 sliced onions"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-4",
+          "mode": "review",
+          "reason": "The amount is missing; a person should determine an appropriate amount of pepper for the marinade.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/0/instruction",
+              "quote": "with pepper"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-5",
+          "mode": "review",
+          "reason": "The amount is missing; a person should determine an appropriate amount of cloves for the marinade.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/0/instruction",
+              "quote": "cloves"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-6",
+          "mode": "review",
+          "reason": "The amount is missing and seasoning may need adjustment; a person should decide how much salt the marinade needs.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/0/instruction",
+              "quote": "salt"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-7",
+          "mode": "review",
+          "reason": "The amount is missing; a person should determine an appropriate amount of bay leaves for the marinade.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/0/instruction",
+              "quote": "bay leaves"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-8",
+          "mode": "review",
+          "reason": "The roast quantity is missing; a person should establish the intended roast size and serving yield before scaling it.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/1/instruction",
+              "quote": "Pour the marinade over the beef roast"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-9",
+          "mode": "review",
+          "reason": "The amount of bacon is missing; a person should determine how much is needed to render for browning the roast.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/3/instruction",
+              "quote": "Render the bacon"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-10",
+          "mode": "review",
+          "reason": "The amount of butter is missing; a person should determine how much to use when browning the roast.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/3/instruction",
+              "quote": "add butter"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-11",
+          "mode": "review",
+          "reason": "The quantity is qualitative and optional; a person should choose whether to include apples and how much is appropriate.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/10/quantity",
+              "quote": "some"
+            },
+            {
+              "path": "/steps/5/instruction",
+              "quote": "Add apples, carrots and juniper berries to the pot if desired."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-12",
+          "mode": "review",
+          "reason": "The quantity is missing and the ingredient is optional; a person should decide whether to include carrots and how much to use.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/5/instruction",
+              "quote": "Add apples, carrots and juniper berries to the pot if desired."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-13",
+          "mode": "review",
+          "reason": "The quantity is missing and the ingredient is optional; a person should decide whether to include juniper berries and how much to use.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/5/instruction",
+              "quote": "Add apples, carrots and juniper berries to the pot if desired."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-14",
+          "mode": "review",
+          "reason": "The amount of beef drippings is missing; a person should determine the amount needed for the sauce mixture.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/7/instruction",
+              "quote": "Stir flour into the beef drippings"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-15",
+          "mode": "review",
+          "reason": "The flour amount is missing; a person should determine how much is needed to thicken the sauce.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/7/instruction",
+              "quote": "Stir flour into the beef drippings"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-16",
+          "mode": "review",
+          "reason": "The amount of red wine is missing; a person should determine how much is needed to loosen the sauce mixture.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/7/instruction",
+              "quote": "loosen the mixture with marinade and red wine"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-17",
+          "mode": "review",
+          "reason": "The currant quantity is missing; a person should determine how much to add to the sauce.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/8/instruction",
+              "quote": "Add soaked currants"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-18",
+          "mode": "review",
+          "reason": "The raisin quantity is missing; a person should determine how much to add to the sauce.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/8/instruction",
+              "quote": "raisins"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-19",
+          "mode": "review",
+          "reason": "Sugar is specified to taste and must balance sweetness with acidity, so a person should adjust it by tasting rather than scale a fixed amount.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/18/quantity",
+              "quote": "sugar to taste"
+            },
+            {
+              "path": "/steps/8/instruction",
+              "quote": "sugar to taste, balancing sweetness and acidity"
+            }
+          ]
+        }
+      ],
+      "verification": {
+        "provider": "gemini",
+        "status": "completed",
+        "rules": [
+          {
+            "ingredient_id": "ingredient-1",
+            "mode": "proportional",
+            "reason": "The vinegar is part of a marinade mixture that should scale with the amount of beef.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-2",
+            "mode": "proportional",
+            "reason": "The water is part of a marinade mixture that should scale with the amount of beef.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-3",
+            "mode": "proportional",
+            "reason": "The onions are part of a marinade mixture that should scale with the amount of beef.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-4",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-5",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-6",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-7",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-8",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-9",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-10",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-11",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-12",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-13",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-14",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-15",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-16",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-17",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-18",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-19",
+            "mode": "review",
+            "reason": "Sugar is added 'to taste', which is a qualitative adjustment that cannot be scaled automatically.",
+            "batch_servings": null,
+            "evidence": []
+          }
+        ]
+      }
+    }
+  }
+}

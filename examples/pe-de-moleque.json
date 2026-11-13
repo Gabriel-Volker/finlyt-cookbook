@@ -1,0 +1,1715 @@
+{
+  "status": "no_discrepancies",
+  "transcriptions": {
+    "A": "[page: 1]\nPé-de-moleque\n\n2 xícaras (chá) de rapadura picada -\n1 xícara (chá) de água - 1 xícara (chá)\nde açúcar - ½ quilo de amendoim -\n1 lata de Leite Moça - 1 colher (chá)\nde bicarbonato\n\nLeve a rapadura e a água ao fogo e\ndeixe derreter. Retire do fogo e côe\nnum guardanapo. Junte o açúcar e o\namendoim e volte ao fogo, mexendo\nsempre, até torrar o amendoim e fi-\ncar a calda bem grossa. Acrescente o\nLeite Moça e o bicarbonato e mexa\nfortemente cêrca de 10 minutos. Reti-\nre do fogo e bata até perder o brilho.\nDespeje no mármore untado, com\nmanteiga, deixe esfriar e corte em\nquadrados. Rendimento: 30 pés-de-\n-moleque.",
+    "B": "[page: 1]\nPé-de-moleque\n\n2 xícaras (chá) de rapadura picada - 1 xícara (chá) de água - 1 xícara (chá) de açúcar - ½ quilo de amendoim - 1 lata de Leite Moça - 1 colher (chá) de bicarbonato\n\nLeve a rapadura e a água ao fogo e deixe derreter. Retire do fogo e coe num guardanapo. Junte o açúcar e o amendoim e volte ao fogo, mexendo sempre, até torrar o amendoim e ficar a calda bem grossa. Acrescente o Leite Moça e o bicarbonato e mexa fortemente cerca de 10 minutos. Retire do fogo e bata até perder o brilho. Despeje no mármore untado, com manteiga, deixe esfriar e corte em quadrados. Rendimento: 30 pés-de-moleque."
+  },
+  "comparison": {
+    "review_items": [],
+    "equivalent_variations": []
+  },
+  "recipe": {
+    "title": {
+      "value": "Pé-de-moleque",
+      "status": "stated",
+      "evidence": {
+        "source": "B",
+        "page": "1",
+        "quote": "Pé-de-moleque"
+      },
+      "review_item_ids": []
+    },
+    "servings": {
+      "value": "30 pés-de-moleque",
+      "status": "stated",
+      "evidence": {
+        "source": "B",
+        "page": "1",
+        "quote": "Rendimento: 30 pés-de-moleque."
+      },
+      "review_item_ids": []
+    },
+    "ingredients": [
+      {
+        "id": "ingredient-1",
+        "name": {
+          "value": "rapadura",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "2 xícaras (chá) de rapadura picada"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "2",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "2 xícaras (chá) de rapadura picada"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": "xícaras (chá)",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "2 xícaras (chá) de rapadura picada"
+          },
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": "picada",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "2 xícaras (chá) de rapadura picada"
+          },
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-2",
+        "name": {
+          "value": "água",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 xícara (chá) de água"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "1",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 xícara (chá) de água"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": "xícara (chá)",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 xícara (chá) de água"
+          },
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-3",
+        "name": {
+          "value": "açúcar",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 xícara (chá) de açúcar"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "1",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 xícara (chá) de açúcar"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": "xícara (chá)",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 xícara (chá) de açúcar"
+          },
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-4",
+        "name": {
+          "value": "amendoim",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "½ quilo de amendoim"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "½",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "½ quilo de amendoim"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": "quilo",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "½ quilo de amendoim"
+          },
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-5",
+        "name": {
+          "value": "Leite Moça",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 lata de Leite Moça"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "1",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 lata de Leite Moça"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": "lata",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 lata de Leite Moça"
+          },
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-6",
+        "name": {
+          "value": "bicarbonato",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 colher (chá) de bicarbonato"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": "1",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 colher (chá) de bicarbonato"
+          },
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": "colher (chá)",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "1 colher (chá) de bicarbonato"
+          },
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "ingredient-7",
+        "name": {
+          "value": "manteiga",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "com manteiga"
+          },
+          "review_item_ids": []
+        },
+        "quantity": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "unit": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "preparation": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "optional_when": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        }
+      }
+    ],
+    "tools": [
+      {
+        "id": "tool-1",
+        "name": {
+          "value": "guardanapo",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "coe num guardanapo"
+          },
+          "review_item_ids": []
+        }
+      },
+      {
+        "id": "tool-2",
+        "name": {
+          "value": "mármore",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Despeje no mármore untado"
+          },
+          "review_item_ids": []
+        }
+      }
+    ],
+    "steps": [
+      {
+        "instruction": {
+          "value": "Leve a rapadura e a água ao fogo e deixe derreter.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Leve a rapadura e a água ao fogo e deixe derreter."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-1",
+          "ingredient-2"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "Retire do fogo e coe num guardanapo.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Retire do fogo e coe num guardanapo."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-1",
+          "ingredient-2"
+        ],
+        "tool_ids": [
+          "tool-1"
+        ]
+      },
+      {
+        "instruction": {
+          "value": "Junte o açúcar e o amendoim e volte ao fogo, mexendo sempre, até torrar o amendoim e ficar a calda bem grossa.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Junte o açúcar e o amendoim e volte ao fogo, mexendo sempre, até torrar o amendoim e ficar a calda bem grossa."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": "até torrar o amendoim e ficar a calda bem grossa",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "até torrar o amendoim e ficar a calda bem grossa"
+          },
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-1",
+          "ingredient-2",
+          "ingredient-3",
+          "ingredient-4"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "Acrescente o Leite Moça e o bicarbonato e mexa fortemente cerca de 10 minutos.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Acrescente o Leite Moça e o bicarbonato e mexa fortemente cerca de 10 minutos."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": "cerca de 10 minutos",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "cerca de 10 minutos"
+          },
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-5",
+          "ingredient-6"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "Retire do fogo e bata até perder o brilho.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Retire do fogo e bata até perder o brilho."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": "até perder o brilho",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "até perder o brilho"
+          },
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-5",
+          "ingredient-6"
+        ],
+        "tool_ids": []
+      },
+      {
+        "instruction": {
+          "value": "Despeje no mármore untado, com manteiga, deixe esfriar e corte em quadrados.",
+          "status": "stated",
+          "evidence": {
+            "source": "B",
+            "page": "1",
+            "quote": "Despeje no mármore untado, com manteiga, deixe esfriar e corte em quadrados."
+          },
+          "review_item_ids": []
+        },
+        "duration": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "condition": {
+          "value": null,
+          "status": "missing",
+          "evidence": null,
+          "review_item_ids": []
+        },
+        "ingredient_ids": [
+          "ingredient-7"
+        ],
+        "tool_ids": [
+          "tool-2"
+        ]
+      }
+    ]
+  },
+  "extraction_issues": [],
+  "vegan_plan": {
+    "protocol_version": 2,
+    "status": "unavailable",
+    "reason_code": "verification_unavailable",
+    "reason": "A verificação desta execução antecede o protocolo atual. Reimporte a receita para verificar as substituições.",
+    "recipe_fingerprint": "4d82b0599701ed588fca257c5dfc02510559342078c62534ea101372b2ecf225",
+    "changes": [],
+    "review_items": [
+      {
+        "path": "/steps/3/duration",
+        "reason": "O tempo de cozimento pode variar com a formulação do leite condensado vegetal; confirme o ponto durante o preparo."
+      },
+      {
+        "path": "/steps/4/condition",
+        "reason": "Confirme se a mistura com o leite condensado vegetal perde o brilho como indicado; o ponto pode variar conforme a formulação."
+      }
+    ]
+  },
+  "scaling_plan": {
+    "original": {
+      "status": "needs_review",
+      "recipe_fingerprint": "4d82b0599701ed588fca257c5dfc02510559342078c62534ea101372b2ecf225",
+      "rules": [
+        {
+          "ingredient_id": "ingredient-1",
+          "mode": "proportional",
+          "reason": "Measured ingredient in the candy mixture; scale with servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/0/quantity",
+              "quote": "2 xícaras (chá) de rapadura picada"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "Leve a rapadura e a água ao fogo e deixe derreter."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-2",
+          "mode": "proportional",
+          "reason": "Measured liquid used in the mixture; scale with servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/1/quantity",
+              "quote": "1 xícara (chá) de água"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "Leve a rapadura e a água ao fogo e deixe derreter."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-3",
+          "mode": "proportional",
+          "reason": "Measured ingredient incorporated into the candy mixture; scale with servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/2/quantity",
+              "quote": "1 xícara (chá) de açúcar"
+            },
+            {
+              "path": "/steps/2/instruction",
+              "quote": "Junte o açúcar e o amendoim e volte ao fogo, mexendo sempre, até torrar o amendoim e ficar a calda bem grossa."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-4",
+          "mode": "proportional",
+          "reason": "Measured ingredient incorporated into the candy mixture; scale with servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/3/quantity",
+              "quote": "½ quilo de amendoim"
+            },
+            {
+              "path": "/steps/2/instruction",
+              "quote": "Junte o açúcar e o amendoim e volte ao fogo, mexendo sempre, até torrar o amendoim e ficar a calda bem grossa."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-5",
+          "mode": "proportional",
+          "reason": "Measured ingredient mixed into the candy; scale with servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/4/quantity",
+              "quote": "1 lata de Leite Moça"
+            },
+            {
+              "path": "/steps/3/instruction",
+              "quote": "Acrescente o Leite Moça e o bicarbonato e mexa fortemente cerca de 10 minutos."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-6",
+          "mode": "proportional",
+          "reason": "Measured ingredient mixed into the candy; scale with servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/5/quantity",
+              "quote": "1 colher (chá) de bicarbonato"
+            },
+            {
+              "path": "/steps/3/instruction",
+              "quote": "Acrescente o Leite Moça e o bicarbonato e mexa fortemente cerca de 10 minutos."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-7",
+          "mode": "review",
+          "reason": "The amount of butter for greasing the marble is unspecified; a person should determine the amount needed for the surface and batch size.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/5/instruction",
+              "quote": "Despeje no mármore untado, com manteiga, deixe esfriar e corte em quadrados."
+            }
+          ]
+        }
+      ],
+      "verification": {
+        "provider": "gemini",
+        "status": "completed",
+        "rules": [
+          {
+            "ingredient_id": "ingredient-1",
+            "mode": "proportional",
+            "reason": "This ingredient is a primary component of the mixture and should scale proportionally with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-2",
+            "mode": "proportional",
+            "reason": "This ingredient is a primary component of the mixture and should scale proportionally with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-3",
+            "mode": "proportional",
+            "reason": "This ingredient is a primary component of the mixture and should scale proportionally with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-4",
+            "mode": "proportional",
+            "reason": "This ingredient is a primary component of the mixture and should scale proportionally with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-5",
+            "mode": "proportional",
+            "reason": "This ingredient is a primary component of the mixture and should scale proportionally with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-6",
+            "mode": "proportional",
+            "reason": "This ingredient is a primary component of the mixture and should scale proportionally with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-7",
+            "mode": "review",
+            "reason": "The amount of butter is not specified and is used for greasing the surface, which may not scale linearly with the number of servings.",
+            "batch_servings": null,
+            "evidence": []
+          }
+        ]
+      }
+    }
+  },
+  "adaptation": {
+    "recipe": {
+      "title": {
+        "value": "Pé-de-moleque",
+        "status": "stated",
+        "evidence": {
+          "source": "B",
+          "page": "1",
+          "quote": "Pé-de-moleque"
+        },
+        "review_item_ids": []
+      },
+      "servings": {
+        "value": "60",
+        "status": "derived",
+        "evidence": null,
+        "review_item_ids": []
+      },
+      "ingredients": [
+        {
+          "id": "ingredient-1",
+          "name": {
+            "value": "rapadura",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "2 xícaras (chá) de rapadura picada"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "4",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": "xícaras (chá)",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "2 xícaras (chá) de rapadura picada"
+            },
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": "picada",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "2 xícaras (chá) de rapadura picada"
+            },
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-2",
+          "name": {
+            "value": "água",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1 xícara (chá) de água"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "2",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": "xícara (chá)",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1 xícara (chá) de água"
+            },
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-3",
+          "name": {
+            "value": "açúcar",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1 xícara (chá) de açúcar"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "2",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": "xícara (chá)",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1 xícara (chá) de açúcar"
+            },
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-4",
+          "name": {
+            "value": "amendoim",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "½ quilo de amendoim"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "1",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": "quilo",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "½ quilo de amendoim"
+            },
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-5",
+          "name": {
+            "value": "Leite Moça",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1 lata de Leite Moça"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "2",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": "lata",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1 lata de Leite Moça"
+            },
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-6",
+          "name": {
+            "value": "bicarbonato",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1 colher (chá) de bicarbonato"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "2",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": "colher (chá)",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1 colher (chá) de bicarbonato"
+            },
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-7",
+          "name": {
+            "value": "manteiga",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "com manteiga"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        }
+      ],
+      "tools": [
+        {
+          "id": "tool-1",
+          "name": {
+            "value": "guardanapo",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "coe num guardanapo"
+            },
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "tool-2",
+          "name": {
+            "value": "mármore",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Despeje no mármore untado"
+            },
+            "review_item_ids": []
+          }
+        }
+      ],
+      "steps": [
+        {
+          "instruction": {
+            "value": "Leve a rapadura e a água ao fogo e deixe derreter.",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Leve a rapadura e a água ao fogo e deixe derreter."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-1",
+            "ingredient-2"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "Retire do fogo e coe num guardanapo.",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Retire do fogo e coe num guardanapo."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-1",
+            "ingredient-2"
+          ],
+          "tool_ids": [
+            "tool-1"
+          ]
+        },
+        {
+          "instruction": {
+            "value": "Junte o açúcar e o amendoim e volte ao fogo, mexendo sempre, até torrar o amendoim e ficar a calda bem grossa.",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Junte o açúcar e o amendoim e volte ao fogo, mexendo sempre, até torrar o amendoim e ficar a calda bem grossa."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": "até torrar o amendoim e ficar a calda bem grossa",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "até torrar o amendoim e ficar a calda bem grossa"
+            },
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-1",
+            "ingredient-2",
+            "ingredient-3",
+            "ingredient-4"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "Acrescente o Leite Moça e o bicarbonato e mexa fortemente cerca de 10 minutos.",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Acrescente o Leite Moça e o bicarbonato e mexa fortemente cerca de 10 minutos."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": "cerca de 10 minutos",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "cerca de 10 minutos"
+            },
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-5",
+            "ingredient-6"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "Retire do fogo e bata até perder o brilho.",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Retire do fogo e bata até perder o brilho."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": "até perder o brilho",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "até perder o brilho"
+            },
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-5",
+            "ingredient-6"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "Despeje no mármore untado, com manteiga, deixe esfriar e corte em quadrados.",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Despeje no mármore untado, com manteiga, deixe esfriar e corte em quadrados."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-7"
+          ],
+          "tool_ids": [
+            "tool-2"
+          ]
+        }
+      ]
+    },
+    "scale": {
+      "original_servings": 30,
+      "original_servings_source": "user",
+      "target_servings": 60,
+      "factor": "2",
+      "ingredients": [
+        {
+          "ingredient_id": "ingredient-1",
+          "mode": "proportional",
+          "reason": "Measured ingredient in the candy mixture; scale with servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/0/quantity",
+              "quote": "2 xícaras (chá) de rapadura picada"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "Leve a rapadura e a água ao fogo e deixe derreter."
+            }
+          ],
+          "multiplier": "2",
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-1",
+              "mode": "proportional",
+              "reason": "Measured ingredient in the candy mixture; scale with servings.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/0/quantity",
+                  "quote": "2 xícaras (chá) de rapadura picada"
+                },
+                {
+                  "path": "/steps/0/instruction",
+                  "quote": "Leve a rapadura e a água ao fogo e deixe derreter."
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-1",
+              "mode": "proportional",
+              "reason": "This ingredient is a primary component of the mixture and should scale proportionally with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "4",
+              "unit": "xícaras (chá)",
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "4",
+              "unit": "xícaras (chá)",
+              "batches": null
+            },
+            "materially_different": false
+          }
+        },
+        {
+          "ingredient_id": "ingredient-2",
+          "mode": "proportional",
+          "reason": "Measured liquid used in the mixture; scale with servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/1/quantity",
+              "quote": "1 xícara (chá) de água"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "Leve a rapadura e a água ao fogo e deixe derreter."
+            }
+          ],
+          "multiplier": "2",
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-2",
+              "mode": "proportional",
+              "reason": "Measured liquid used in the mixture; scale with servings.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/1/quantity",
+                  "quote": "1 xícara (chá) de água"
+                },
+                {
+                  "path": "/steps/0/instruction",
+                  "quote": "Leve a rapadura e a água ao fogo e deixe derreter."
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-2",
+              "mode": "proportional",
+              "reason": "This ingredient is a primary component of the mixture and should scale proportionally with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "2",
+              "unit": "xícara (chá)",
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "2",
+              "unit": "xícara (chá)",
+              "batches": null
+            },
+            "materially_different": false
+          }
+        },
+        {
+          "ingredient_id": "ingredient-3",
+          "mode": "proportional",
+          "reason": "Measured ingredient incorporated into the candy mixture; scale with servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/2/quantity",
+              "quote": "1 xícara (chá) de açúcar"
+            },
+            {
+              "path": "/steps/2/instruction",
+              "quote": "Junte o açúcar e o amendoim e volte ao fogo, mexendo sempre, até torrar o amendoim e ficar a calda bem grossa."
+            }
+          ],
+          "multiplier": "2",
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-3",
+              "mode": "proportional",
+              "reason": "Measured ingredient incorporated into the candy mixture; scale with servings.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/2/quantity",
+                  "quote": "1 xícara (chá) de açúcar"
+                },
+                {
+                  "path": "/steps/2/instruction",
+                  "quote": "Junte o açúcar e o amendoim e volte ao fogo, mexendo sempre, até torrar o amendoim e ficar a calda bem grossa."
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-3",
+              "mode": "proportional",
+              "reason": "This ingredient is a primary component of the mixture and should scale proportionally with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "2",
+              "unit": "xícara (chá)",
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "2",
+              "unit": "xícara (chá)",
+              "batches": null
+            },
+            "materially_different": false
+          }
+        },
+        {
+          "ingredient_id": "ingredient-4",
+          "mode": "proportional",
+          "reason": "Measured ingredient incorporated into the candy mixture; scale with servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/3/quantity",
+              "quote": "½ quilo de amendoim"
+            },
+            {
+              "path": "/steps/2/instruction",
+              "quote": "Junte o açúcar e o amendoim e volte ao fogo, mexendo sempre, até torrar o amendoim e ficar a calda bem grossa."
+            }
+          ],
+          "multiplier": "2",
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-4",
+              "mode": "proportional",
+              "reason": "Measured ingredient incorporated into the candy mixture; scale with servings.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/3/quantity",
+                  "quote": "½ quilo de amendoim"
+                },
+                {
+                  "path": "/steps/2/instruction",
+                  "quote": "Junte o açúcar e o amendoim e volte ao fogo, mexendo sempre, até torrar o amendoim e ficar a calda bem grossa."
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-4",
+              "mode": "proportional",
+              "reason": "This ingredient is a primary component of the mixture and should scale proportionally with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "1",
+              "unit": "quilo",
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "1",
+              "unit": "quilo",
+              "batches": null
+            },
+            "materially_different": false
+          }
+        },
+        {
+          "ingredient_id": "ingredient-5",
+          "mode": "proportional",
+          "reason": "Measured ingredient mixed into the candy; scale with servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/4/quantity",
+              "quote": "1 lata de Leite Moça"
+            },
+            {
+              "path": "/steps/3/instruction",
+              "quote": "Acrescente o Leite Moça e o bicarbonato e mexa fortemente cerca de 10 minutos."
+            }
+          ],
+          "multiplier": "2",
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-5",
+              "mode": "proportional",
+              "reason": "Measured ingredient mixed into the candy; scale with servings.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/4/quantity",
+                  "quote": "1 lata de Leite Moça"
+                },
+                {
+                  "path": "/steps/3/instruction",
+                  "quote": "Acrescente o Leite Moça e o bicarbonato e mexa fortemente cerca de 10 minutos."
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-5",
+              "mode": "proportional",
+              "reason": "This ingredient is a primary component of the mixture and should scale proportionally with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "2",
+              "unit": "lata",
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "2",
+              "unit": "lata",
+              "batches": null
+            },
+            "materially_different": false
+          }
+        },
+        {
+          "ingredient_id": "ingredient-6",
+          "mode": "proportional",
+          "reason": "Measured ingredient mixed into the candy; scale with servings.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/5/quantity",
+              "quote": "1 colher (chá) de bicarbonato"
+            },
+            {
+              "path": "/steps/3/instruction",
+              "quote": "Acrescente o Leite Moça e o bicarbonato e mexa fortemente cerca de 10 minutos."
+            }
+          ],
+          "multiplier": "2",
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-6",
+              "mode": "proportional",
+              "reason": "Measured ingredient mixed into the candy; scale with servings.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/ingredients/5/quantity",
+                  "quote": "1 colher (chá) de bicarbonato"
+                },
+                {
+                  "path": "/steps/3/instruction",
+                  "quote": "Acrescente o Leite Moça e o bicarbonato e mexa fortemente cerca de 10 minutos."
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-6",
+              "mode": "proportional",
+              "reason": "This ingredient is a primary component of the mixture and should scale proportionally with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": "2",
+              "unit": "colher (chá)",
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": "2",
+              "unit": "colher (chá)",
+              "batches": null
+            },
+            "materially_different": false
+          }
+        },
+        {
+          "ingredient_id": "ingredient-7",
+          "mode": "review",
+          "reason": "The amount of butter for greasing the marble is unspecified; a person should determine the amount needed for the surface and batch size.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/5/instruction",
+              "quote": "Despeje no mármore untado, com manteiga, deixe esfriar e corte em quadrados."
+            }
+          ],
+          "multiplier": null,
+          "verification": {
+            "luna_rule": {
+              "ingredient_id": "ingredient-7",
+              "mode": "review",
+              "reason": "The amount of butter for greasing the marble is unspecified; a person should determine the amount needed for the surface and batch size.",
+              "batch_servings": null,
+              "evidence": [
+                {
+                  "path": "/steps/5/instruction",
+                  "quote": "Despeje no mármore untado, com manteiga, deixe esfriar e corte em quadrados."
+                }
+              ]
+            },
+            "gemini_rule": {
+              "ingredient_id": "ingredient-7",
+              "mode": "review",
+              "reason": "The amount of butter is not specified and is used for greasing the surface, which may not scale linearly with the number of servings.",
+              "batch_servings": null,
+              "evidence": []
+            },
+            "luna_outcome": {
+              "quantity": null,
+              "unit": null,
+              "batches": null
+            },
+            "gemini_outcome": {
+              "quantity": null,
+              "unit": null,
+              "batches": null
+            },
+            "materially_different": false
+          }
+        }
+      ],
+      "verification": {
+        "provider": "gemini",
+        "status": "completed",
+        "material_conflicts": []
+      }
+    },
+    "vegan_requested": false,
+    "status": "needs_review",
+    "changes": [
+      {
+        "path": "/servings",
+        "before": "30 pés-de-moleque",
+        "after": "60",
+        "reason": "Use the requested serving count."
+      },
+      {
+        "path": "/ingredients/0/quantity",
+        "before": "2",
+        "after": "4",
+        "reason": "Measured ingredient in the candy mixture; scale with servings."
+      },
+      {
+        "path": "/ingredients/1/quantity",
+        "before": "1",
+        "after": "2",
+        "reason": "Measured liquid used in the mixture; scale with servings."
+      },
+      {
+        "path": "/ingredients/2/quantity",
+        "before": "1",
+        "after": "2",
+        "reason": "Measured ingredient incorporated into the candy mixture; scale with servings."
+      },
+      {
+        "path": "/ingredients/3/quantity",
+        "before": "½",
+        "after": "1",
+        "reason": "Measured ingredient incorporated into the candy mixture; scale with servings."
+      },
+      {
+        "path": "/ingredients/4/quantity",
+        "before": "1",
+        "after": "2",
+        "reason": "Measured ingredient mixed into the candy; scale with servings."
+      },
+      {
+        "path": "/ingredients/5/quantity",
+        "before": "1",
+        "after": "2",
+        "reason": "Measured ingredient mixed into the candy; scale with servings."
+      }
+    ],
+    "review_items": [
+      {
+        "path": "/ingredients/6/quantity",
+        "reason": "The amount of butter for greasing the marble is unspecified; a person should determine the amount needed for the surface and batch size."
+      }
+    ]
+  }
+}
