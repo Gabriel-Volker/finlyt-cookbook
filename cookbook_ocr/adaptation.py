@@ -18,7 +18,13 @@ from .quantities import (
     step_unit,
     unit_aliases,
 )
-from .scaling_plan import ingredient_scale_factor, scaling_plan_matches, validate_scaling_plan
+from .scaling_plan import (
+    compare_scaling_outcomes,
+    ingredient_scale_factor,
+    scaling_plan_matches,
+    validate_scaling_plan,
+    verified_scaling_rules,
+)
 from .vegan import veganize
 
 
@@ -169,7 +175,7 @@ def _apply_step_edits(text, edits, warn):
     return text
 
 
-def _scale_steps(recipe, measures, batch_ingredients, original_servings, servings, change, warn):
+def _scale_steps(recipe, measures, batch_ingredients, held_ingredients, original_servings, servings, change, warn):
     edits_by_path = {}
     owners = {}
     step_amounts = {
@@ -179,9 +185,17 @@ def _scale_steps(recipe, measures, batch_ingredients, original_servings, serving
     for ingredient_id, amounts in step_amounts.items():
         for item in amounts:
             owners.setdefault((item.path, item.start, item.end), set()).add(ingredient_id)
+    held_spans = {}
+    for ingredient in held_ingredients:
+        for item in _step_measures(recipe["steps"], ingredient["id"], _ingredient_measure_patterns(ingredient)):
+            held_spans.setdefault(item.path, []).append((item.start, item.end))
 
     for ingredient_id, amounts in step_amounts.items():
-        if any(len(owners[item.path, item.start, item.end]) > 1 for item in amounts):
+        if any(
+            len(owners[item.path, item.start, item.end]) > 1
+            or any(item.start < end and start < item.end for start, end in held_spans.get(item.path, ()))
+            for item in amounts
+        ):
             for path in dict.fromkeys(item.path for item in amounts):
                 warn(path, "A step measure could belong to more than one linked ingredient.")
             continue
@@ -267,10 +281,14 @@ def adapt_recipe(
             "factor": str(factor),
             "ingredients": [],
         }
+        gemini_rules = {}
+        if rules or scaling_plan_matches(adapted, plan):
+            scale["verification"], gemini_rules = verified_scaling_rules(adapted, plan)
         if factor != 1 or recipe_count is None:
             change("/servings", adapted["servings"], str(servings), "Use the requested serving count.")
         measures = {}
         batch_ingredients = set()
+        held_ingredients = []
         if factor != 1:
             for index, (ingredient, rule) in enumerate(zip(adapted["ingredients"], rules)):
                 path = f"/ingredients/{index}"
@@ -279,6 +297,25 @@ def adapt_recipe(
                 multiplier = ingredient_scale_factor(rule, source_count, servings)
                 applied = {**rule, "multiplier": str(multiplier) if multiplier is not None else None}
                 scale["ingredients"].append(applied)
+                gemini_rule = gemini_rules.get(ingredient["id"])
+                if gemini_rule is not None:
+                    comparison = compare_scaling_outcomes(ingredient, rule, gemini_rule, source_count, servings)
+                    applied["verification"] = comparison
+                    if comparison["materially_different"]:
+                        scale["verification"]["material_conflicts"].append(ingredient["id"])
+                        reason = "Luna and Gemini calculate different amounts or batches for these servings. Check the source amount and method."
+                        if rule["mode"] == "review":
+                            reason = f'{reason} Luna requested review: {rule["reason"]}'
+                        applied.update(
+                            mode="review", multiplier=None, batch_servings=None, reason=reason,
+                        )
+                        held_ingredients.append(ingredient)
+                        if any(outcome["batches"] and outcome["batches"] > 1 for outcome in (
+                            comparison["luna_outcome"], comparison["gemini_outcome"],
+                        )):
+                            batch_ingredients.add(ingredient["id"])
+                        warn(f"{path}/quantity", reason)
+                        continue
                 if any(ingredient[key]["status"] == "needs_review" for key in ("name", "quantity", "unit")):
                     warn(path, "Resolve the source measure before scaling this ingredient.")
                     continue
@@ -310,7 +347,7 @@ def adapt_recipe(
                 count = parse_number(scaled) if unit is None else None
                 if count is not None and count.denominator != 1:
                     warn(f"{path}/quantity", "The scaled count is fractional. Check how to divide this ingredient.")
-            _scale_steps(adapted, measures, batch_ingredients, source_count, servings, change, warn)
+            _scale_steps(adapted, measures, batch_ingredients, held_ingredients, source_count, servings, change, warn)
             review_vessel_capacity(adapted, factor, warn)
 
     return {

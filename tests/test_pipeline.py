@@ -216,6 +216,17 @@ class PipelineTests(unittest.TestCase):
             }]})
 
         self.openai.respond.side_effect = respond
+        def gemini_check(prompt, schema, data):
+            if "findings" in schema["properties"]:
+                self.assertEqual(data["changes"], proposal["changes"])
+                return {"findings": []}
+            self.assertEqual(set(data), {"recipe"})
+            return {"rules": [{
+                "ingredient_id": "bacon", "mode": "review", "batch_servings": None,
+                "reason": "No numeric amount was stated.", "evidence": [],
+            }]}
+
+        self.gemini.respond_structured.side_effect = gemini_check
         report = run_pipeline(DOCUMENT, "recipe.pdf", self.gemini, self.openai)
         call = self.openai.respond.call_args_list[2].kwargs
         self.assertEqual(call["text"]["format"]["name"], "vegan_plan")
@@ -223,8 +234,14 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(supplied["ingredients"][0]["name"], {"value": "bacon", "status": "stated"})
         self.assertEqual(report["recipe"]["ingredients"][0]["name"]["value"], "bacon")
         self.assertEqual(report["vegan_plan"]["changes"][0]["after"], "smoked tempeh")
+        self.assertEqual(report["vegan_plan"]["verification"]["status"], "clear")
         self.assertEqual(report["scaling_plan"]["original"]["rules"][0]["reason"], "bacon has no numeric amount.")
         self.assertEqual(report["scaling_plan"]["vegan"]["rules"][0]["reason"], "smoked tempeh has no numeric amount.")
+        for variant in ("original", "vegan"):
+            verification = report["scaling_plan"][variant]["verification"]
+            self.assertEqual(verification["status"], "completed")
+            self.assertEqual(verification["rules"][0]["reason"], "No numeric amount was stated.")
+        self.assertEqual(self.gemini.respond_structured.call_count, 3)
 
         self.openai.respond.side_effect = None
         self.openai.respond.return_value = json.dumps({"changes": [{"path": "/bad"}], "review_items": []})

@@ -15,7 +15,9 @@ flowchart TD
         compare["Compare texts A and B with Luna"]
         extract["Extract with Luna and validate evidence"]
         plan["Ask Luna for a vegan plan"]
-        scalePlan["Ask Luna for each ingredient's scaling rule"]
+        verifyVegan["Ask Gemini to check the vegan proposal"]
+        scalePlan["Classify scaling rules independently with Luna and Gemini"]
+        savePlans["Save plans and verification results"]
         example["Load the example report"]
         upload -->|"Parallel OCR"| gemini
         upload -->|"Parallel OCR"| luna
@@ -25,7 +27,10 @@ flowchart TD
         unreadable -->|"No or uncertain"| compare
         compare --> extract
         extract --> plan
+        plan --> verifyVegan
         plan --> scalePlan
+        verifyVegan --> savePlans
+        scalePlan --> savePlans
     end
 
     entry -->|"Upload file"| upload
@@ -44,7 +49,7 @@ flowchart TD
         refreshPlan -.->|"Review another field"| display
     end
 
-    scalePlan --> display
+    savePlans --> display
     example --> display
 
     subgraph adapt ["Adapt"]
@@ -54,7 +59,7 @@ flowchart TD
         requested{"Any adaptation requested?"}
         base["Apply saved decisions to the original recipe"]
         vegan["Apply the saved Luna plan if selected"]
-        scale["Apply saved scaling rules in Python"]
+        scale["Compare outcomes and apply scaling rules in Python"]
         changes["Show changes and warnings"]
         options --> valid
         valid -->|"No"| correct

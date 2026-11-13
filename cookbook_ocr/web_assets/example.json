@@ -1227,7 +1227,12 @@
         "path": "/steps/6/duration",
         "reason": "Braising time for seitan depends on its form and size; the recipe provides no duration, so confirm the appropriate time while using the stated doneness cue."
       }
-    ]
+    ],
+    "verification": {
+      "provider": "gemini",
+      "status": "clear",
+      "findings": []
+    }
   },
   "scaling_plan": {
     "original": {
@@ -1482,7 +1487,146 @@
             }
           ]
         }
-      ]
+      ],
+      "verification": {
+        "provider": "gemini",
+        "status": "completed",
+        "rules": [
+          {
+            "ingredient_id": "ingredient-1",
+            "mode": "proportional",
+            "reason": "The vinegar is part of a marinade mixture that should scale with the amount of beef.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-2",
+            "mode": "proportional",
+            "reason": "The water is part of a marinade mixture that should scale with the amount of beef.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-3",
+            "mode": "proportional",
+            "reason": "The onions are part of a marinade mixture that should scale with the amount of beef.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-4",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-5",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-6",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-7",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-8",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-9",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-10",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-11",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-12",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-13",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-14",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-15",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-16",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-17",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-18",
+            "mode": "review",
+            "reason": "The source has no supported numeric amount to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-19",
+            "mode": "review",
+            "reason": "Sugar is added 'to taste', which is a qualitative adjustment that cannot be scaled automatically.",
+            "batch_servings": null,
+            "evidence": []
+          }
+        ]
+      }
     },
     "vegan": {
       "status": "needs_review",
@@ -1744,7 +1888,146 @@
             }
           ]
         }
-      ]
+      ],
+      "verification": {
+        "provider": "gemini",
+        "status": "completed",
+        "rules": [
+          {
+            "ingredient_id": "ingredient-1",
+            "mode": "proportional",
+            "reason": "The vinegar is part of a marinade mixture that should scale with the amount of roast being prepared.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-2",
+            "mode": "proportional",
+            "reason": "The water is part of a marinade mixture that should scale with the amount of roast being prepared.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-3",
+            "mode": "proportional",
+            "reason": "The onions are part of a marinade mixture that should scale with the amount of roast being prepared.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-4",
+            "mode": "review",
+            "reason": "The amount of pepper is not specified and needs to be adjusted to taste.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-5",
+            "mode": "review",
+            "reason": "The amount of cloves is not specified and needs to be adjusted to taste.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-6",
+            "mode": "review",
+            "reason": "The amount of salt is not specified and needs to be adjusted to taste.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-7",
+            "mode": "review",
+            "reason": "The amount of bay leaves is not specified and needs to be adjusted to taste.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-8",
+            "mode": "review",
+            "reason": "The quantity of the main protein is missing.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-9",
+            "mode": "review",
+            "reason": "The quantity of vegan bacon is missing.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-10",
+            "mode": "review",
+            "reason": "The quantity of vegan butter is missing.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-11",
+            "mode": "review",
+            "reason": "The quantity of apples is qualitative ('some') and optional.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-12",
+            "mode": "review",
+            "reason": "The quantity of carrots is missing and optional.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-13",
+            "mode": "review",
+            "reason": "The quantity of juniper berries is missing and optional.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-14",
+            "mode": "review",
+            "reason": "The quantity of vegan butter for the sauce is missing.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-15",
+            "mode": "review",
+            "reason": "The quantity of flour is missing.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-16",
+            "mode": "review",
+            "reason": "The quantity of red wine is missing.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-17",
+            "mode": "review",
+            "reason": "The quantity of currants is missing.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-18",
+            "mode": "review",
+            "reason": "The quantity of raisins is missing.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-19",
+            "mode": "review",
+            "reason": "The quantity of sugar is 'to taste'.",
+            "batch_servings": null,
+            "evidence": []
+          }
+        ]
+      }
     }
   }
 }

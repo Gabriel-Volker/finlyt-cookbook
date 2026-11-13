@@ -14,13 +14,14 @@ from urllib.parse import parse_qs, unquote, urlsplit
 import pymupdf
 from PIL import Image, ImageOps
 
-from .__main__ import load_api_keys, load_openai_key
+from .__main__ import load_api_keys, load_openai_key, optional_gemini_client
 from .adaptation import adapt_recipe
 from .pipeline import UnreadableRecipeError, plan_vegan_recipe, refresh_scaling_plans, run_pipeline
 from .providers import GeminiClient, MIME_TYPES, OpenAIClient, ProviderError
 from .raster import run_pdf_task
 from .review import review_recipe
 from .vegan import vegan_plan_matches
+from .vegan_verification import verify_vegan_plan
 
 
 ASSETS = Path(__file__).with_name("web_assets")
@@ -213,18 +214,25 @@ class CookbookHandler(BaseHTTPRequestHandler):
 
     def _refresh_plan(self, report: dict, recipe: dict) -> dict:
         plan = report["vegan_plan"]
-        if vegan_plan_matches(recipe, plan):
-            return plan
         if report.get("example") is True:
+            if vegan_plan_matches(recipe, plan):
+                return plan
             example = json.loads((ASSETS / "example.json").read_text(encoding="utf-8"))
             if vegan_plan_matches(recipe, example.get("vegan_plan")):
                 return example["vegan_plan"]
             return {"status": "unavailable", "reason": "The offline example plan no longer matches the reviewed recipe."}
-        try:
-            key = load_openai_key()
-        except (OSError, ValueError):
-            return {"status": "unavailable", "reason": "Set OPENAI_API_KEY to refresh the vegan plan."}
-        return plan_vegan_recipe(OpenAIClient(key), recipe)
+        if not vegan_plan_matches(recipe, plan):
+            try:
+                key = load_openai_key()
+            except (OSError, ValueError):
+                return {"status": "unavailable", "reason": "Set OPENAI_API_KEY to refresh the vegan plan."}
+            plan = plan_vegan_recipe(OpenAIClient(key), recipe)
+        if not vegan_plan_matches(recipe, plan):
+            return plan
+        verification = plan.get("verification")
+        if isinstance(verification, dict) and verification.get("status") in {"clear", "needs_review"}:
+            return plan
+        return verify_vegan_plan(optional_gemini_client(), recipe, plan)
 
     def _refresh_scaling(self, report: dict, recipe: dict, vegan_plan: dict | None) -> dict:
         if report.get("example") is True:
@@ -234,7 +242,9 @@ class CookbookHandler(BaseHTTPRequestHandler):
             client = OpenAIClient(load_openai_key())
         except (OSError, ValueError):
             client = None
-        return refresh_scaling_plans(client, recipe, vegan_plan, report.get("scaling_plan"))
+        return refresh_scaling_plans(
+            client, recipe, vegan_plan, report.get("scaling_plan"), gemini=optional_gemini_client(),
+        )
 
     def _adapt(self) -> dict:
         data, report = self._recipe_request()

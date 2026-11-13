@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["findings"],
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "kind", "reason", "evidence"],
+        "properties": {
+          "path": {"type": "string"},
+          "kind": {
+            "type": "string",
+            "enum": ["animal_ingredient", "cooking_function", "quantity_or_unit", "preparation"]
+          },
+          "reason": {"type": "string"},
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "quote"],
+              "properties": {
+                "path": {"type": "string"},
+                "quote": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

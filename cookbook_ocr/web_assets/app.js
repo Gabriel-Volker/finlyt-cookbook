@@ -381,9 +381,12 @@ function renderVeganOption() {
   const available = hasVeganPlan();
   control.disabled = !available;
   if (!available) control.setAttribute("aria-checked", "false");
-  const hint = available
+  let hint = available
     ? state.veganPlan.status === "needs_review" ? "Some substitutions require review." : "The plan is ready to apply."
     : state.veganPlan?.reason || "No vegan plan is available for this recipe.";
+  if (available && state.veganPlan.verification?.status === "unavailable") {
+    hint += " Gemini verification is unavailable.";
+  }
   message("#vegan-plan-status", hint);
 }
 
@@ -529,7 +532,14 @@ function scalingExplanation(rule) {
   const count = rule.batches ? `${rule.batches} ${rule.batches === 1 ? "batch" : "batches"}` : "";
   const perBatch = [rule.per_batch_quantity, rule.per_batch_unit].filter(Boolean).join(" ");
   const factor = rule.multiplier && rule.mode !== "fixed" ? `×${rule.multiplier}` : "";
-  const details = [label, count || factor, perBatch && `${perBatch} each`, rule.reason].filter(Boolean).join(" · ");
+  const check = rule.verification;
+  const describeOutcome = (outcome) => {
+    const amount = [outcome.quantity, outcome.unit].filter(Boolean).join(" ") || "No quantity";
+    return outcome.batches > 1 ? `${amount} for ${outcome.batches} batches` : amount;
+  };
+  const difference = check?.materially_different
+    ? `Luna ${describeOutcome(check.luna_outcome)} · Gemini ${describeOutcome(check.gemini_outcome)}` : "";
+  const details = [label, count || factor, perBatch && `${perBatch} each`, difference, rule.reason].filter(Boolean).join(" · ");
   return `<small class="change-reason">${escape(details)}</small>`;
 }
 
@@ -548,10 +558,13 @@ function renderAdaptation() {
   const vegan = veganSelected();
   const canScale = hasScalingPlan(vegan);
   const hasVegan = hasVeganPlan();
-  $("#target-hint").textContent = !canScale
+  const scaleHint = !canScale
     ? currentScalingPlan(vegan)?.reason || (vegan ? "Serving adjustment is unavailable for the vegan recipe."
       : "Serving adjustment is unavailable for this recipe.")
     : factor ? `Serving scale factor: ${factor}.` : "Enter a target to scale quantities.";
+  const verification = adapted?.scale?.verification ?? currentScalingPlan(vegan)?.verification;
+  $("#target-hint").textContent = verification?.status === "unavailable" && canScale
+    ? `${scaleHint} Gemini verification is unavailable.` : scaleHint;
   const changes = adapted?.changes || [];
   const changeReasons = new Map(changes.map(({path, reason}) => [path, reason]));
   const scalingRules = new Map((adapted?.scale?.ingredients || []).map((rule) => [rule.ingredient_id, rule]));

@@ -6,7 +6,7 @@ from fractions import Fraction
 from hashlib import sha256
 
 from .extraction import UNREADABLE
-from .quantities import scale_quantity, unit_aliases
+from .quantities import quantity_matches, scale_quantity, unit_aliases
 from .review import REVIEW_FIELDS
 
 
@@ -214,3 +214,55 @@ def ingredient_scale_factor(rule: dict, original_servings: int, target_servings:
     if mode == "per_batch" and rule["batch_servings"] == original_servings:
         return Fraction((target_servings + original_servings - 1) // original_servings)
     return None
+
+
+def verified_scaling_rules(recipe: dict, plan: dict) -> tuple[dict, dict]:
+    """Read Gemini's separately classified rules from the saved plan."""
+    verification = plan.get("verification")
+    unavailable = {"provider": "gemini", "status": "unavailable", "material_conflicts": []}
+    if not isinstance(verification, dict):
+        return {**unavailable, "reason": "No Gemini verification is stored for this plan."}, {}
+    if verification.get("status") != "completed":
+        reason = verification.get("reason")
+        return {**unavailable, "reason": reason if isinstance(reason, str) else "Gemini verification is unavailable."}, {}
+    try:
+        rules = validate_scaling_plan(recipe, verification)["rules"]
+    except ValueError:
+        return {**unavailable, "reason": "The stored Gemini rules failed validation."}, {}
+    return (
+        {"provider": "gemini", "status": "completed", "material_conflicts": []},
+        {rule["ingredient_id"]: rule for rule in rules},
+    )
+
+
+def _ingredient_outcome(ingredient: dict, rule: dict, original_servings: int, target_servings: int) -> dict:
+    quantity, unit = (ingredient[key]["value"] for key in ("quantity", "unit"))
+    multiplier = ingredient_scale_factor(rule, original_servings, target_servings)
+    outcome = {"quantity": quantity, "unit": unit, "batches": None}
+    if multiplier is None or quantity is None:
+        return outcome
+    amount = scale_quantity(quantity, unit, multiplier)
+    if amount is not None:
+        outcome["quantity"], outcome["unit"] = amount
+    if rule["mode"] == "per_batch":
+        outcome.update(batches=int(multiplier), per_batch_quantity=quantity, per_batch_unit=unit)
+    return outcome
+
+
+def compare_scaling_outcomes(
+    ingredient: dict, luna_rule: dict, gemini_rule: dict, original_servings: int, target_servings: int,
+) -> dict:
+    """Compare calculated amounts and required batches at the requested yield."""
+    luna = _ingredient_outcome(ingredient, luna_rule, original_servings, target_servings)
+    gemini = _ingredient_outcome(ingredient, gemini_rule, original_servings, target_servings)
+    same_amount = (luna["quantity"], luna["unit"]) == (gemini["quantity"], gemini["unit"])
+    if not same_amount and luna["quantity"] is not None and gemini["quantity"] is not None:
+        same_amount = quantity_matches(luna["quantity"], luna["unit"], gemini["quantity"], gemini["unit"])
+    same_batches = (luna["batches"] or 1) == (gemini["batches"] or 1)
+    return {
+        "luna_rule": luna_rule,
+        "gemini_rule": gemini_rule,
+        "luna_outcome": luna,
+        "gemini_outcome": gemini,
+        "materially_different": not (same_amount and same_batches),
+    }

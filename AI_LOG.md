@@ -247,3 +247,9 @@ Codex recommended evaluating Gemini as a second reader for ingredient rules, wit
 ## 2026-11-13 16:45 · Check vegan substitutions against the recipe
 
 Gabriel noted that independent vegan plans can recommend different substitutes that both work. Codex refined the proposal to have Gemini assess whether Luna's substitution fits the ingredient's role, quantity, and revised steps. A different preference alone does not warrant review. For scaling, compare the rules' effects across serving counts and flag materially different quantities or batch requirements. This discussion produced no verifier or model calls.
+
+## 2026-11-13 16:47–16:52 · Verify vegan and scaling plans with Gemini
+
+Gabriel asked to implement the two checks, test them, and publish the commit. Gemini now receives the recipe and Luna's vegan proposal and reports concrete issues with literal citations. In the live cookie control, Gemini accepted a vegan baking block and flagged liquid oil when the step still required creaming the fat with sugar. The verifier preserves existing review items and records unavailable checks separately.
+
+For scaling, Gemini receives the recipe without Luna's rules. Python compares the resulting amount and batch requirement at the selected yield. In the live flatbread control, both plans produced the original amounts at four servings. At ten, Luna calculated six tablespoons of oil for three batches and Gemini classified the amount for review. The program kept the original two tablespoons pending review and scaled the flour to 500 g. Luna's first scaling response failed evidence validation. A single retry with more explicit citation instructions recovered the plan. The verified demo plans also replayed offline with no scaling conflicts at six servings. All 88 tests and the JavaScript syntax check passed.

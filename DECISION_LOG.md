@@ -112,3 +112,7 @@ Gabriel chose Luna to classify each ingredient and deterministic Python to calcu
 ## 2026-11-13 16:45 · Treat viable vegan alternatives as valid
 
 Gabriel raised the risk of unnecessary human review when two different vegan substitutions both work. If a verifier is added, ask it to assess the proposed ingredient and preparation against the recipe and cite any concrete incompatibility or missing information. Reserve review for issues that affect the adapted recipe. Include recipes with multiple viable substitutes when measuring unnecessary reviews.
+
+## 2026-11-13 16:52 · Use Gemini for targeted verification
+
+Gabriel chose Gemini to check Luna's vegan proposal for concrete incompatibilities with the recipe and to classify scaling rules independently. Keep a source quantity pending when the scaling rules yield different amounts or batch requirements at the requested serving count. Store both outcomes for review. Keep the Luna plan available if verification fails and expose that status separately.

@@ -193,6 +193,8 @@ class WebTests(unittest.TestCase):
                 self.assertEqual(self.request("POST", "/api/review", body, headers)[0], 400)
 
         with patch("cookbook_ocr.web.load_openai_key", return_value="test"), patch(
+            "cookbook_ocr.web.optional_gemini_client", return_value=None,
+        ), patch("cookbook_ocr.web.verify_vegan_plan", return_value=report["vegan_plan"]) as verify_vegan, patch(
             "cookbook_ocr.web.plan_vegan_recipe", return_value=report["vegan_plan"],
         ) as plan_vegan, patch(
             "cookbook_ocr.web.refresh_scaling_plans", return_value=report["scaling_plan"],
@@ -205,5 +207,6 @@ class WebTests(unittest.TestCase):
             self.assertEqual(status, 200)
             self.assertEqual(json.loads(response)["vegan_plan"], report["vegan_plan"])
             self.assertEqual(plan_vegan.call_args.args[1], review["recipe"])
+            verify_vegan.assert_called_once_with(None, review["recipe"], report["vegan_plan"])
             self.assertEqual(json.loads(response)["scaling_plan"], report["scaling_plan"])
             self.assertEqual(refresh_scaling.call_args.args[1:3], (review["recipe"], report["vegan_plan"]))

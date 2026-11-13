@@ -10,6 +10,7 @@ from .providers import GeminiClient, OpenAIClient, ProviderError
 from .review import review_recipe
 from .scaling_plan import scaling_plan_matches
 from .vegan import vegan_plan_matches
+from .vegan_verification import verify_vegan_plan
 
 
 def _load_api_keys(*names: str) -> tuple[str, ...]:
@@ -40,6 +41,13 @@ def load_api_keys() -> tuple[str, str]:
 
 def load_openai_key() -> str:
     return _load_api_keys("OPENAI_API_KEY")[0]
+
+
+def optional_gemini_client() -> GeminiClient | None:
+    try:
+        return GeminiClient(_load_api_keys("GEMINI_API_KEY")[0])
+    except (OSError, ValueError):
+        return None
 
 
 def positive_servings(value: str) -> int:
@@ -91,7 +99,10 @@ def main() -> int:
                 plan = report.get("vegan_plan")
                 if args.vegan and not vegan_plan_matches(recipe, plan):
                     if args.recipe.suffix.lower() == ".json":
-                        plan = report["vegan_plan"] = plan_vegan_recipe(OpenAIClient(load_openai_key()), recipe)
+                        plan = plan_vegan_recipe(OpenAIClient(load_openai_key()), recipe)
+                        if vegan_plan_matches(recipe, plan):
+                            plan = verify_vegan_plan(optional_gemini_client(), recipe, plan)
+                        report["vegan_plan"] = plan
                     if not vegan_plan_matches(recipe, plan):
                         reason = plan.get("reason") if isinstance(plan, dict) else None
                         raise ValueError(reason or "The vegan plan is unavailable.")
@@ -102,8 +113,10 @@ def main() -> int:
                     stored = scaling if isinstance(scaling, dict) else {}
                     if not scaling_plan_matches(source, stored.get(variant)):
                         scaling = report["scaling_plan"] = {
-                            **stored, **refresh_scaling_plans(OpenAIClient(load_openai_key()), recipe,
-                                                             plan if args.vegan else None, stored),
+                            **stored, **refresh_scaling_plans(
+                                OpenAIClient(load_openai_key()), recipe, plan if args.vegan else None,
+                                stored, gemini=optional_gemini_client(),
+                            ),
                         }
                 report["adaptation"] = adapt_recipe(
                     recipe, servings=args.servings,

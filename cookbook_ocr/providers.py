@@ -1,4 +1,4 @@
-"""HTTP adapters for the two recipe readers and the OpenAI comparison call."""
+"""HTTP adapters for Gemini and OpenAI recipe processing."""
 
 import base64
 import json
@@ -83,6 +83,39 @@ class GeminiClient:
 
     def transcribe(self, document: bytes, filename: str, prompt: str) -> str:
         mime_type = _document_mime_type(document, filename)
+        parts = self._generate_text_parts(
+            prompt,
+            {"inlineData": {"mimeType": mime_type, "data": _base64(document)}},
+            {"temperature": 0, "maxOutputTokens": 4096},
+            "transcription",
+        )
+        return "\n".join(parts)
+
+    def respond_structured(
+        self, prompt: str, schema: dict, data: dict, *, max_output_tokens: int = 8192,
+    ) -> dict:
+        parts = self._generate_text_parts(
+            prompt,
+            {"text": json.dumps(data, ensure_ascii=False)},
+            {
+                "temperature": 0,
+                "maxOutputTokens": max_output_tokens,
+                "responseMimeType": "application/json",
+                "responseJsonSchema": schema,
+            },
+            "structured response",
+        )
+        try:
+            result = json.loads("".join(parts))
+        except json.JSONDecodeError:
+            raise ProviderError("Gemini returned invalid structured JSON.") from None
+        if not isinstance(result, dict):
+            raise ProviderError("Gemini's structured response must be a JSON object.")
+        return result
+
+    def _generate_text_parts(
+        self, prompt: str, user_part: dict, config: dict, operation: str,
+    ) -> list[str]:
         result = _post_json(
             "Gemini",
             GEMINI_URL,
@@ -90,29 +123,27 @@ class GeminiClient:
             self._api_key,
             {
                 "systemInstruction": {"parts": [{"text": prompt}]},
-                "contents": [
-                    {
-                        "role": "user",
-                        "parts": [
-                            {"inlineData": {"mimeType": mime_type, "data": _base64(document)}},
-                        ],
-                    }
-                ],
-                "generationConfig": {"temperature": 0, "maxOutputTokens": 4096},
+                "contents": [{"role": "user", "parts": [user_part]}],
+                "generationConfig": config,
             },
         )
-        candidates = result.get("candidates") or []
-        if not candidates or candidates[0].get("finishReason") != "STOP":
-            raise ProviderError("Gemini did not return a completed transcription.")
+        candidates = result.get("candidates")
+        candidate = candidates[0] if isinstance(candidates, list) and candidates else None
+        if not isinstance(candidate, dict) or candidate.get("finishReason") != "STOP":
+            raise ProviderError(f"Gemini did not return a completed {operation}.")
 
-        parts = (candidates[0].get("content") or {}).get("parts") or []
-        text = "\n".join(
+        content = candidate.get("content")
+        parts = content.get("parts") if isinstance(content, dict) else None
+        if not isinstance(parts, list):
+            raise ProviderError(f"Gemini returned an empty {operation}.")
+        text = [
             part["text"]
             for part in parts
-            if part.get("text") and not part.get("thought")
-        )
-        if not text.strip():
-            raise ProviderError("Gemini returned an empty transcription.")
+            if isinstance(part, dict) and not part.get("thought")
+            and isinstance(part.get("text"), str) and part["text"]
+        ]
+        if not any(part.strip() for part in text):
+            raise ProviderError(f"Gemini returned an empty {operation}.")
         return text
 
 
