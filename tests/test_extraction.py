@@ -166,6 +166,81 @@ class ExtractionTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     build_recipe(candidate, readings, [])
 
+    def test_rejects_partial_mixed_fractions_even_with_a_short_quote(self):
+        cases = (
+            ("1 1/2", "1/2"), ("1 1/2", "1"), ("1½", "½"),
+            ("1½", "1"), ("1 ½", "½"), ("1\n1⁄2", "1⁄2"),
+        )
+        for written, partial in cases:
+            with self.subTest(written=written, partial=partial):
+                candidate = porridge()
+                candidate["ingredients"][0]["quantity"] = span(partial)
+                text = TRANSCRIPTIONS["A"].replace("2 cups", f"{written} cups")
+                readings = {**TRANSCRIPTIONS, "A": text}
+                with self.assertRaisesRegex(ValueError, "partial measure"):
+                    build_recipe(candidate, readings, [])
+
+    def test_preserves_verbatim_complete_mixed_fractions(self):
+        for written, submitted in (("1 1/2", "1 1/2"), ("1½", "1½"), ("1\n1/2", "1 1/2")):
+            with self.subTest(written=written):
+                candidate = porridge()
+                candidate["ingredients"][0]["quantity"] = span(submitted, f"{submitted} cups water")
+                candidate["ingredients"][0]["unit"] = span("cups", f"{submitted} cups water")
+                text = TRANSCRIPTIONS["A"].replace("2 cups", f"{written} cups")
+                readings = {**TRANSCRIPTIONS, "A": text}
+                quantity = build_recipe(candidate, readings, [])["ingredients"][0]["quantity"]
+                self.assertEqual(quantity["value"], written)
+                self.assertEqual(quantity["evidence"]["quote"], f"{written} cups water")
+
+    def test_requires_context_when_a_fraction_is_both_standalone_and_mixed(self):
+        candidate = porridge()
+        text = TRANSCRIPTIONS["A"].replace("2 cups water", "1 1/2 cups water\n1/2 cups milk")
+        candidate["ingredients"][0]["quantity"] = span("1/2")
+        readings = {**TRANSCRIPTIONS, "A": text}
+        with self.assertRaisesRegex(ValueError, "ambiguous evidence"):
+            build_recipe(candidate, readings, [])
+
+    def test_does_not_join_fractions_across_paragraphs_or_ingredients(self):
+        for prefix in ("188\n\n", "2 eggs\n", "2, "):
+            with self.subTest(prefix=prefix):
+                candidate = porridge()
+                candidate["ingredients"][0]["quantity"] = span("1/2", "1/2 cups water")
+                text = TRANSCRIPTIONS["A"].replace("2 cups", f"{prefix}1/2 cups")
+                readings = {**TRANSCRIPTIONS, "A": text}
+                quantity = build_recipe(candidate, readings, [])["ingredients"][0]["quantity"]
+                self.assertEqual(quantity["value"], "1/2")
+
+    def test_accepts_a_fraction_below_a_printed_page_label(self):
+        candidate = porridge()
+        candidate["ingredients"][0]["quantity"] = span("1/2", "1/2 cups water")
+        candidate["ingredients"][0]["unit"] = span("cups")
+        text = TRANSCRIPTIONS["A"].replace("Oat porridge\n2 cups", "Page 188\n1/2 cups")
+        candidate["title"] = None
+        quantity = build_recipe(candidate, {**TRANSCRIPTIONS, "A": text}, [])["ingredients"][0]["quantity"]
+        self.assertEqual(quantity["value"], "1/2")
+
+    def test_does_not_use_generated_page_markers_as_quantity_evidence(self):
+        candidate = porridge()
+        candidate["ingredients"][0]["quantity"] = span("1")
+        with self.assertRaisesRegex(ValueError, "partial measure"):
+            build_recipe(candidate, TRANSCRIPTIONS, [])
+
+    def test_mixed_fraction_conflict_withholds_either_reading(self):
+        readings = {
+            "A": TRANSCRIPTIONS["A"].replace("2 cups", "1½ cups"),
+            "B": TRANSCRIPTIONS["B"].replace("3 cups", "½ cups"),
+        }
+        reviews = [{"page": "1", "a_excerpt": "1½ cups", "b_excerpt": "½ cups"}]
+        for source, written in (("A", "1½"), ("B", "½")):
+            with self.subTest(source=source):
+                candidate = porridge()
+                candidate["ingredients"][0]["quantity"] = span(written, f"{written} cups", source)
+                candidate["ingredients"][0]["unit"] = span("cups")
+                quantity = build_recipe(candidate, readings, reviews)["ingredients"][0]["quantity"]
+                self.assertIsNone(quantity["value"])
+                self.assertEqual(quantity["status"], "needs_review")
+                self.assertEqual(quantity["review_item_ids"], [1])
+
     def test_rejects_dangling_step_references(self):
         for reference in ("ingredient_ids", "tool_ids"):
             with self.subTest(reference=reference):

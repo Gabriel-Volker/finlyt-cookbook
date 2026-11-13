@@ -3,11 +3,17 @@
 import re
 from difflib import SequenceMatcher
 
+from .quantities import QUANTITY_PATTERN
+
 
 PAGE_MARKER = re.compile(r"^\[page: ([1-9][0-9]*)\][ \t]*\r?$", re.MULTILINE)
 UNREADABLE = re.compile(r"\[(?:unleserlich|unreadable|illegible)\]", re.IGNORECASE)
 INGREDIENT_FIELDS = ("name", "quantity", "unit", "preparation", "optional_when")
 MEASURE_FIELDS = {"quantity", "servings", "duration"}
+# A wrapped amount can span lines, but a blank line separates source paragraphs.
+MEASURE_WHITESPACE = r"(?:[^\S\r\n]|\r?\n(?![^\S\r\n]*\r?\n))"
+MEASURE_TOKEN = re.compile(QUANTITY_PATTERN.replace(r"\s", MEASURE_WHITESPACE), re.IGNORECASE)
+PRINTED_PAGE_LABEL = re.compile(r"^\s*(?:page|seite|p[áa]gina)[ \t]+\d+\.?[ \t]*\r?\n", re.IGNORECASE)
 
 
 def _occurrences(text: str, excerpt: str) -> list[int]:
@@ -28,6 +34,19 @@ def _page_at(markers: list[re.Match], offset: int) -> str | None:
         (marker.group(1) for marker in reversed(markers) if marker.end() <= offset),
         None,
     )
+
+
+def _measure_cut_offsets(text: str, markers: list[re.Match]) -> set[int]:
+    cuts = set()
+    starts = [0, *(marker.end() for marker in markers)]
+    ends = [*(marker.start() for marker in markers), len(text)]
+    for start, end in zip(starts, ends):
+        label = PRINTED_PAGE_LABEL.match(text[start:end])
+        if label:
+            start += label.end()
+        for match in MEASURE_TOKEN.finditer(text, start, end):
+            cuts.update(range(match.start() + 1, match.end()))
+    return cuts
 
 
 def _review_ranges(
@@ -59,7 +78,7 @@ def _review_ranges(
     return ranges
 
 
-def _field(span, field: str, transcriptions, pages, review_ranges) -> dict:
+def _field(span, field: str, transcriptions, pages, review_ranges, measure_cuts) -> dict:
     if span is None:
         return {"value": None, "status": "missing", "evidence": None, "review_item_ids": []}
 
@@ -69,18 +88,25 @@ def _field(span, field: str, transcriptions, pages, review_ranges) -> dict:
     text = transcriptions[source]
     if not _occurrences(quote, value):
         raise ValueError(f"Extraction returned non-verbatim evidence for {field}.")
-    quotes = _source_quotes(text, quote)
+    quotes = [
+        match for match in _source_quotes(text, quote)
+        if not any(match.start() < marker.end() and marker.start() < match.end()
+                   for marker in pages[source])
+    ]
     spans = [
         (source_quote.start() + match.start(), source_quote.start() + match.end(), source_quote)
         for source_quote in quotes for match in _source_quotes(source_quote.group(), value)
     ]
     if field in MEASURE_FIELDS:
-        # A short quote must not turn part of a number in the source into a measure.
-        spans = [
-            (start, end, source_quote) for start, end, source_quote in spans
-            if not re.fullmatch(r"[\d.,/⁄]", text[max(0, start - 1):start])
-            and not re.match(r"[\d/⁄]|[.,]\d", text[end:end + 2])
-        ]
+        # An ambiguous quote must not select a separate measure over the intended mixed number.
+        cuts = measure_cuts[source]
+        if any(
+            start in cuts or end in cuts
+            or re.fullmatch(r"[\d.,/⁄∕]", text[max(0, start - 1):start])
+            or re.match(r"[\d/⁄∕]|[.,]\d", text[end:end + 2])
+            for start, end, _ in spans
+        ):
+            raise ValueError(f"Extraction returned ambiguous evidence or a partial measure for {field}.")
     if not spans:
         raise ValueError(f"Extraction returned non-verbatim evidence or a partial measure for {field}.")
 
@@ -113,10 +139,13 @@ def build_recipe(
         source: _review_ranges(text, source, pages[source], review_items)
         for source, text in transcriptions.items()
     }
+    measure_cuts = {
+        source: _measure_cut_offsets(text, pages[source]) for source, text in transcriptions.items()
+    }
 
     def field(record, name, path):
         try:
-            return _field(record[name], name, transcriptions, pages, ranges)
+            return _field(record[name], name, transcriptions, pages, ranges, measure_cuts)
         except ValueError as error:
             if extraction_issues is None:
                 raise

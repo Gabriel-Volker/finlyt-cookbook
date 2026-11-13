@@ -167,3 +167,11 @@ Gabriel asked whether Luna detects ingredients that need a different scaling rul
 An audit reproduced a case where a literal OCR quote cited on the wrong page could leave a disputed amount eligible for scaling. The comparator now verifies quoted excerpts against the claimed page when the transcription has page markers and retries invalid citations. All 28 tests passed on Windows and in Docker. The image was checked for the absence of the local recipe and API key file.
 
 Remaining cases include both readers making the same error, split measures in the steps, quantities spelled out in prose, truncated mixed fractions, and larger batches exceeding the original pan capacity. Very long documents can exceed OCR output limits. The local raster budget allows a direct PDF fallback for oversized input.
+
+## 2026-11-13 15:07–15:12 · Mixed fractions, split measures, and vessel capacity
+
+Gabriel asked Codex to handle these three cases, run the tests in Docker, and push the changes. Codex updated extraction and comparison to preserve the whole part and fraction together and reject incomplete evidence. Tests cover `1½`, `1 1/2`, line wrapping, and a conflict between a mixed fraction and its fractional part.
+
+Scaling now reconciles explicit amounts in linked steps using exact arithmetic. The tests include tripling a total of 1½ cups split into 1 cup and ½ cup, and scaling a litre split into 250 mL and ¾ L. A condition that repeats a step amount does not count as another allocation. When the explicit amounts do not reconcile or could belong to multiple linked ingredients, the affected steps keep their written quantities and the report flags them for review. Implicit allocations and arbitrary alternate methods still require manual interpretation.
+
+The Docker build and all 45 tests completed by 15:11:41. Adapting the saved Sauerbraten extraction to six servings with four as the example baseline preserved the 750 mL of vinegar, 750 mL of water, and six onions. The report added a capacity check for the `Topf` without inferring a volume. It kept the qualitative amounts for apples and sugar in review. This verification ran offline using the existing extraction.

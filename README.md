@@ -44,12 +44,19 @@ python -m cookbook_ocr outputs/recipe-review.json --servings 6 --original-servin
 
 Omit `--original-servings` if the recipe states a single positive whole number of servings. The Sauerbraten gives no yield. The examples use four only as a user-provided baseline for the calculation.
 
-Scaling uses exact fractions for numeric measures and ranges. It converts between g and kg or mL and L when doing so makes a measure easier to use. Household units retain their scale and volume stays separate from mass. Unstated quantities remain empty. Vague measures, ambiguous separators, and conflicting step measures can require review. Steps are updated where a measure matches the linked ingredient or a portioning instruction matches the original yield. Cooking times and temperatures are kept during scaling.
+Scaling uses exact fractions for numeric measures and ranges, including mixed fractions such as `1 1/2` and `1½`. The extractor checks that its evidence includes the whole measure. Scaling converts between g and kg or mL and L when doing so makes a measure easier to use. Household units retain their scale and volume stays separate from mass. Unstated quantities remain empty. Steps are updated when a measure matches the linked ingredient, when explicit parts across linked steps add up to the stated total, or when a portioning instruction matches the original yield. Conflicting or ambiguous allocations require review. Cooking times and temperatures are kept during scaling.
 
-Python applies the serving factor after extraction. It keeps the source amounts for recognized salt and pepper names and for oil explicitly used to fry or grease a pan, and flags these amounts for review. The appropriate amount can depend on taste or on the cooking vessel. Step rewrites require a match to the linked ingredient, so split amounts and amounts spelled out in prose can need manual reconciliation. A larger batch can also require a different pan or separate batches.
+Python applies the serving factor after extraction. It keeps the source amounts for recognized salt and pepper names and for oil explicitly used to fry or grease a pan, and flags these amounts for review. Amounts spelled out in prose and allocations without clear ingredient links can need manual reconciliation. For a larger yield, the report flags recognized cooking vessels for a capacity or batch size check and cites the vessel's size when stated. Vessel dimensions and capacity stay as written.
 
 Vegan adaptation runs after scaling. Python rules cover a limited set of ingredient names and cooking methods in German, English, and Portuguese. For Sauerbraten, the rules substitute seitan, smoked tofu, vegan butter and vegan-labelled wine, and adapt marinating, browning and making the sauce. Known animal-derived ingredients without a matching rule are flagged for review. Check ingredient labels and any unsupported terms before relying on the vegan result.
 
 The original `recipe` and OCR evidence remain in the report. Read the result in `adaptation.recipe`, the before and after values and reasons in `adaptation.changes`, and any open questions in `adaptation.review_items`. Adapting a report again starts from its original `recipe`.
 
 Run the local tests with `python -m unittest discover -s tests -v`.
+
+To run the tests in Docker from PowerShell, build the image and mount the test directory.
+
+```powershell
+docker build -t finlyt-cookbook .
+docker run --rm --network none --entrypoint python --mount "type=bind,source=$PWD/tests,target=/app/tests,readonly" finlyt-cookbook -m unittest discover -s tests -v
+```

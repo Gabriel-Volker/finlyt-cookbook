@@ -78,3 +78,9 @@ Gabriel made pipeline rasterization conditional on cost savings on Gemini as wel
 Gabriel chose a separate input format for each OCR reader. Gemini receives the original PDF. Luna receives lossless PNGs rendered in memory with PyMuPDF and encoded with Pillow at compression level 3. The local budget is 32 pages and 36 MB of PNG data. Above either limit, Luna receives the original PDF and the CLI reports the fallback. The Docker image packages the two rendering dependencies, with recipe files and credentials supplied at runtime.
 
 Keep the scaling calculation deterministic. Recognized seasoning and vessel-dependent oil amounts retain the source measure and require review. The same rule applies to the amount in the step. The demo leaves adjustments for pan capacity, batch size, and ingredient amounts split across steps to the cook.
+
+## 2026-11-13 15:10 · Mixed fractions, split measures, and vessel capacity
+
+Gabriel asked to preserve mixed fractions, adjust ingredient amounts divided across steps, and flag cookware capacity when scaling. The extraction validator checks that a quoted measure includes the complete number. The comparison prompt treats equivalent notations as the same amount while requiring evidence for both readings.
+
+Reuse one ingredient ID when the recipe divides a stated total between steps. Scale the written parts using exact arithmetic when compatible units reconcile to that total. Leave ambiguous allocations for review. For an increased yield, flag cookware when the larger batch may need a capacity check. Keep any stated vessel size as evidence for the review and leave vessel dimensions and cooking times as written.

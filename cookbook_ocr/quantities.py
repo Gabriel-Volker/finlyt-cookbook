@@ -58,6 +58,15 @@ _METRIC_BASE = {
     **{alias: (symbol, 1) for alias, symbol in _SMALL_UNITS.items()},
     **{alias: (_SMALLER[symbol], 1000) for alias, symbol in _LARGE_UNITS.items()},
 }
+_UNIT_FORMS = (
+    ("cup", "cups"), ("xícara", "xícaras"), ("tasse", "tassen"),
+    ("teaspoon", "teaspoons", "tsp", "tsp."),
+    ("tablespoon", "tablespoons", "tbsp", "tbsp."),
+    ("colher de chá", "colheres de chá"), ("colher de sopa", "colheres de sopa"),
+    ("teelöffel", "tl", "tl."), ("esslöffel", "el", "el."),
+    ("ounce", "ounces", "oz"), ("pound", "pounds", "lb", "lbs"),
+)
+_HOUSEHOLD_BASE = {alias.rstrip("."): forms[0] for forms in _UNIT_FORMS for alias in forms}
 
 
 def parse_number(text: str) -> Fraction | None:
@@ -156,26 +165,56 @@ def quantity_matches(
     other = _quantity_parts(other_quantity)
     if original is None or other is None:
         return False
-    normalized = unit.strip().casefold().rstrip(".") if unit else None
-    other_normalized = other_unit.strip().casefold().rstrip(".") if other_unit else None
-    original_unit, original_factor = _METRIC_BASE.get(normalized, (normalized, 1))
-    target_unit, target_factor = _METRIC_BASE.get(other_normalized, (other_normalized, 1))
+    original_unit, original_factor = _base_unit(unit)
+    target_unit, target_factor = _base_unit(other_unit)
     return original_unit == target_unit and (
         [value * original_factor for value in original[0]]
         == [value * target_factor for value in other[0]]
     )
 
 
+def _base_unit(unit: str | None) -> tuple[str | None, int]:
+    normalized = unit.strip().casefold().rstrip(".") if unit else None
+    return _METRIC_BASE.get(normalized, (_HOUSEHOLD_BASE.get(normalized, normalized), 1))
+
+
+def normalized_amount(quantity: str, unit: str | None) -> tuple[str | None, Fraction] | None:
+    """Normalize a scalar amount for exact addition within one unit family."""
+    value = parse_number(quantity)
+    if value is None:
+        return None
+    base, multiplier = _base_unit(unit)
+    return base, value * multiplier
+
+
 def unit_aliases(unit: str) -> tuple[str, ...]:
     """Return compatible unit spellings to look for in recipe prose."""
-    normalized = unit.strip().casefold().rstrip(".")
-    if normalized not in _METRIC_BASE:
-        return (unit,)
-    base, _ = _METRIC_BASE[normalized]
-    return (unit, *(
-        alias for alias, (symbol, _) in _METRIC_BASE.items()
-        if symbol == base and alias != unit
-    ))
+    base, _ = _base_unit(unit)
+    aliases = tuple(alias for alias, (symbol, _) in _METRIC_BASE.items() if symbol == base)
+    for forms in _UNIT_FORMS:
+        if base == forms[0]:
+            aliases = forms
+            break
+    return (unit, *(alias for alias in aliases if alias != unit))
+
+
+def known_units() -> tuple[str, ...]:
+    """Return recognized metric and household spellings."""
+    return (*_METRIC_BASE, *(alias for forms in _UNIT_FORMS for alias in forms))
+
+
+def step_unit(quantity: str, unit: str) -> str:
+    """Inflect known spelled-out units when the step amount changes."""
+    value = parse_number(quantity)
+    if value is None:
+        return unit
+    for singular, plural, *_ in _UNIT_FORMS:
+        if plural.endswith(".") or plural in {"tl", "el"}:
+            continue
+        if unit.casefold() in (singular, plural):
+            inflected = singular if 0 < value <= 1 else plural
+            return inflected.capitalize() if unit[0].isupper() else inflected
+    return unit
 
 
 def scale_quantity(

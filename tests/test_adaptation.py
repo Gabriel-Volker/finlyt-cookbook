@@ -178,6 +178,49 @@ class AdaptationTests(unittest.TestCase):
             with self.subTest(quantity=quantity, unit=unit, factor=factor):
                 self.assertEqual(scale_quantity(quantity, unit, factor), expected)
 
+    def test_scales_mixed_fraction_total_divided_across_linked_steps(self):
+        source = recipe("2", [ingredient("flour", "flour", "1½", "cups")], [
+            step("Add 1 cup flour and mix for 2 minutes.", "flour", duration="2 minutes"),
+            step("Add the remaining ½ cup flour.", "flour", condition="Once ½ cup flour is ready"),
+        ])
+        result = adapt_recipe(source, servings=6)
+        self.assertEqual(result["status"], "applied")
+        self.assertEqual(result["recipe"]["ingredients"][0]["quantity"]["value"], "4½")
+        first, second = result["recipe"]["steps"]
+        self.assertEqual(first["instruction"]["value"], "Add 3 cups flour and mix for 2 minutes.")
+        self.assertEqual(first["duration"]["value"], "2 minutes")
+        self.assertEqual(second["instruction"]["value"], "Add the remaining 1½ cups flour.")
+        self.assertEqual(second["condition"]["value"], "Once 1½ cups flour is ready")
+        self.assertEqual(source["steps"][1]["instruction"]["value"], "Add the remaining ½ cup flour.")
+
+    def test_reconciles_split_amounts_in_compatible_metric_units(self):
+        source = recipe("2", [ingredient("milk", "milk", "1", "l")], [
+            step("Pour in 250 ml milk.", "milk"),
+            step("Add ¾ l milk.", "milk"),
+        ])
+        result = adapt_recipe(source, servings=4)
+        self.assertEqual(result["status"], "applied")
+        self.assertEqual(
+            [item["instruction"]["value"] for item in result["recipe"]["steps"]],
+            ["Pour in 500 ml milk.", "Add 1½ l milk."],
+        )
+
+    def test_leaves_all_step_amounts_when_allocations_are_ambiguous(self):
+        for second_amount in ("1 cup", "2 cups", "250 g"):
+            with self.subTest(second_amount=second_amount):
+                source = recipe("2", [ingredient("flour", "flour", "2", "cups")], [
+                    step("Add 2 cups flour.", "flour"),
+                    step(f"Add {second_amount} flour.", "flour"),
+                ])
+                result = adapt_recipe(source, servings=4)
+                self.assertEqual(result["recipe"]["ingredients"][0]["quantity"]["value"], "4")
+                self.assertEqual(result["recipe"]["steps"], source["steps"])
+                self.assertEqual(result["status"], "needs_review")
+                self.assertEqual(
+                    {item["path"] for item in result["review_items"]},
+                    {"/steps/0/instruction", "/steps/1/instruction"},
+                )
+
     def test_vegan_roast_uses_a_plant_sauce_and_adjusts_meat_only_steps(self):
         source = recipe(None, [ingredient("roast", "Bratenstücke")], [
             step("gießt man es kalt darauf.", "roast",

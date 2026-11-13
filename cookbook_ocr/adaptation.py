@@ -2,15 +2,20 @@
 
 import re
 from copy import deepcopy
+from dataclasses import dataclass
 from fractions import Fraction
 
+from .capacity import review_vessel_capacity
 from .extraction import has_unresolved_fields
 from .quantities import (
     NUMBER_PATTERN,
     QUANTITY_PATTERN,
+    known_units,
+    normalized_amount,
     parse_number,
     quantity_matches,
     scale_quantity,
+    step_unit,
     unit_aliases,
 )
 from .vegan import veganize
@@ -27,6 +32,8 @@ YIELD_INSTRUCTION = re.compile(
     re.IGNORECASE,
 )
 QUANTITY_START = r"(?<![\w.,/⁄∕–—−-])(?<![0-9]\s)"
+ALTERNATE_AMOUNT = re.compile(r"\d\s+(?:or|oder|ou|to|bis|a|até)\s+$", re.IGNORECASE)
+REMAINING_AMOUNT = r"(?:(?:the\s+)?remaining\s+|(?:die\s+|den\s+|das\s+)?restlich\w*\s+)"
 SALT_NAMES = re.compile(
     r"(?:(?:table|sea|kosher) salt|salt|sal(?: marinho| grosso| fino)?|"
     r"(?:speise|meer|koch|tafel)salz|salz)", re.IGNORECASE
@@ -105,14 +112,15 @@ def _ingredient_measure_patterns(ingredient: dict) -> tuple[re.Pattern, ...]:
     unit = ingredient["unit"]["value"]
     measure = rf"(?P<amount>{QUANTITY_PATTERN})"
     if unit:
-        units = sorted(unit_aliases(unit), key=lambda alias: (-len(alias), alias))
+        units = sorted(set((*unit_aliases(unit), *known_units())), key=lambda alias: (-len(alias), alias))
         unit_pattern = "|".join(_phrase_pattern(alias) for alias in units)
         measure += rf"(?P<gap>\s*)(?P<unit>{unit_pattern})(?!\w)"
     prep = ingredient["preparation"]["value"]
     modifier = rf"(?:{_phrase_pattern(prep)}\s+)?" if prep else ""
     return (
         re.compile(
-            rf"{QUANTITY_START}{measure}\s+(?:of\s+|de\s+)?{modifier}{name_pattern}(?!\w)",
+            rf"{QUANTITY_START}{measure}\s+(?:of\s+|de\s+)?(?:{REMAINING_AMOUNT})?"
+            rf"{modifier}{name_pattern}(?!\w)",
             re.IGNORECASE,
         ),
         re.compile(
@@ -122,34 +130,84 @@ def _ingredient_measure_patterns(ingredient: dict) -> tuple[re.Pattern, ...]:
     )
 
 
-def _scale_step_text(text, measures, original_servings, servings, warn):
-    edits = {}
-    unmatched = set()
-    for quantity, unit, scaled, scaled_unit, patterns in measures:
-        for pattern in patterns:
-            for match in pattern.finditer(text):
-                in_step_unit = match.groupdict().get("unit")
-                start, end = match.span("amount")
-                if in_step_unit:
-                    end = match.end("unit")
-                span = (start, end)
-                if re.search(r"\d\s+(?:or|oder|ou|to|bis|a|até)\s+$", text[:start], re.I):
-                    unmatched.add(span)
-                    continue
-                if not quantity_matches(quantity, unit, match["amount"], in_step_unit):
-                    unmatched.add(span)
-                    continue
-                replacement = scaled
-                if scaled_unit:
-                    replacement += match["gap"] + scaled_unit
-                edits.setdefault(span, set()).add(replacement)
+@dataclass(frozen=True)
+class _StepMeasure:
+    step: int
+    field: str
+    start: int
+    end: int
+    quantity: str
+    unit: str | None
+    gap: str
+    is_alternative: bool
 
-    for match in YIELD_INSTRUCTION.finditer(text):
-        if parse_number(match[2]) == original_servings:
-            edits.setdefault(match.span(2), set()).add(str(servings))
+    @property
+    def path(self) -> str:
+        return f"/steps/{self.step}/{self.field}"
+
+
+def _step_measures(steps, ingredient_id, patterns):
+    for index, step in enumerate(steps):
+        if ingredient_id not in step["ingredient_ids"]:
+            continue
+        for key in ("instruction", "condition"):
+            text = step[key]["value"] or ""
+            for pattern in patterns:
+                for match in pattern.finditer(text):
+                    groups = match.groupdict()
+                    unit = groups.get("unit")
+                    start, end = match.start("amount"), match.end("unit" if unit else "amount")
+                    yield _StepMeasure(
+                        index, key, start, end, match["amount"], unit, groups.get("gap", ""),
+                        bool(ALTERNATE_AMOUNT.search(text[:start])),
+                    )
+
+
+def _step_amounts_for_scale(mentions, quantity, unit, scaled, scaled_unit, factor, warn):
+    instructions = [item for item in mentions if item.field == "instruction"]
+    total = normalized_amount(quantity, unit)
+    parts = [normalized_amount(item.quantity, item.unit) for item in instructions]
+    reconciled = (
+        len(parts) >= 2
+        and total is not None
+        and all(part is not None and part[0] == total[0] and part[1] > 0 for part in parts)
+        and sum(part[1] for part in parts) == total[1]
+    )
+    if any(item.is_alternative for item in instructions) or (
+        instructions and not reconciled and (
+            len(instructions) > 1
+            or not quantity_matches(quantity, unit, instructions[0].quantity, instructions[0].unit)
+        )
+    ):
+        for path in dict.fromkeys(item.path for item in mentions):
+            warn(path, "The linked step amounts do not reconcile with the ingredient total.")
+        return
+
+    for item in mentions:
+        if item.is_alternative:
+            warn(item.path, "Alternative measures in this step need manual scaling.")
+            continue
+        if quantity_matches(quantity, unit, item.quantity, item.unit):
+            new_quantity, new_unit = scaled, scaled_unit
+        elif reconciled and (
+            item.field == "instruction"
+            or any(
+                match.step == item.step
+                and quantity_matches(match.quantity, match.unit, item.quantity, item.unit)
+                for match in instructions
+            )
+        ):
+            new_quantity, new_unit = scale_quantity(item.quantity, item.unit, factor)
         else:
-            warn("Check the number of portions named in this step against the recipe yield.")
+            warn(item.path, "A step measure differs from its linked ingredient quantity.")
+            continue
+        replacement = new_quantity
+        if new_unit:
+            replacement += item.gap + step_unit(new_quantity, new_unit)
+        yield item, replacement
 
+
+def _apply_step_edits(text, edits, warn):
     accepted = []
     last_end = 0
     for (start, end), options in sorted(edits.items()):
@@ -161,24 +219,47 @@ def _scale_step_text(text, measures, original_servings, servings, warn):
             continue
         accepted.append((start, end, next(iter(options))))
         last_end = end
-    if unmatched - edits.keys():
-        warn("A step measure differs from its linked ingredient quantity.")
     for start, end, replacement in reversed(accepted):
         text = text[:start] + replacement + text[end:]
     return text
 
 
-def _scale_steps(recipe, measures, original_servings, servings, change, warn):
+def _scale_steps(recipe, measures, original_servings, servings, factor, change, warn):
+    edits_by_path = {}
+    owners = {}
+    step_amounts = {
+        ingredient_id: list(dict.fromkeys(_step_measures(recipe["steps"], ingredient_id, measure[-1])))
+        for ingredient_id, measure in measures.items()
+    }
+    for ingredient_id, amounts in step_amounts.items():
+        for item in amounts:
+            owners.setdefault((item.path, item.start, item.end), set()).add(ingredient_id)
+
+    for ingredient_id, amounts in step_amounts.items():
+        if any(len(owners[item.path, item.start, item.end]) > 1 for item in amounts):
+            for path in dict.fromkeys(item.path for item in amounts):
+                warn(path, "A step measure could belong to more than one linked ingredient.")
+            continue
+        quantity, unit, scaled, scaled_unit, _ = measures[ingredient_id]
+        for item, replacement in _step_amounts_for_scale(
+            amounts, quantity, unit, scaled, scaled_unit, factor, warn
+        ):
+            edits_by_path.setdefault(item.path, {}).setdefault((item.start, item.end), set()).add(replacement)
+
     for index, step in enumerate(recipe["steps"]):
-        linked = [measures[key] for key in step["ingredient_ids"] if key in measures]
         for key in ("instruction", "condition"):
             field = step[key]
-            if field["value"] is None:
+            text = field["value"]
+            if text is None:
                 continue
             path = f"/steps/{index}/{key}"
-            updated = _scale_step_text(
-                field["value"], linked, original_servings, servings, lambda reason: warn(path, reason)
-            )
+            edits = edits_by_path.get(path, {})
+            for match in YIELD_INSTRUCTION.finditer(text):
+                if parse_number(match[2]) == original_servings:
+                    edits.setdefault(match.span(2), set()).add(str(servings))
+                else:
+                    warn(path, "Check the number of portions named in this step against the recipe yield.")
+            updated = _apply_step_edits(text, edits, lambda reason: warn(path, reason))
             change(path, field, updated, "Apply the serving factor to measures identified in this step.")
 
 
@@ -254,7 +335,8 @@ def adapt_recipe(
                 count = parse_number(scaled) if unit is None else None
                 if count is not None and count.denominator != 1:
                     warn(f"{path}/quantity", "The scaled count is fractional. Check how to divide this ingredient.")
-            _scale_steps(adapted, measures, source_count, servings, change, warn)
+            _scale_steps(adapted, measures, source_count, servings, factor, change, warn)
+            review_vessel_capacity(recipe, factor, warn)
 
     if vegan:
         veganize(adapted, change, warn)
