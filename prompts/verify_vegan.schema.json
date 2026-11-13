@@ -1,8 +1,26 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["findings"],
+  "required": ["status", "reason_code", "reason", "findings", "approved_substitutions"],
   "properties": {
+    "status": {"type": "string", "enum": ["clear", "needs_review", "unavailable"]},
+    "reason_code": {
+      "type": ["string", "null"],
+      "enum": ["insufficient_information", "verification_failed", null]
+    },
+    "reason": {"type": ["string", "null"]},
+    "approved_substitutions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "ingredient"],
+        "properties": {
+          "path": {"type": "string"},
+          "ingredient": {"type": "string"}
+        }
+      }
+    },
     "findings": {
       "type": "array",
       "items": {
@@ -13,7 +31,7 @@
           "path": {"type": "string"},
           "kind": {
             "type": "string",
-            "enum": ["animal_ingredient", "cooking_function", "quantity_or_unit", "preparation"]
+            "enum": ["animal_ingredient", "unsupported_substitute", "cooking_function", "quantity_or_unit", "preparation"]
           },
           "reason": {"type": "string"},
           "evidence": {

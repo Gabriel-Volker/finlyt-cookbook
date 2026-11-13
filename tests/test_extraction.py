@@ -110,6 +110,26 @@ class ExtractionTests(unittest.TestCase):
             self.assertIsNone(field["evidence"])
             self.assertEqual(field["review_item_ids"], [])
 
+    def test_withholds_an_ingredient_amount_with_an_unreadable_digit(self):
+        illegible = "2[unreadable] cups water"
+        transcriptions = {source: text.replace(f"{value} cups water", illegible)
+                          for source, text, value in (("A", TRANSCRIPTIONS["A"], "2"),
+                                                      ("B", TRANSCRIPTIONS["B"], "3"))}
+        candidate = porridge()
+        candidate["ingredients"][0]["quantity"] = span("2", illegible)
+        candidate["ingredients"][0]["unit"] = span("cups", illegible)
+        findings = [{
+            "kind": "uncertain", "page": "1", "a_excerpt": "[unreadable]", "b_excerpt": None,
+        }]
+
+        result = build_recipe(candidate, transcriptions, findings, extraction_issues=[])
+
+        quantity = result["ingredients"][0]["quantity"]
+        self.assertIsNone(quantity["value"])
+        self.assertEqual(quantity["status"], "needs_review")
+        self.assertEqual(quantity["evidence"]["quote"], illegible)
+        self.assertEqual(quantity["review_item_ids"], [1])
+
     def test_conflicting_quantity_is_withheld_and_linked_to_review(self):
         review = [
             {

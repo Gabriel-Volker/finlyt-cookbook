@@ -13,10 +13,8 @@ from unittest.mock import patch
 import pymupdf
 from PIL import Image
 
-from cookbook_ocr.adaptation import adapt_recipe
 from cookbook_ocr.raster import run_pdf_task
 from cookbook_ocr.scaling_plan import validate_scaling_plan
-from cookbook_ocr.vegan import validate_vegan_plan
 from cookbook_ocr.web import CookbookHandler
 
 
@@ -160,21 +158,14 @@ class WebTests(unittest.TestCase):
         self.assertEqual(review["recipe"]["title"]["evidence"], original["recipe"]["title"]["evidence"])
 
         report["review"] = review
-        report["vegan_plan"] = validate_vegan_plan(review["recipe"], {
-            "changes": [{
-                "path": f"/ingredients/{roast_index}/name", "before": "beef roast", "after": "seitan",
-                "reason": "Use a firm plant protein for the roast.",
-            }],
-            "review_items": [],
-        })
-        vegan_recipe = adapt_recipe(review["recipe"], vegan=True, vegan_plan=report["vegan_plan"])["recipe"]
-        report["scaling_plan"] = {"vegan": validate_scaling_plan(vegan_recipe, {"rules": [
+        report["vegan_plan"] = json.loads(response)["vegan_plan"]
+        report["scaling_plan"] = {"original": validate_scaling_plan(review["recipe"], {"rules": [
             {"ingredient_id": item["id"], "mode": "proportional", "reason": "Measured ingredient.",
              "batch_servings": None, "evidence": []}
-            for item in vegan_recipe["ingredients"]
+            for item in review["recipe"]["ingredients"]
         ]})}
         status, _, response = self.request(
-            "POST", "/api/adapt", json.dumps({"report": report, "servings": 8, "vegan": True}), headers,
+            "POST", "/api/adapt", json.dumps({"report": report, "servings": 8, "vegan": False}), headers,
         )
         self.assertEqual(status, 200)
         adapted = json.loads(response)
@@ -187,7 +178,7 @@ class WebTests(unittest.TestCase):
         self.assertEqual(result["scale"]["factor"], "2")
         vinegar = result["recipe"]["ingredients"][0]
         self.assertEqual((vinegar["quantity"]["value"], vinegar["unit"]["value"]), ("500", "ml"))
-        self.assertEqual(result["recipe"]["ingredients"][roast_index]["name"]["value"], "seitan")
+        self.assertEqual(result["recipe"]["ingredients"][roast_index]["name"]["value"], "beef roast")
 
         for invalid in ({"path": "/unknown", "action": "correct", "value": "Tea"},
                         {"path": "/servings", "action": "confirm", "value": "0"}):
@@ -210,6 +201,24 @@ class WebTests(unittest.TestCase):
             self.assertEqual(status, 200)
             self.assertEqual(json.loads(response)["vegan_plan"], report["vegan_plan"])
             self.assertEqual(plan_vegan.call_args.args[1], review["recipe"])
-            verify_vegan.assert_called_once_with(None, review["recipe"], report["vegan_plan"])
+            verify_vegan.assert_not_called()
             self.assertEqual(json.loads(response)["scaling_plan"], report["scaling_plan"])
             self.assertEqual(refresh_scaling.call_args.args[1:3], (review["recipe"], report["vegan_plan"]))
+
+    def test_adapt_rejects_unverified_vegan_plan_with_reason_and_no_adaptation(self):
+        assets = Path(__file__).resolve().parents[1] / "cookbook_ocr" / "web_assets"
+        report = json.loads((assets / "example.json").read_text(encoding="utf-8"))
+        headers = {"Content-Type": "application/json"}
+        data = {"report": report, "vegan": True}
+        status, _, response = self.request("POST", "/api/adapt", json.dumps(data), headers)
+        self.assertEqual(status, 422)
+        result = json.loads(response)
+        self.assertEqual(result["status"], "needs_review")
+        self.assertEqual(result["reason_code"], "insufficient_information")
+        self.assertIn("roast quantity", result["error"])
+        self.assertNotIn("adaptation", result)
+
+        report["vegan_plan"].update(status="ready", reason_code=None, reason=None, review_items=[])
+        status, _, response = self.request("POST", "/api/adapt", json.dumps(data), headers)
+        self.assertEqual(status, 422)
+        self.assertEqual(json.loads(response)["reason_code"], "verification_unavailable")

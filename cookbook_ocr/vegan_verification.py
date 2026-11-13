@@ -6,11 +6,18 @@ from pathlib import Path
 from .extraction import UNREADABLE
 from .providers import GeminiClient, ProviderError
 from .review import REVIEW_FIELDS
-from .vegan import vegan_plan_matches
+from .vegan import (
+    proposed_vegan_substitutions,
+    unavailable_vegan_plan,
+    validate_vegan_plan,
+    vegan_plan_matches,
+    vegan_plan_usable,
+    vegan_substitutions_approved,
+)
 
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
-FINDING_KINDS = {"animal_ingredient", "cooking_function", "quantity_or_unit", "preparation"}
+FINDING_KINDS = {"animal_ingredient", "unsupported_substitute", "cooking_function", "quantity_or_unit", "preparation"}
 
 
 def _related_records(recipe: dict, collection: str, index: int) -> set[str]:
@@ -69,32 +76,72 @@ def _validated_finding(finding, recipe: dict, fields: dict, changes: dict) -> di
         reference = {"path": source_path, "quote": quote}
         if reference not in evidence:
             evidence.append(reference)
-    if not has_source_quote or (kind == "animal_ingredient" and not has_result_quote):
+    if not has_source_quote or (kind in {"animal_ingredient", "unsupported_substitute"} and not has_result_quote):
         return None
     return {"path": path, "kind": kind, "reason": reason.strip(), "evidence": evidence}
 
 
 def verify_vegan_plan(gemini: GeminiClient | None, recipe: dict, plan: dict) -> dict:
-    """Append grounded findings while leaving the planner's changes untouched."""
-    def unavailable(reason: str) -> dict:
-        return {**plan, "verification": {
-            "provider": "gemini", "status": "unavailable", "findings": [], "reason": reason,
-        }}
+    """Require independent approval before any proposed substitution can be used."""
+    def unavailable(reason: str, reason_code: str = "verification_unavailable") -> dict:
+        return {
+            **unavailable_vegan_plan(recipe, reason_code, reason, [{"path": "/recipe", "reason": reason}]),
+            "verification": {
+                "provider": "gemini", "status": "unavailable", "reason_code": reason_code,
+                "reason": reason, "findings": [], "approved_substitutions": [],
+            },
+        }
 
     if not vegan_plan_matches(recipe, plan):
         return unavailable("Gemini needs a current vegan plan to verify.")
+    if plan["status"] != "ready" or vegan_plan_usable(recipe, plan):
+        return plan
     if gemini is None:
         return unavailable("Gemini verification is unavailable.")
 
+    try:
+        plan = validate_vegan_plan(recipe, plan)
+    except ValueError:
+        return unavailable("Gemini needs a valid vegan plan to verify.")
+    if plan["status"] != "ready":
+        return plan
+    replacements = proposed_vegan_substitutions(plan["changes"])
     prompt = (PROMPTS_DIR / "verify_vegan.system.txt").read_text(encoding="utf-8")
     schema = json.loads((PROMPTS_DIR / "verify_vegan.schema.json").read_text(encoding="utf-8"))
+    approvals_schema = schema["properties"]["approved_substitutions"]
+    approvals_schema["maxItems"] = len(replacements)
+    if replacements:
+        approvals_schema["items"]["properties"]["path"]["enum"] = list(replacements)
     try:
         result = gemini.respond_structured(prompt, schema, {
             "recipe": recipe, "changes": plan["changes"], "review_items": plan["review_items"],
+            "substitutions_to_approve": [
+                {"path": path, "ingredient": name} for path, name in replacements.items()
+            ],
         })
     except (ProviderError, ValueError):
         return unavailable("Gemini could not verify the vegan plan.")
-    if not isinstance(result, dict) or not isinstance(result.get("findings"), list):
+    if not isinstance(result, dict) or not all(key in result for key in (
+        "status", "reason_code", "reason", "findings", "approved_substitutions",
+    )) or not isinstance(result["findings"], list):
+        return unavailable("Gemini returned invalid verification results.")
+
+    status, reason_code, reason = (result[key] for key in ("status", "reason_code", "reason"))
+    if status == "clear":
+        if (
+            reason_code is not None or reason is not None or result["findings"]
+            or not vegan_substitutions_approved(plan["changes"], result["approved_substitutions"])
+        ):
+            return unavailable("Gemini did not explicitly approve every vegan substitution.")
+        return {**plan, "verification": {
+            "provider": "gemini", "status": status, "reason_code": None, "reason": None,
+            "findings": [], "approved_substitutions": result["approved_substitutions"],
+        }}
+    if result["approved_substitutions"] != [] or not isinstance(reason, str) or not reason.strip():
+        return unavailable("Gemini returned invalid verification results.")
+    if status == "unavailable" and reason_code == "insufficient_information" and result["findings"] == []:
+        return unavailable(reason.strip(), reason_code)
+    if status != "needs_review" or reason_code != "verification_failed":
         return unavailable("Gemini returned invalid verification results.")
 
     fields = {
@@ -105,25 +152,19 @@ def verify_vegan_plan(gemini: GeminiClient | None, recipe: dict, plan: dict) -> 
     }
     changes = {change["path"]: change["after"] for change in plan["changes"]}
     findings = []
-    discarded = 0
     for item in result["findings"]:
         finding = _validated_finding(item, recipe, fields, changes)
-        if finding is None:
-            discarded += 1
-        elif finding not in findings:
+        if finding is not None and finding not in findings:
             findings.append(finding)
-    if discarded and not findings:
+    if not findings:
         return unavailable("Gemini's findings could not be grounded in the recipe.")
 
-    review_items = list(plan["review_items"])
-    for finding in findings:
-        item = {key: finding[key] for key in ("path", "reason")}
-        if item not in review_items:
-            review_items.append(item)
-    verification = {"provider": "gemini", "status": "needs_review" if findings else "clear", "findings": findings}
-    if discarded:
-        verification["discarded_findings"] = discarded
+    review_items = [{key: finding[key] for key in ("path", "reason")} for finding in findings]
+    reason = findings[0]["reason"]
     return {
-        **plan, "status": "needs_review" if review_items else plan["status"],
-        "verification": verification, "review_items": review_items,
+        **unavailable_vegan_plan(recipe, reason_code, reason, review_items),
+        "verification": {
+            "provider": "gemini", "status": "needs_review", "reason_code": reason_code,
+            "reason": reason, "findings": findings, "approved_substitutions": [],
+        },
     }

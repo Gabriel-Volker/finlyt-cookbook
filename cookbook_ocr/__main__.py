@@ -9,7 +9,7 @@ from .pipeline import plan_vegan_recipe, refresh_scaling_plans, run_pipeline
 from .providers import GeminiClient, OpenAIClient, ProviderError
 from .review import review_recipe
 from .scaling_plan import scaling_plan_matches
-from .vegan import vegan_plan_matches
+from .vegan import unavailable_vegan_plan, vegan_plan_matches, vegan_plan_usable
 from .vegan_verification import verify_vegan_plan
 
 
@@ -71,6 +71,7 @@ def main() -> int:
     if args.original_servings is not None and args.servings is None:
         parser.error("--original-servings requires --servings.")
 
+    blocked_plan = None
     try:
         if args.output and args.output.resolve() == args.recipe.resolve():
             raise ValueError("Use a different path for the JSON report and the input file.")
@@ -97,17 +98,29 @@ def main() -> int:
         if args.servings is not None or args.vegan:
             try:
                 plan = report.get("vegan_plan")
-                if args.vegan and not vegan_plan_matches(recipe, plan):
-                    if args.recipe.suffix.lower() == ".json":
-                        plan = plan_vegan_recipe(OpenAIClient(load_openai_key()), recipe)
-                        if vegan_plan_matches(recipe, plan):
+                if args.vegan:
+                    if not vegan_plan_matches(recipe, plan) and args.recipe.suffix.lower() == ".json":
+                        try:
+                            client = OpenAIClient(load_openai_key())
+                        except (OSError, ValueError):
+                            plan = unavailable_vegan_plan(
+                                recipe, "provider_unavailable", "Set OPENAI_API_KEY to prepare a current vegan plan.",
+                            )
+                        else:
+                            plan = plan_vegan_recipe(client, recipe, report.get("extraction_issues"))
+                    if vegan_plan_matches(recipe, plan) and plan["status"] == "ready":
+                        if not vegan_plan_usable(recipe, plan):
                             plan = verify_vegan_plan(optional_gemini_client(), recipe, plan)
-                        report["vegan_plan"] = plan
                     if not vegan_plan_matches(recipe, plan):
-                        reason = plan.get("reason") if isinstance(plan, dict) else None
-                        raise ValueError(reason or "The vegan plan is unavailable.")
+                        plan = unavailable_vegan_plan(
+                            recipe, "verification_unavailable", "No current verified vegan plan is available.",
+                        )
+                    report["vegan_plan"] = plan
+                    if not vegan_plan_usable(recipe, plan):
+                        blocked_plan = plan
                 scaling = report.get("scaling_plan")
-                if args.servings is not None and recipe["ingredients"] and args.recipe.suffix.lower() == ".json":
+                if (blocked_plan is None and args.servings is not None and recipe["ingredients"]
+                        and args.recipe.suffix.lower() == ".json"):
                     variant = "vegan" if args.vegan else "original"
                     source = adapt_recipe(recipe, vegan=True, vegan_plan=plan)["recipe"] if args.vegan else recipe
                     stored = scaling if isinstance(scaling, dict) else {}
@@ -118,12 +131,12 @@ def main() -> int:
                                 stored, gemini=optional_gemini_client(),
                             ),
                         }
-                report["adaptation"] = adapt_recipe(
-                    recipe, servings=args.servings,
-                    original_servings=args.original_servings, vegan=args.vegan,
-                    vegan_plan=plan,
-                    scaling_plan=scaling,
-                )
+                if blocked_plan is None:
+                    report["adaptation"] = adapt_recipe(
+                        recipe, servings=args.servings,
+                        original_servings=args.original_servings, vegan=args.vegan,
+                        vegan_plan=plan, scaling_plan=scaling,
+                    )
             except (KeyError, TypeError, AttributeError):
                 raise ValueError("The extraction report contains an invalid recipe object.") from None
         result = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
@@ -134,6 +147,11 @@ def main() -> int:
             print(result, end="")
     except (OSError, ValueError, ProviderError) as error:
         print(f"Error: {error}", file=sys.stderr)
+        return 1
+
+    if blocked_plan is not None:
+        print(f"Vegan adaptation {blocked_plan['status']} ({blocked_plan['reason_code']}). "
+              f"{blocked_plan['reason']}", file=sys.stderr)
         return 1
 
     review_count = len(report.get("comparison", {}).get("review_items", []))

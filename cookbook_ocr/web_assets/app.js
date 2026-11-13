@@ -403,7 +403,8 @@ function setReviewBusy(busy) {
 }
 
 function hasVeganPlan() {
-  return ["ready", "needs_review"].includes(state.veganPlan?.status);
+  return state.veganPlan?.protocol_version === 2 && state.veganPlan.status === "ready"
+    && state.veganPlan.verification?.status === "clear";
 }
 
 function veganSelected() {
@@ -423,13 +424,13 @@ function renderVeganOption() {
   const available = hasVeganPlan();
   control.disabled = !available;
   if (!available) control.setAttribute("aria-checked", "false");
-  let hint = available
-    ? state.veganPlan.status === "needs_review" ? "Some substitutions require review." : "The plan is ready to apply."
-    : state.veganPlan?.reason || "No vegan plan is available for this recipe.";
-  if (available && state.veganPlan.verification?.status === "unavailable") {
-    hint += " Gemini verification is unavailable.";
-  }
+  const hint = available ? "The vegan plan is verified and ready to apply."
+    : state.veganPlan?.reason || "No verified vegan plan is available for this recipe.";
   message("#vegan-plan-status", hint);
+  const review = available ? [] : state.veganPlan?.review_items || [];
+  const details = $("#vegan-plan-review");
+  details.hidden = !review.length;
+  details.innerHTML = review.map((item) => `<li>${escape(item.reason)}</li>`).join("");
 }
 
 async function saveFieldReview(action, clear = false) {
@@ -457,6 +458,7 @@ async function saveFieldReview(action, clear = false) {
       method: "POST", headers: {"Content-Type": "application/json"},
       body: JSON.stringify({report: {
         recipe: report.recipe,
+        extraction_issues: report.extraction_issues,
         scaling_plan: state.scalingPlan,
         vegan_plan: state.veganPlan,
         example: state.example,

@@ -17,6 +17,19 @@ def verified_plan(source, luna_rules, gemini_rules):
 
 
 class ScalingVerificationTests(unittest.TestCase):
+    def test_does_not_scale_an_ingredient_with_an_unresolved_linked_instruction(self):
+        unresolved = step(None, "oil")
+        unresolved["instruction"]["status"] = "needs_review"
+        source = recipe("4", [ingredient("oil", "oil", "20", "ml")], [unresolved])
+        rule = scaling_rule("oil")
+
+        plan = verified_plan(source, [rule], [rule])
+        result = adapt_recipe(source, servings=8, scaling_plan=plan)
+
+        self.assertEqual(plan["original"]["status"], "needs_review")
+        self.assertEqual(result["recipe"]["ingredients"][0]["quantity"]["value"], "20")
+        self.assertEqual(result["scale"]["ingredients"][0]["mode"], "review")
+
     def test_agreeing_models_cannot_multiply_a_source_amount_marked_fixed_or_per_batch(self):
         for instruction in ("Use 20 ml oil once for the whole recipe.", "Use 20 ml oil per batch of 4 servings.",
                             "Use 20 ml oil, regardless of servings.", "Use 0.02 l oil once for the whole recipe."):

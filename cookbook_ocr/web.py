@@ -20,7 +20,7 @@ from .pipeline import UnreadableRecipeError, plan_vegan_recipe, refresh_scaling_
 from .providers import GeminiClient, MIME_TYPES, OpenAIClient, ProviderError
 from .raster import run_pdf_task
 from .review import review_recipe
-from .vegan import vegan_plan_matches
+from .vegan import unavailable_vegan_plan, vegan_plan_matches, vegan_plan_usable
 from .vegan_verification import verify_vegan_plan
 
 
@@ -186,7 +186,8 @@ class CookbookHandler(BaseHTTPRequestHandler):
                 self._json(response)
                 return
             if url.path == "/api/adapt":
-                self._json(self._adapt())
+                response, status = self._adapt()
+                self._json(response, status)
                 return
             raise RequestError("Not found.", HTTPStatus.NOT_FOUND)
         except RequestError as error:
@@ -220,17 +221,18 @@ class CookbookHandler(BaseHTTPRequestHandler):
             example = json.loads((ASSETS / "example.json").read_text(encoding="utf-8"))
             if vegan_plan_matches(recipe, example.get("vegan_plan")):
                 return example["vegan_plan"]
-            return {"status": "unavailable", "reason": "The offline example plan no longer matches the reviewed recipe."}
+            return unavailable_vegan_plan(
+                recipe, "insufficient_information", "The offline example plan no longer matches the reviewed recipe.",
+            )
         if not vegan_plan_matches(recipe, plan):
             try:
                 key = load_openai_key()
             except (OSError, ValueError):
-                return {"status": "unavailable", "reason": "Set OPENAI_API_KEY to refresh the vegan plan."}
-            plan = plan_vegan_recipe(OpenAIClient(key), recipe)
-        if not vegan_plan_matches(recipe, plan):
-            return plan
-        verification = plan.get("verification")
-        if isinstance(verification, dict) and verification.get("status") in {"clear", "needs_review"}:
+                return unavailable_vegan_plan(
+                    recipe, "provider_unavailable", "Set OPENAI_API_KEY to refresh the vegan plan.",
+                )
+            plan = plan_vegan_recipe(OpenAIClient(key), recipe, report.get("extraction_issues"))
+        if plan["status"] != "ready" or vegan_plan_usable(recipe, plan):
             return plan
         return verify_vegan_plan(optional_gemini_client(), recipe, plan)
 
@@ -246,7 +248,7 @@ class CookbookHandler(BaseHTTPRequestHandler):
             client, recipe, vegan_plan, report.get("scaling_plan"), gemini=optional_gemini_client(),
         )
 
-    def _adapt(self) -> dict:
+    def _adapt(self) -> tuple[dict, HTTPStatus]:
         data, report = self._recipe_request()
         vegan = data.get("vegan", False)
         if type(vegan) is not bool:
@@ -259,16 +261,27 @@ class CookbookHandler(BaseHTTPRequestHandler):
             review = review_recipe(recipe, submitted_review.get("decisions"))
             recipe = review["recipe"]
             report = {**report, "review": review}
+        plan = report.get("vegan_plan")
+        if vegan and not vegan_plan_usable(recipe, plan):
+            if not vegan_plan_matches(recipe, plan) or plan["status"] == "ready":
+                plan = unavailable_vegan_plan(
+                    recipe, "verification_unavailable", "No current verified vegan plan is available for this recipe.",
+                )
+            return {
+                "error": plan.get("reason") or "The vegan adaptation requires review.",
+                "status": plan["status"], "reason_code": plan.get("reason_code"),
+                "review_items": plan.get("review_items", []),
+            }, HTTPStatus.UNPROCESSABLE_ENTITY
         try:
             result = adapt_recipe(
                 recipe, servings=data.get("servings"),
                 original_servings=data.get("original_servings"), vegan=vegan,
-                vegan_plan=report.get("vegan_plan"),
+                vegan_plan=plan,
                 scaling_plan=report.get("scaling_plan"),
             )
         except (AttributeError, KeyError, TypeError):
             raise RequestError("The extraction report contains an invalid recipe object.") from None
-        return {**report, "adaptation": result}
+        return {**report, "adaptation": result}, HTTPStatus.OK
 
 
 def main() -> None:

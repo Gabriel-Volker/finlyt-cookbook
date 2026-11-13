@@ -15,7 +15,10 @@ flowchart TD
         compare["Compare texts A and B with Luna"]
         extract["Extract with Luna and validate evidence"]
         plan["Ask Luna for a vegan plan"]
+        viable{"Luna found a viable plan?"}
         verifyVegan["Ask Gemini to check the vegan proposal"]
+        verified{"Every replacement approved?"}
+        abstain["Save the reason and keep original scaling available"]
         scalePlan["Classify scaling rules independently with Luna and Gemini"]
         savePlans["Save plans and verification results"]
         example["Load the example report"]
@@ -27,9 +30,13 @@ flowchart TD
         unreadable -->|"No or uncertain"| compare
         compare --> extract
         extract --> plan
-        plan --> verifyVegan
-        plan --> scalePlan
-        verifyVegan --> savePlans
+        plan --> viable
+        viable -->|"Yes"| verifyVegan
+        viable -->|"No or uncertain"| abstain
+        verifyVegan --> verified
+        verified -->|"Yes"| scalePlan
+        verified -->|"No or uncertain"| abstain
+        abstain --> scalePlan
         scalePlan --> savePlans
     end
 
@@ -58,7 +65,7 @@ flowchart TD
         correct["Ask for valid serving counts"]
         requested{"Any adaptation requested?"}
         base["Apply saved decisions to the original recipe"]
-        vegan["Apply the saved Luna plan if selected"]
+        vegan["Apply the verified vegan plan if selected"]
         scale["Compare outcomes and apply scaling rules in Python"]
         changes["Show changes and warnings"]
         options --> valid

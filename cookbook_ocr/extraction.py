@@ -10,6 +10,7 @@ from .quantities import QUANTITY_PATTERN, quantity_matches
 
 PAGE_MARKER = re.compile(r"^\[page: ([1-9][0-9]*)\][ \t]*\r?$", re.MULTILINE)
 UNREADABLE = re.compile(r"\[(?:unleserlich|unreadable|illegible)\]", re.IGNORECASE)
+_UNREADABLE_TOKEN = re.compile(rf"[\w./⁄∕]*{UNREADABLE.pattern}[\w./⁄∕]*", re.IGNORECASE)
 INGREDIENT_FIELDS = ("name", "quantity", "unit", "preparation", "optional_when")
 MEASURE_FIELDS = {"quantity", "servings", "duration"}
 # A wrapped amount can span lines, but a blank line separates source paragraphs.
@@ -34,6 +35,56 @@ class _Anchor:
     start: int
     end: int
     quote: re.Match
+
+
+def flag_ocr_uncertainty(comparison: dict, a_pages: dict, b_pages: dict) -> dict:
+    """Preserve explicit uncertainty even when the comparator drops a marker."""
+    reason = "An OCR reader could not read part of this passage. Check the original document."
+
+    def contains_marker(item):
+        return any(UNREADABLE.search(item[key] or "") for key in ("a_excerpt", "b_excerpt"))
+
+    reviews = [
+        {**item, "kind": "uncertain", "reason": reason}
+        if item["kind"] != "uncertain" and contains_marker(item) else item
+        for item in comparison["review_items"]
+    ]
+    equivalents = []
+    for item in comparison["equivalent_variations"]:
+        if contains_marker(item):
+            reviews.append({**item, "section": "Transcription", "kind": "uncertain", "reason": reason})
+        else:
+            equivalents.append(item)
+
+    for side, other, pages, other_pages in (
+        ("a_excerpt", "b_excerpt", a_pages, b_pages), ("b_excerpt", "a_excerpt", b_pages, a_pages),
+    ):
+        for page, body in pages.items():
+            for line in body.splitlines():
+                line = line.strip()
+                markers = UNREADABLE.findall(line)
+                if not markers:
+                    continue
+                if any(
+                    item["kind"] == "uncertain" and (page is None or item["page"] in (None, page))
+                    and any(len(UNREADABLE.findall(part)) >= len(markers) and (part in line or line in part)
+                            for part in (item[side] or "").splitlines())
+                    for item in reviews
+                ):
+                    continue
+                parts = UNREADABLE.split(line)
+                aligned = []
+                if any(part.strip() for part in parts):
+                    pattern = r".+?".join(re.escape(part) for part in parts)
+                    aligned = [candidate.strip() for candidate in other_pages.get(page, "").splitlines()
+                               if re.fullmatch(pattern, candidate.strip())]
+                elif line in other_pages.get(page, "").splitlines():
+                    aligned = [line]
+                reviews.append({
+                    "page": page, "section": "Transcription", "kind": "uncertain", "reason": reason,
+                    side: line, other: aligned[0] if len(aligned) == 1 else None,
+                })
+    return {**comparison, "review_items": reviews, "equivalent_variations": equivalents}
 
 
 def _occurrences(text: str, excerpt: str) -> list[int]:
@@ -73,6 +124,7 @@ def _review_ranges(
     text: str, source: str, pages: list[re.Match], review_items: list[dict]
 ) -> list[tuple[int, int, int]]:
     ranges = []
+    unreadable_tokens = [match.span() for match in _UNREADABLE_TOKEN.finditer(text)]
     for index, item in enumerate(review_items, start=1):
         excerpt = item[f"{source.lower()}_excerpt"]
         other = item["b_excerpt" if source == "A" else "a_excerpt"]
@@ -95,6 +147,12 @@ def _review_ranges(
             page = _page_at(pages, offset)
             if item["page"] is None or page is None or page == item["page"]:
                 ranges.extend((offset + start, offset + end, index) for start, end in changes)
+                if item.get("kind") == "uncertain":
+                    # Adjacent letters or digits belong to the same unreadable token.
+                    ranges.extend(
+                        (start, end, index) for start, end in unreadable_tokens
+                        if offset < end and start < offset + len(excerpt)
+                    )
     return ranges
 
 

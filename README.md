@@ -49,7 +49,7 @@ The OCR providers receive fixed system instructions separately from the attachme
 
 ## Adjust the recipe
 
-The same command accepts a saved extraction report and adapts it locally without API keys. You can also pass the adaptation options directly with a PDF or image.
+The same command accepts a saved extraction report. A current plan in the report can be replayed without API keys. You can also pass the adaptation options directly with a PDF or image.
 
 ```powershell
 python -m cookbook_ocr outputs/recipe-review.json --servings 6 --original-servings 4 --output outputs/recipe-6.json
@@ -63,7 +63,11 @@ After extraction, Luna and Gemini classify how each ingredient scales independen
 
 Python uses exact fractions for proportional quantities, including mixed fractions and ranges. A fixed rule keeps the original amount. An evidenced per-batch rule uses a whole number of batches, keeps the quantity per batch in the method, and shows the total in the ingredient list. A review rule retains the source amount and asks for a decision. A recipe that gives no usable quantity stays unquantified. The app checks the source for explicit amounts that apply once or per batch, even when the two models agree on proportional scaling. Adjusted steps use matched ingredient amounts, including split amounts that reconcile to the original total. Recognized but unresolved measures in linked steps are flagged together with ambiguous allocations and capacity. Cooking times, temperatures and vessel dimensions stay as written.
 
-After extraction, Luna proposes vegan substitutions and related changes to the instructions. Gemini checks that proposal against the ingredient's cooking function, quantity and updated steps. It flags concrete issues with source citations and accepts workable alternatives. The `vegan_plan` records changes, reasons and verification findings. Python validates the plan and preserves numeric measures. Adapt applies the stored plan before scaling so Python can match the new ingredient names in the steps. If a verifier is unavailable, the report records that status and keeps the validated Luna plan available. A matching plan in an exported report can be replayed offline. If vegan planning fails during import, the extraction and serving adjustment remain available.
+After extraction, Luna proposes identifiable vegan foods that perform the required cooking function at the stated quantity and updates the relevant steps. Gemini must explicitly approve every proposed ingredient replacement. It checks the full variant for remaining animal ingredients, fabricated products, incompatible substitutions, and changes that require an unsupported measure or technique. Python validates the field references, checks the numeric measures, and requires the exact approvals before applying the plan. The two model checks reduce the risk of a bad substitution. They do not verify products against an external catalog.
+
+When the evidence is insufficient, the models abstain. OCR uses `[unreadable]` for unreadable text. Comparison marks uncertain passages `uncertain` and preserves the excerpts. Extraction preserves absent values as `missing` and withholds disputed values as `needs_review`. Scaling uses `review` for rules it cannot resolve and keeps the source amount. An unavailable plan includes a `reason_code` and a human-readable `reason`.
+
+For a vegan plan, `needs_review` asks the user to resolve missing or ambiguous source information. `unavailable` covers cases such as `no_viable_substitute`, a rejected proposal, or an unavailable verifier. Both states have empty `changes`. Adapt disables the vegan option and explains the reason while keeping original scaling available. The API returns HTTP 422 with the status and reason. The CLI saves the report with the blocked plan, omits `adaptation`, and exits with code 1. The bundled Sauerbraten example can be scaled and demonstrates the blocked vegan state because the source has no roast quantity.
 
 The original `recipe` and OCR evidence remain in the report. Read the result in `adaptation.recipe`, the before and after values and reasons in `adaptation.changes`, and any open questions in `adaptation.review_items`. Adapting an exported report reapplies the saved review decisions to the original `recipe` before running the adaptation.
 

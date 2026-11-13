@@ -194,6 +194,9 @@ def _normalize_rule(recipe: dict, index: int, ingredient: dict, rule: dict) -> d
     quantity, unit = ingredient["quantity"]["value"], ingredient["unit"]["value"]
     if any(ingredient[key]["status"] == "needs_review" for key in ("name", "quantity", "unit")):
         mode, reason = "review", "Resolve the source ingredient or measure before scaling."
+    elif any(path.startswith("/steps/") and path.endswith(("/instruction", "/condition"))
+             and field["status"] == "needs_review" for path, field in fields.items()):
+        mode, reason = "review", "Resolve the linked preparation instruction or condition before scaling."
     elif mode != "review" and (not quantity or scale_quantity(quantity, unit, Fraction(1)) is None):
         mode, reason = "review", "The source has no supported numeric amount to scale."
     elif mode == "fixed" and not _supports_ingredient_mode(fields, references, index, ingredient, _FIXED_AMOUNT):

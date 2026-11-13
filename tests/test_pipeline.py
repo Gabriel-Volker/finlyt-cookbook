@@ -164,6 +164,25 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual([(item["a_excerpt"], item["b_excerpt"]) for item in report["review_items"]],
                          [("½ cup flour", "1½ cup flour")])
 
+    def test_keeps_unreadability_when_the_comparator_drops_or_misclassifies_it(self):
+        a = "[page: 1]\n1[unreadable] cup flour"
+        b = "[page: 1]\n1½ cup flour"
+        item = {
+            "page": "1", "kind": "formatting", "a_excerpt": "1[unreadable] cup flour",
+            "b_excerpt": "1½ cup flour", "reason": "Same text.",
+        }
+        for equivalents in ([], [item]):
+            with self.subTest(equivalents=equivalents):
+                self.openai.respond.return_value = json.dumps({
+                    "review_items": [], "equivalent_variations": equivalents,
+                })
+                result = compare_transcriptions(self.openai, "", {}, a, b)
+                self.assertEqual(result["equivalent_variations"], [])
+                self.assertEqual(len(result["review_items"]), 1)
+                finding = result["review_items"][0]
+                self.assertEqual(finding["kind"], "uncertain")
+                self.assertEqual((finding["a_excerpt"], finding["b_excerpt"]), (item["a_excerpt"], item["b_excerpt"]))
+
     def test_retries_extraction_with_invalid_evidence_without_repeating_ocr(self):
         invalid_recipe = {
             **EMPTY_RECIPE,
@@ -226,8 +245,11 @@ class PipelineTests(unittest.TestCase):
                        "duration": None, "ingredient_ids": ["bacon"], "tool_ids": []}],
         }
         proposal = {
+            "status": "ready", "reason_code": None, "reason": None,
             "changes": [{"path": "/ingredients/0/name", "before": "bacon", "after": "smoked tempeh",
-                         "reason": "Provide smoky flavour with a firm texture."}],
+                         "reason": "Provide smoky flavour with a firm texture."},
+                        {"path": "/steps/0/instruction", "before": "Fry the bacon.",
+                         "after": "Fry the smoked tempeh.", "reason": "Use the replacement in the frying step."}],
             "review_items": [],
         }
         def respond(**call):
@@ -248,7 +270,8 @@ class PipelineTests(unittest.TestCase):
         def gemini_check(prompt, schema, data):
             if "findings" in schema["properties"]:
                 self.assertEqual(data["changes"], proposal["changes"])
-                return {"findings": []}
+                return {"status": "clear", "reason_code": None, "reason": None, "findings": [],
+                        "approved_substitutions": [{"path": "/ingredients/0/name", "ingredient": "smoked tempeh"}]}
             self.assertEqual(set(data), {"recipe"})
             return {"rules": [{
                 "ingredient_id": "bacon", "mode": "review", "batch_servings": None,
@@ -271,6 +294,19 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(verification["status"], "completed")
             self.assertEqual(verification["rules"][0]["reason"], "No numeric amount was stated.")
         self.assertEqual(self.gemini.respond_structured.call_count, 3)
+
+        def unavailable_verification(prompt, schema, data):
+            if "findings" in schema["properties"]:
+                return {"status": "unavailable", "reason_code": "insufficient_information",
+                        "reason": "Could not verify the replacement.", "findings": [], "approved_substitutions": []}
+            return gemini_check(prompt, schema, data)
+
+        self.gemini.respond_structured.reset_mock()
+        self.gemini.respond_structured.side_effect = unavailable_verification
+        blocked = run_pipeline(DOCUMENT, "recipe.pdf", self.gemini, self.openai)
+        self.assertEqual(blocked["vegan_plan"]["changes"], [])
+        self.assertEqual(set(blocked["scaling_plan"]), {"original"})
+        self.assertEqual(self.gemini.respond_structured.call_count, 2)
 
         self.openai.respond.side_effect = None
         self.openai.respond.return_value = json.dumps({"changes": [{"path": "/bad"}], "review_items": []})

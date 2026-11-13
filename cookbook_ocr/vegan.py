@@ -14,6 +14,8 @@ EDITABLE_FIELDS = {
     "ingredients": {"name", "preparation"},
     "steps": {"instruction", "condition", "duration"},
 }
+VEGAN_PLAN_VERSION = 2
+PLAN_STATUSES = ("ready", "needs_review", "unavailable")
 REMOVABLE_FIELDS = {"preparation", "condition", "duration"}
 TIME_UNITS = frozenset(
     "s sec secs second seconds sek sekunde sekunden segundo segundos "
@@ -37,9 +39,74 @@ def _fingerprint(recipe: dict) -> str:
 def vegan_plan_matches(recipe: dict, plan: dict | None) -> bool:
     """Check whether a stored plan was generated for these source values."""
     return (
-        isinstance(plan, dict) and plan.get("status") in ("ready", "needs_review")
+        isinstance(plan, dict) and plan.get("protocol_version") == VEGAN_PLAN_VERSION
+        and plan.get("status") in PLAN_STATUSES
         and plan.get("recipe_fingerprint") == _fingerprint(recipe)
     )
+
+
+def proposed_vegan_substitutions(changes: list) -> dict[str, str]:
+    """Collect the exact ingredient name changes that need independent approval."""
+    replacements = {}
+    for edit in changes:
+        if not isinstance(edit, dict) or not isinstance(edit.get("path"), str) or "after" not in edit:
+            raise ValueError("The vegan plan returned an invalid edit.")
+        path = edit["path"]
+        if path.startswith("/ingredients/") and path.endswith("/name"):
+            if path in replacements or not _text(edit["after"]):
+                raise ValueError("The vegan plan returned an invalid ingredient replacement.")
+            replacements[path] = edit["after"]
+    return replacements
+
+
+def vegan_substitutions_approved(changes: list, approvals) -> bool:
+    """Require one exact approval for every proposed ingredient replacement."""
+    try:
+        expected = proposed_vegan_substitutions(changes)
+    except ValueError:
+        return False
+    if not isinstance(approvals, list) or len(approvals) != len(expected):
+        return False
+    approved = set()
+    for entry in approvals:
+        if not isinstance(entry, dict):
+            return False
+        path, ingredient = entry.get("path"), entry.get("ingredient")
+        if not isinstance(path, str) or path in approved or path not in expected or ingredient != expected[path]:
+            return False
+        approved.add(path)
+    return True
+
+
+def vegan_plan_usable(recipe: dict, plan: dict | None) -> bool:
+    if not vegan_plan_matches(recipe, plan) or plan["status"] != "ready" or plan.get("review_items") != []:
+        return False
+    verification = plan.get("verification")
+    return (
+        isinstance(verification, dict) and verification.get("provider") == "gemini"
+        and verification.get("status") == "clear" and verification.get("findings") == []
+        and verification.get("reason_code") is None and verification.get("reason") is None
+        and plan.get("reason_code") is None and plan.get("reason") is None
+        and isinstance(plan.get("changes"), list)
+        and vegan_substitutions_approved(plan["changes"], verification.get("approved_substitutions"))
+    )
+
+
+def _vegan_plan(recipe: dict, status: str, reason_code: str | None, reason: str | None,
+                changes: list, review_items: list) -> dict:
+    return {
+        "protocol_version": VEGAN_PLAN_VERSION,
+        "status": status,
+        "reason_code": reason_code,
+        "reason": reason,
+        "recipe_fingerprint": _fingerprint(recipe),
+        "changes": changes,
+        "review_items": review_items,
+    }
+
+
+def unavailable_vegan_plan(recipe: dict, reason_code: str, reason: str, review_items=()) -> dict:
+    return _vegan_plan(recipe, "unavailable", reason_code, reason, [], list(review_items))
 
 
 def _phrase(text: str) -> str:
@@ -135,6 +202,20 @@ def validate_vegan_plan(recipe: dict, proposal: dict) -> dict:
         isinstance(proposal.get(key), list) for key in ("changes", "review_items")
     ):
         raise ValueError("The vegan plan must contain changes and review items.")
+    status, reason_code, reason = (proposal.get(key) for key in ("status", "reason_code", "reason"))
+    if status not in PLAN_STATUSES:
+        raise ValueError("The vegan plan must state whether a viable adaptation can be made.")
+    if status == "ready":
+        if reason_code is not None or reason is not None:
+            raise ValueError("A ready vegan plan must leave the uncertainty reason empty.")
+    elif (
+        not _text(reason) or proposal["changes"] or not proposal["review_items"]
+        or reason_code not in (
+            ("insufficient_information",) if status == "needs_review"
+            else ("insufficient_information", "no_viable_substitute")
+        )
+    ):
+        raise ValueError("An unresolved vegan plan must give its reason and affected fields without edits.")
 
     fields = {"/title": recipe["title"], "/servings": recipe["servings"]}
     editable = {"/title"}
@@ -163,6 +244,9 @@ def validate_vegan_plan(recipe: dict, proposal: dict) -> dict:
         if item["path"] not in review_paths:
             raise ValueError("The vegan plan review item refers to an unknown recipe field.")
         warn(item["path"], item["reason"])
+
+    if status != "ready":
+        return _vegan_plan(recipe, status, reason_code, reason.strip(), [], warnings)
 
     for path, field in fields.items():
         if field["status"] == "needs_review" and not any(item["path"] == path for item in warnings):
@@ -219,12 +303,9 @@ def validate_vegan_plan(recipe: dict, proposal: dict) -> dict:
             warn(path, "Check the proposed vegan change. It would change a measure or add a number.")
 
     _review_linked_steps(recipe, edits, warn)
-    return {
-        "status": "needs_review" if warnings else "ready",
-        "recipe_fingerprint": _fingerprint(recipe),
-        "changes": list(edits.values()),
-        "review_items": warnings,
-    }
+    if warnings:
+        return _vegan_plan(recipe, "needs_review", "insufficient_information", warnings[0]["reason"], [], warnings)
+    return _vegan_plan(recipe, "ready", None, None, list(edits.values()), [])
 
 
 def veganize(
@@ -236,7 +317,12 @@ def veganize(
     """Apply a valid plan without changing the source fields or calling a model."""
     if not vegan_plan_matches(recipe, plan):
         raise ValueError("The vegan plan is missing or does not match this recipe. Generate a new plan.")
+    if not vegan_plan_usable(recipe, plan):
+        reason = plan.get("reason")
+        raise ValueError(reason if _text(reason) else "A verified vegan plan is required to adapt this recipe.")
     validated = validate_vegan_plan(recipe, plan)
+    if validated["status"] != "ready":
+        raise ValueError(validated["reason"])
     for item in validated["changes"]:
         path = item["path"]
         keys = path[1:].split("/")

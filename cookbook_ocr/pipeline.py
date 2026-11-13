@@ -4,13 +4,13 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from .adaptation import adapt_recipe
-from .extraction import PAGE_MARKER, UNREADABLE, build_recipe, has_unresolved_fields
+from .extraction import PAGE_MARKER, UNREADABLE, build_recipe, flag_ocr_uncertainty, has_unresolved_fields
 from .providers import GeminiClient, OpenAIClient, ProviderError
 from .quality import assess_blur
 from .quantities import QUANTITY_PATTERN, known_units, quantity_matches
 from .raster import prepare_pdf
 from .scaling_plan import scaling_plan_matches, validate_scaling_plan
-from .vegan import validate_vegan_plan, vegan_plan_matches
+from .vegan import unavailable_vegan_plan, validate_vegan_plan, vegan_plan_usable
 from .vegan_verification import verify_vegan_plan
 
 
@@ -162,6 +162,7 @@ def compare_transcriptions(
             openai, retry_prompt, schema, "transcription_comparison", transcriptions
         )
         validate_comparison(result, a, b)
+    result = flag_ocr_uncertainty(result, _transcription_pages(a) or {None: a}, _transcription_pages(b) or {None: b})
     return _check_numeric_equivalences(result, a, b)
 
 
@@ -187,10 +188,22 @@ def _structured_response(
     return json.loads(response)
 
 
-def plan_vegan_recipe(openai: OpenAIClient, recipe: dict) -> dict:
+def plan_vegan_recipe(openai: OpenAIClient, recipe: dict, extraction_issues: list | None = None) -> dict:
     """Prepare and validate a recipe-specific plan before Adapt uses it."""
+    incomplete = [
+        {"path": item["field"], "reason": item["reason"]}
+        for item in extraction_issues or []
+        if item.get("field") in {"/recipe", "/ingredients", "/steps"}
+    ]
+    if incomplete:
+        return unavailable_vegan_plan(
+            recipe, "insufficient_information", "The extraction is incomplete. Review the source before adapting it.",
+            incomplete,
+        )
     if not recipe["ingredients"] or not recipe["steps"]:
-        return {"status": "unavailable", "reason": "Vegan planning needs extracted ingredients and steps."}
+        return unavailable_vegan_plan(
+            recipe, "insufficient_information", "Vegan planning needs extracted ingredients and steps.",
+        )
 
     def omit_evidence(value):
         if isinstance(value, dict):
@@ -209,16 +222,15 @@ def plan_vegan_recipe(openai: OpenAIClient, recipe: dict) -> dict:
         )
         return validate_vegan_plan(recipe, candidate)
     except ProviderError:
-        return {"status": "unavailable", "reason": "Luna could not prepare a vegan plan."}
+        return unavailable_vegan_plan(recipe, "provider_unavailable", "Luna could not prepare a vegan plan.")
     except ValueError:
-        return {"status": "unavailable", "reason": "Luna's vegan plan failed validation."}
+        return unavailable_vegan_plan(recipe, "invalid_output", "Luna's vegan plan failed validation.")
 
 
 def plan_recipe_scaling(openai: OpenAIClient, recipe: dict) -> dict:
     if not recipe["ingredients"]:
-        return {"status": "unavailable", "reason": "Scaling needs extracted ingredients."}
-    prompt = (PROMPTS_DIR / "plan_scaling.system.txt").read_text(encoding="utf-8")
-    schema = json.loads((PROMPTS_DIR / "plan_scaling.schema.json").read_text(encoding="utf-8"))
+        return {"status": "unavailable", "reason_code": "insufficient_information",
+                "reason": "Scaling needs extracted ingredients."}
     return _classify_scaling(
         recipe, "Luna", lambda prompt, schema, data: _structured_response(
             openai, prompt, schema, "scaling_plan", data, max_output_tokens=8192,
@@ -234,7 +246,8 @@ def _classify_scaling(recipe: dict, provider: str, respond) -> dict:
             proposal = respond(prompt, schema, {"recipe": recipe})
             return validate_scaling_plan(recipe, proposal)
         except ProviderError:
-            return {"status": "unavailable", "reason": f"{provider} could not prepare a scaling plan."}
+            return {"status": "unavailable", "reason_code": "provider_unavailable",
+                    "reason": f"{provider} could not prepare a scaling plan."}
         except ValueError:
             if attempt == 0:
                 prompt += (
@@ -242,7 +255,8 @@ def _classify_scaling(recipe: dict, provider: str, respond) -> dict:
                     "Check that each quotation occurs literally inside one permitted field or its evidence. "
                     "Use separate citations for separate fields and select review if a rule lacks evidence."
                 )
-    return {"status": "unavailable", "reason": f"{provider}'s scaling plan failed validation."}
+    return {"status": "unavailable", "reason_code": "invalid_output",
+            "reason": f"{provider}'s scaling plan failed validation."}
 
 
 def _verify_scaling(gemini: GeminiClient, recipe: dict) -> dict:
@@ -259,7 +273,7 @@ def refresh_scaling_plans(
     """Reuse matching plans and classify the original and vegan recipes independently."""
     stored = stored if isinstance(stored, dict) else {}
     variants = {"original": recipe}
-    if vegan_plan_matches(recipe, vegan_plan):
+    if vegan_plan_usable(recipe, vegan_plan):
         variants["vegan"] = adapt_recipe(recipe, vegan=True, vegan_plan=vegan_plan)["recipe"]
 
     same_variant = variants.get("vegan") == recipe
@@ -279,9 +293,12 @@ def refresh_scaling_plans(
             elif openai is not None and source["ingredients"]:
                 generations[variant] = executor.submit(plan_recipe_scaling, openai, source)
             else:
-                reason = ("Set OPENAI_API_KEY to prepare the scaling plan." if source["ingredients"]
-                          else "Scaling needs extracted ingredients.")
-                plans[variant] = {"status": "unavailable", "reason": reason}
+                reason_code, reason = (
+                    ("provider_unavailable", "Set OPENAI_API_KEY to prepare the scaling plan.")
+                    if source["ingredients"] else
+                    ("insufficient_information", "Scaling needs extracted ingredients.")
+                )
+                plans[variant] = {"status": "unavailable", "reason_code": reason_code, "reason": reason}
                 continue
             if gemini is not None:
                 verifications[variant] = executor.submit(_verify_scaling, gemini, source)
@@ -359,12 +376,10 @@ def run_pipeline(
             "field": "/recipe", "reason": reason,
         })
     needs_review = comparison["review_items"] or extraction_issues or has_unresolved_fields(recipe)
-    vegan_plan = plan_vegan_recipe(openai, recipe)
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        scaling_future = executor.submit(refresh_scaling_plans, openai, recipe, vegan_plan, gemini=gemini)
-        if vegan_plan_matches(recipe, vegan_plan):
-            vegan_plan = verify_vegan_plan(gemini, recipe, vegan_plan)
-        scaling_plan = scaling_future.result()
+    vegan_plan = plan_vegan_recipe(openai, recipe, extraction_issues)
+    if vegan_plan["status"] == "ready":
+        vegan_plan = verify_vegan_plan(gemini, recipe, vegan_plan)
+    scaling_plan = refresh_scaling_plans(openai, recipe, vegan_plan, gemini=gemini)
     return {
         "status": "needs_review" if needs_review else "no_discrepancies",
         "transcriptions": transcriptions,

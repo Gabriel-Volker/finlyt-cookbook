@@ -116,3 +116,7 @@ Gabriel raised the risk of unnecessary human review when two different vegan sub
 ## 2026-11-13 16:52 · Use Gemini for targeted verification
 
 Gabriel chose Gemini to check Luna's vegan proposal for concrete incompatibilities with the recipe and to classify scaling rules independently. Keep a source quantity pending when the scaling rules yield different amounts or batch requirements at the requested serving count. Store both outcomes for review. Keep the Luna plan available if verification fails and expose that status separately.
+
+## 2026-11-13 17:24 · Abstain when a vegan substitute cannot be justified
+
+Gabriel chose to offer a vegan variant only when a real ingredient performs the needed cooking function in that recipe. Require Luna to return a reason and empty changes when the information is insufficient or a viable adaptation cannot be made. Require Gemini to approve each exact proposed replacement before the application enables the variant. Keep the source recipe and its serving adjustment available when the variant is blocked. Record uncertainty explicitly in each AI stage using that stage's output contract.

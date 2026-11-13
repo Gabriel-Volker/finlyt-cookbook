@@ -39,13 +39,23 @@ def recipe(servings, ingredients, steps):
 
 
 def vegan_plan(source, changes, review_items=()):
-    return validate_vegan_plan(source, {
+    plan = validate_vegan_plan(source, {
+        "status": "ready", "reason_code": None, "reason": None,
         "changes": [
             {"path": path, "before": before, "after": after, "reason": "Use a plant-based technique or ingredient."}
             for path, before, after in changes
         ],
         "review_items": [{"path": path, "reason": reason} for path, reason in review_items],
     })
+    if plan["status"] == "ready":
+        plan["verification"] = {
+            "provider": "gemini", "status": "clear", "reason_code": None, "reason": None, "findings": [],
+            "approved_substitutions": [
+                {"path": change["path"], "ingredient": change["after"]} for change in plan["changes"]
+                if change["path"].startswith("/ingredients/") and change["path"].endswith("/name")
+            ],
+        }
+    return plan
 
 
 def scaling_rule(ingredient_id, mode="proportional", *, reason=None, batch_servings=None, evidence=()):
@@ -213,20 +223,20 @@ class AdaptationTests(unittest.TestCase):
         source = recipe("2", [
             ingredient("bacon", "bacon", "200", "g"),
             ingredient("butter", "butter", "50", "g"),
-            ingredient("eggs", "eggs", "2"),
+            ingredient("salt", "salt", "2", "g"),
         ], [
             step("Render 200 g bacon in 50 g butter.", "bacon", "butter"),
-            step("Add 2 eggs.", "eggs"),
+            step("Add 2 g salt.", "salt"),
         ])
         plan = vegan_plan(source, [
             ("/ingredients/0/name", "bacon", "smoked tofu"),
             ("/ingredients/1/name", "butter", "vegan butter"),
             ("/steps/0/instruction", "Render 200 g bacon in 50 g butter.",
              "Brown 200 g smoked tofu in 50 g vegan butter."),
-        ], [("/ingredients/2/name", "Check how the eggs function in this recipe.")])
+        ])
         vegan_recipe = adapt_recipe(source, vegan=True, vegan_plan=plan)["recipe"]
         scale_plan = scaling_plan(vegan_recipe, scaling_rule("bacon"), scaling_rule("butter"),
-                                  scaling_rule("eggs"), variant="vegan")
+                                  scaling_rule("salt"), variant="vegan")
         result = adapt_recipe(source, servings=3, vegan=True, vegan_plan=plan, scaling_plan=scale_plan)
         bacon, butter, _ = result["recipe"]["ingredients"]
         self.assertEqual(bacon["name"]["value"], "smoked tofu")
@@ -236,8 +246,21 @@ class AdaptationTests(unittest.TestCase):
         self.assertIn("75 g vegan butter", instruction)
         self.assertNotIn("render", instruction)
         self.assertEqual(result["recipe"]["steps"][0]["ingredient_ids"], ["bacon", "butter"])
-        self.assertEqual(result["status"], "needs_review")
-        self.assertEqual(result["recipe"]["steps"][1]["instruction"]["value"], "Add 3 eggs.")
+        self.assertEqual(result["status"], "applied")
+        self.assertEqual(result["recipe"]["steps"][1]["instruction"]["value"], "Add 3 g salt.")
+
+    def test_vegan_adaptation_rejects_a_partial_plan_with_a_remaining_animal_ingredient(self):
+        source = recipe("2", [ingredient("bacon", "bacon"), ingredient("eggs", "eggs")], [
+            step("Brown bacon.", "bacon"), step("Add eggs.", "eggs"),
+        ])
+        plan = vegan_plan(source, [
+            ("/ingredients/0/name", "bacon", "smoked tofu"),
+            ("/steps/0/instruction", "Brown bacon.", "Brown smoked tofu."),
+        ], [("/ingredients/1/name", "Check how the eggs function in this recipe.")])
+        self.assertEqual(plan["status"], "needs_review")
+        self.assertEqual(plan["changes"], [])
+        with self.assertRaisesRegex(ValueError, "Check how the eggs function"):
+            adapt_recipe(source, vegan=True, vegan_plan=plan)
 
     def test_vegan_sauerbraten_in_english_keeps_substitutions_consistent(self):
         source = recipe(None, [
@@ -409,13 +432,17 @@ class AdaptationTests(unittest.TestCase):
     def test_vegan_plan_withholds_numeric_measure_change(self):
         source = recipe("2", [ingredient("milk", "milk", "2", "cups")], [step("Add 2 cups milk.", "milk")])
         plan = vegan_plan(source, [("/steps/0/instruction", "Add 2 cups milk.", "Add 2 tablespoons oat milk.")])
-        result = adapt_recipe(source, vegan=True, vegan_plan=plan)
-        self.assertEqual(result["status"], "needs_review")
-        self.assertEqual(result["recipe"]["steps"][0]["instruction"]["value"], "Add 2 cups milk.")
+        self.assertEqual(plan["status"], "needs_review")
+        self.assertEqual(plan["changes"], [])
+        with self.assertRaisesRegex(ValueError, "change a measure"):
+            adapt_recipe(source, vegan=True, vegan_plan=plan)
+        self.assertEqual(source["steps"][0]["instruction"]["value"], "Add 2 cups milk.")
 
     def test_vegan_plan_flags_a_linked_step_that_still_names_the_original_ingredient(self):
         source = recipe("2", [ingredient("cheese", "Parmesan")], [step("Sprinkle Parmesan on top.", "cheese")])
         plan = vegan_plan(source, [("/ingredients/0/name", "Parmesan", "vegan Parmesan")])
-        result = adapt_recipe(source, vegan=True, vegan_plan=plan)
-        self.assertEqual(result["status"], "needs_review")
-        self.assertEqual(result["review_items"][0]["path"], "/steps/0/instruction")
+        self.assertEqual(plan["status"], "needs_review")
+        self.assertEqual(plan["changes"], [])
+        self.assertEqual(plan["review_items"][0]["path"], "/steps/0/instruction")
+        with self.assertRaisesRegex(ValueError, "still refers to an ingredient"):
+            adapt_recipe(source, vegan=True, vegan_plan=plan)

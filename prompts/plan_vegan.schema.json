@@ -1,8 +1,14 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["changes", "review_items"],
+  "required": ["status", "reason_code", "reason", "changes", "review_items"],
   "properties": {
+    "status": {"type": "string", "enum": ["ready", "needs_review", "unavailable"]},
+    "reason_code": {
+      "type": ["string", "null"],
+      "enum": ["insufficient_information", "no_viable_substitute", null]
+    },
+    "reason": {"type": ["string", "null"]},
     "changes": {
       "type": "array",
       "items": {
