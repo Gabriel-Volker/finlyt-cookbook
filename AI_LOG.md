@@ -381,3 +381,7 @@ Safe review confirmations reuse valid plans, and scaling retries retain the othe
 Gabriel asked to push the current work, update Docker, and review the submission. Codex compared the repository with the original brief and added UTF-8 text input, direct reading for eligible text-native PDFs, and labeled utensil inferences backed by source actions. The README now documents three-command setup, tradeoffs at each stage, AI validation and reproducibility, measured costs and latency, and priorities for another week. Unstated servings remain unknown. Scaling requires an explicit baseline.
 
 All four Sauerbraten outputs and three Portuguese examples were present. Six saved adaptations replayed without API credentials. A live run on an English oat-and-apple recipe in a text file took 29.9 seconds and recovered four servings, three ingredients, four steps, a stated mixing bowl, and an inferred oven. All 175 tests passed in Docker. The local service served the updated interface, previewed plain text, and applied the bundled vegan plan for six. GitHub reported the repository as private. The brief requires public access for the submission.
+
+## 2026-11-13 19:53 · Publish the submission repository
+
+Gabriel asked to make the repository public. Codex updated its visibility on GitHub and verified that the README could be fetched without authentication.
