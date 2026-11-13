@@ -309,5 +309,19 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(self.gemini.respond_structured.call_count, 2)
 
         self.openai.respond.side_effect = None
-        self.openai.respond.return_value = json.dumps({"changes": [{"path": "/bad"}], "review_items": []})
-        self.assertEqual(plan_vegan_recipe(self.openai, report["recipe"])["status"], "unavailable")
+        invalid = json.dumps({**proposal, "changes": [{**proposal["changes"][0], "path": "/bad"}]})
+        self.openai.respond.reset_mock()
+        self.openai.respond.side_effect = [invalid, json.dumps(proposal)]
+        with self.assertLogs("cookbook_ocr.pipeline", level="WARNING") as logged:
+            retried = plan_vegan_recipe(self.openai, report["recipe"])
+        self.assertEqual(retried["status"], "ready")
+        self.assertEqual(self.openai.respond.call_count, 2)
+        self.assertIn("supported recipe field", logged.output[0])
+        self.assertIn("previous response did not validate", self.openai.respond.call_args.kwargs["input"][0]["content"])
+
+        self.openai.respond.side_effect = [invalid, invalid]
+        with self.assertLogs("cookbook_ocr.pipeline", level="WARNING") as logged:
+            rejected = plan_vegan_recipe(self.openai, report["recipe"])
+        self.assertEqual((rejected["status"], rejected["reason_code"], rejected["changes"]),
+                         ("unavailable", "invalid_output", []))
+        self.assertEqual(len(logged.output), 2)

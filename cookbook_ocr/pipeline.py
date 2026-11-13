@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -15,6 +16,7 @@ from .vegan_verification import verify_vegan_plan
 
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
+LOGGER = logging.getLogger(__name__)
 _MEASURE_UNITS = "|".join(re.escape(unit) for unit in sorted(known_units(), key=len, reverse=True))
 _COMPARISON_MEASURE = re.compile(
     rf"(?<![\d/⁄∕])(?P<quantity>{QUANTITY_PATTERN})(?![\d/⁄∕])"
@@ -215,16 +217,26 @@ def plan_vegan_recipe(openai: OpenAIClient, recipe: dict, extraction_issues: lis
 
     prompt = (PROMPTS_DIR / "plan_vegan.system.txt").read_text(encoding="utf-8")
     schema = json.loads((PROMPTS_DIR / "plan_vegan.schema.json").read_text(encoding="utf-8"))
-    try:
-        candidate = _structured_response(
-            openai, prompt, schema, "vegan_plan", {"recipe": omit_evidence(recipe)},
-            max_output_tokens=8192,
-        )
-        return validate_vegan_plan(recipe, candidate)
-    except ProviderError:
-        return unavailable_vegan_plan(recipe, "provider_unavailable", "Luna could not prepare a vegan plan.")
-    except ValueError:
-        return unavailable_vegan_plan(recipe, "invalid_output", "Luna's vegan plan failed validation.")
+    data = {"recipe": omit_evidence(recipe)}
+    for attempt in range(2):
+        try:
+            candidate = _structured_response(openai, prompt, schema, "vegan_plan", data, max_output_tokens=8192)
+            return validate_vegan_plan(recipe, candidate)
+        except ProviderError:
+            return unavailable_vegan_plan(recipe, "provider_unavailable", "Luna could not prepare a vegan plan.")
+        except ValueError as error:
+            detail = "The response was not valid JSON." if isinstance(error, json.JSONDecodeError) else str(error)
+            LOGGER.warning("Vegan plan validation failed on attempt %d: %s", attempt + 1, detail)
+            if attempt == 0:
+                prompt += (
+                    f"\n\nThe previous response did not validate. {detail} "
+                    "Use exact recipe paths and copy the before values verbatim. "
+                    "For a blocked verdict, return no edits and identify what prevents choosing a suitable substitute. "
+                    "Leave missing amounts untouched without blocking otherwise suitable replacements."
+                )
+    return unavailable_vegan_plan(
+        recipe, "invalid_output", "The vegan proposal could not be validated. Try importing the recipe again.",
+    )
 
 
 def plan_recipe_scaling(openai: OpenAIClient, recipe: dict) -> dict:

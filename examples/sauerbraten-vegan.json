@@ -1125,17 +1125,114 @@
   "extraction_issues": [],
   "vegan_plan": {
     "protocol_version": 2,
-    "status": "needs_review",
-    "reason_code": "insufficient_information",
-    "reason": "The recipe gives no roast quantity. Confirm the original amount before preparing a vegan version.",
+    "status": "ready",
+    "reason_code": null,
+    "reason": null,
     "recipe_fingerprint": "8c02fb31660235ec8e1950e1e5a7dae4cd1efe99d1b54f330fdf92a0432bea9f",
-    "changes": [],
-    "review_items": [
+    "changes": [
       {
-        "path": "/ingredients/7/quantity",
-        "reason": "The recipe gives no beef-roast quantity, so the amount of seitan roast needed cannot be determined."
+        "path": "/ingredients/7/name",
+        "before": "beef roast",
+        "after": "seitan roast",
+        "reason": "A seitan roast provides a sliceable, substantial centerpiece that can take on the marinade, brown, and braise in the recipe."
+      },
+      {
+        "path": "/ingredients/8/name",
+        "before": "bacon",
+        "after": "vegetable oil",
+        "reason": "Vegetable oil supplies the cooking fat used when rendering the bacon before browning the roast."
+      },
+      {
+        "path": "/ingredients/9/name",
+        "before": "butter",
+        "after": "vegan butter",
+        "reason": "Vegan butter supplies the additional fat for browning and is a real plant-based butter product."
+      },
+      {
+        "path": "/ingredients/13/name",
+        "before": "beef drippings",
+        "after": "vegetable oil",
+        "reason": "Vegetable oil provides the fat needed to stir in flour and form the sauce base."
+      },
+      {
+        "path": "/ingredients/15/name",
+        "before": "red wine",
+        "after": "vegan-labelled red wine",
+        "reason": "Vegan-labelled red wine can be used directly to loosen and flavor the sauce without uncertainty about animal-derived fining agents."
+      },
+      {
+        "path": "/steps/1/instruction",
+        "before": "Pour the marinade over the beef roast for a shorter rest.",
+        "after": "Pour the marinade over the seitan roast for a shorter rest.",
+        "reason": "The seitan roast can take on the marinade in the same resting step."
+      },
+      {
+        "path": "/steps/2/instruction",
+        "before": "For a longer rest, cool the marinade before adding the beef roast.",
+        "after": "For a longer rest, cool the marinade before adding the seitan roast.",
+        "reason": "Cooling the marinade before adding the seitan roast preserves the recipe's longer-rest method."
+      },
+      {
+        "path": "/steps/3/instruction",
+        "before": "Render the bacon, add butter, then brown the dried beef roast on all sides.",
+        "after": "Heat the vegetable oil, add vegan butter, then brown the dried seitan roast on all sides.",
+        "reason": "Heating vegetable oil replaces the fat-rendering role; vegan butter supplies the additional browning fat, and the seitan roast can be browned on all sides."
+      },
+      {
+        "path": "/steps/4/instruction",
+        "before": "When the roast is browned, pour in a little of the marinade.",
+        "after": "When the seitan roast is browned, pour in a little of the marinade.",
+        "reason": "This keeps the deglazing step tied to browning the replacement roast."
+      },
+      {
+        "path": "/steps/6/instruction",
+        "before": "Cover the pot and braise the beef roast gently until tender.",
+        "after": "Cover the pot and braise the seitan roast gently until heated through.",
+        "reason": "Seitan roast is already cooked and will not become tender like raw beef; gentle braising heats it through while it takes on the sauce."
+      },
+      {
+        "path": "/steps/7/instruction",
+        "before": "Stir flour into the beef drippings and loosen the mixture with marinade and red wine.",
+        "after": "Stir flour into the vegetable oil and loosen the mixture with marinade and vegan-labelled red wine.",
+        "reason": "Vegetable oil provides fat for the flour-thickened sauce, and vegan-labelled red wine retains the recipe's wine component."
+      },
+      {
+        "path": "/steps/9/instruction",
+        "before": "Let the beef roast rest in the sauce before slicing and serving.",
+        "after": "Let the seitan roast rest in the sauce before slicing and serving.",
+        "reason": "Resting the seitan roast in the sauce lets it take on the finished sauce before slicing."
       }
-    ]
+    ],
+    "review_items": [],
+    "verification": {
+      "provider": "gemini",
+      "status": "clear",
+      "reason_code": null,
+      "reason": null,
+      "findings": [],
+      "approved_substitutions": [
+        {
+          "path": "/ingredients/7/name",
+          "ingredient": "seitan roast"
+        },
+        {
+          "path": "/ingredients/8/name",
+          "ingredient": "vegetable oil"
+        },
+        {
+          "path": "/ingredients/9/name",
+          "ingredient": "vegan butter"
+        },
+        {
+          "path": "/ingredients/13/name",
+          "ingredient": "vegetable oil"
+        },
+        {
+          "path": "/ingredients/15/name",
+          "ingredient": "vegan-labelled red wine"
+        }
+      ]
+    }
   },
   "scaling_plan": {
     "original": {
@@ -1530,6 +1627,1558 @@
           }
         ]
       }
+    },
+    "vegan": {
+      "status": "needs_review",
+      "recipe_fingerprint": "24eee73f87ce2daa3d5995c7dba371e5094dd60770d49cccf8415cbf1b81f24a",
+      "rules": [
+        {
+          "ingredient_id": "ingredient-1",
+          "mode": "proportional",
+          "reason": "Measured vinegar is part of the marinade mixture, so it scales with the recipe yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/0/quantity",
+              "quote": "1/2 l vinegar"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "1/2 l vinegar"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-2",
+          "mode": "proportional",
+          "reason": "Measured water is part of the marinade mixture, so it scales with the recipe yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/1/quantity",
+              "quote": "1/2 l water"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "1/2 l water"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-3",
+          "mode": "proportional",
+          "reason": "The measured sliced onions are boiled with the marinade, so they scale with the recipe yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/2/quantity",
+              "quote": "4 sliced onions"
+            },
+            {
+              "path": "/steps/0/instruction",
+              "quote": "4 sliced onions"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-4",
+          "mode": "review",
+          "reason": "Pepper has no stated quantity; a person should determine the amount and adjust it to taste.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/0/instruction",
+              "quote": "with pepper"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-5",
+          "mode": "review",
+          "reason": "Cloves have no stated quantity; a person should determine the amount appropriate for the marinade.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/0/instruction",
+              "quote": "with pepper, cloves"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-6",
+          "mode": "review",
+          "reason": "Salt has no stated quantity; a person should determine the amount and adjust it to taste.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/0/instruction",
+              "quote": "cloves, salt"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-7",
+          "mode": "review",
+          "reason": "Bay leaves have no stated quantity; a person should determine the amount appropriate for the marinade.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/0/instruction",
+              "quote": "salt and bay leaves"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-8",
+          "mode": "review",
+          "reason": "The seitan roast has no stated quantity or recipe yield; a person should determine the roast amount before scaling.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/1/instruction",
+              "quote": "Pour the marinade over the seitan roast"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-9",
+          "mode": "review",
+          "reason": "The amount of oil for browning is unstated and may depend on the pan and roast; a person should determine it.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/3/instruction",
+              "quote": "Heat the vegetable oil"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-10",
+          "mode": "review",
+          "reason": "The amount of vegan butter for browning is unstated; a person should determine it for the cooking setup.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/3/instruction",
+              "quote": "add vegan butter"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-11",
+          "mode": "review",
+          "reason": "“Some” gives no numeric amount for this optional ingredient; a person should choose an amount for the desired yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/10/quantity",
+              "quote": "some apples (optional)"
+            },
+            {
+              "path": "/steps/5/instruction",
+              "quote": "Add apples, carrots and juniper berries to the pot if desired."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-12",
+          "mode": "review",
+          "reason": "No amount is stated for this optional ingredient; a person should choose an amount for the desired yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/5/instruction",
+              "quote": "Add apples, carrots and juniper berries to the pot if desired."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-13",
+          "mode": "review",
+          "reason": "No amount is stated for this optional ingredient; a person should choose an amount for the desired yield.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/5/instruction",
+              "quote": "Add apples, carrots and juniper berries to the pot if desired."
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-14",
+          "mode": "review",
+          "reason": "The amount of oil in the sauce mixture is unstated; a person should determine it before scaling.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/7/instruction",
+              "quote": "Stir flour into the vegetable oil"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-15",
+          "mode": "review",
+          "reason": "No amount of flour is stated for thickening the sauce; a person should determine the needed amount.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/7/instruction",
+              "quote": "Stir flour into the vegetable oil"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-16",
+          "mode": "review",
+          "reason": "The amount of red wine is unstated; a person should determine it for the sauce and its desired consistency.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/7/instruction",
+              "quote": "loosen the mixture with marinade and vegan-labelled red wine"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-17",
+          "mode": "review",
+          "reason": "No amount is stated for the soaked currants; a person should determine the amount for the desired sauce balance.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/8/instruction",
+              "quote": "Add soaked currants"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-18",
+          "mode": "review",
+          "reason": "No amount is stated for the raisins; a person should determine the amount for the desired sauce balance.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/steps/8/instruction",
+              "quote": "soaked currants, raisins"
+            }
+          ]
+        },
+        {
+          "ingredient_id": "ingredient-19",
+          "mode": "review",
+          "reason": "Sugar is added to taste while balancing sweetness and acidity, so a person should adjust the amount rather than scale it mechanically.",
+          "batch_servings": null,
+          "evidence": [
+            {
+              "path": "/ingredients/18/quantity",
+              "quote": "sugar to taste"
+            },
+            {
+              "path": "/steps/8/instruction",
+              "quote": "sugar to taste, balancing sweetness and acidity"
+            }
+          ]
+        }
+      ],
+      "verification": {
+        "provider": "gemini",
+        "status": "completed",
+        "rules": [
+          {
+            "ingredient_id": "ingredient-1",
+            "mode": "proportional",
+            "reason": "The vinegar is a measured component of the marinade mixture.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-2",
+            "mode": "proportional",
+            "reason": "The water is a measured component of the marinade mixture.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-3",
+            "mode": "proportional",
+            "reason": "The onions are a measured component of the marinade mixture.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-4",
+            "mode": "review",
+            "reason": "The quantity of pepper is not specified, making it impossible to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-5",
+            "mode": "review",
+            "reason": "The quantity of cloves is not specified, making it impossible to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-6",
+            "mode": "review",
+            "reason": "The quantity of salt is not specified, making it impossible to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-7",
+            "mode": "review",
+            "reason": "The quantity of bay leaves is not specified, making it impossible to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-8",
+            "mode": "review",
+            "reason": "The quantity of seitan roast is not specified, making it impossible to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-9",
+            "mode": "review",
+            "reason": "The quantity of vegetable oil is not specified, making it impossible to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-10",
+            "mode": "review",
+            "reason": "The quantity of vegan butter is not specified, making it impossible to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-11",
+            "mode": "review",
+            "reason": "The quantity of apples is qualitative ('some'), making it impossible to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-12",
+            "mode": "review",
+            "reason": "The quantity of carrots is not specified, making it impossible to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-13",
+            "mode": "review",
+            "reason": "The quantity of juniper berries is not specified, making it impossible to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-14",
+            "mode": "review",
+            "reason": "The quantity of vegetable oil is not specified, making it impossible to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-15",
+            "mode": "review",
+            "reason": "The quantity of flour is not specified, making it impossible to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-16",
+            "mode": "review",
+            "reason": "The quantity of vegan-labelled red wine is not specified, making it impossible to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-17",
+            "mode": "review",
+            "reason": "The quantity of currants is not specified, making it impossible to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-18",
+            "mode": "review",
+            "reason": "The quantity of raisins is not specified, making it impossible to scale.",
+            "batch_servings": null,
+            "evidence": []
+          },
+          {
+            "ingredient_id": "ingredient-19",
+            "mode": "review",
+            "reason": "The quantity of sugar is qualitative ('to taste'), making it impossible to scale.",
+            "batch_servings": null,
+            "evidence": []
+          }
+        ]
+      }
     }
+  },
+  "adaptation": {
+    "recipe": {
+      "title": {
+        "value": "Sauerbraten",
+        "status": "stated",
+        "evidence": {
+          "source": "B",
+          "page": "1",
+          "quote": "Sauerbraten"
+        },
+        "review_item_ids": []
+      },
+      "servings": {
+        "value": null,
+        "status": "missing",
+        "evidence": null,
+        "review_item_ids": []
+      },
+      "ingredients": [
+        {
+          "id": "ingredient-1",
+          "name": {
+            "value": "vinegar",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1/2 l vinegar"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "1/2",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1/2 l vinegar"
+            },
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": "l",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1/2 l vinegar"
+            },
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-2",
+          "name": {
+            "value": "water",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1/2 l water"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "1/2",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1/2 l water"
+            },
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": "l",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "1/2 l water"
+            },
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-3",
+          "name": {
+            "value": "onions",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "4 sliced onions"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "4",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "4 sliced onions"
+            },
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": "sliced",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "4 sliced onions"
+            },
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-4",
+          "name": {
+            "value": "pepper",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "pepper"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-5",
+          "name": {
+            "value": "cloves",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "cloves"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-6",
+          "name": {
+            "value": "salt",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "salt"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-7",
+          "name": {
+            "value": "bay leaves",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "bay leaves"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-8",
+          "name": {
+            "value": "seitan roast",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-9",
+          "name": {
+            "value": "vegetable oil",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-10",
+          "name": {
+            "value": "vegan butter",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-11",
+          "name": {
+            "value": "apples",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "some apples (optional)"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "some",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "some apples (optional)"
+            },
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": "optional",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "some apples (optional)"
+            },
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-12",
+          "name": {
+            "value": "carrots",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "carrots (optional)"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": "optional",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "carrots (optional)"
+            },
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-13",
+          "name": {
+            "value": "juniper berries",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "juniper berries (optional)"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": "optional",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "juniper berries (optional)"
+            },
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-14",
+          "name": {
+            "value": "vegetable oil",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-15",
+          "name": {
+            "value": "flour",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "flour"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-16",
+          "name": {
+            "value": "vegan-labelled red wine",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-17",
+          "name": {
+            "value": "currants",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "soaked currants"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": "soaked",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "soaked currants"
+            },
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-18",
+          "name": {
+            "value": "raisins",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "raisins"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        },
+        {
+          "id": "ingredient-19",
+          "name": {
+            "value": "sugar",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "sugar to taste"
+            },
+            "review_item_ids": []
+          },
+          "quantity": {
+            "value": "to taste",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "sugar to taste"
+            },
+            "review_item_ids": []
+          },
+          "unit": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "preparation": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "optional_when": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          }
+        }
+      ],
+      "tools": [
+        {
+          "id": "tool-1",
+          "name": {
+            "value": "pot",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "Add apples, carrots and juniper berries to the pot if desired."
+            },
+            "review_item_ids": []
+          }
+        }
+      ],
+      "steps": [
+        {
+          "instruction": {
+            "value": "Boil 1/2 l vinegar, 1/2 l water and 4 sliced onions with pepper, cloves, salt and bay leaves.",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Boil 1/2 l vinegar, 1/2 l water and 4 sliced onions with pepper, cloves, salt and bay leaves."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-1",
+            "ingredient-2",
+            "ingredient-3",
+            "ingredient-4",
+            "ingredient-5",
+            "ingredient-6",
+            "ingredient-7"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "Pour the marinade over the seitan roast for a shorter rest.",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": "for a shorter rest",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "Pour the marinade over the beef roast for a shorter rest."
+            },
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-8"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "For a longer rest, cool the marinade before adding the seitan roast.",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": "For a longer rest",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "1",
+              "quote": "For a longer rest, cool the marinade before adding the beef roast."
+            },
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-8"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "Heat the vegetable oil, add vegan butter, then brown the dried seitan roast on all sides.",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-9",
+            "ingredient-10",
+            "ingredient-8"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "When the seitan roast is browned, pour in a little of the marinade.",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": "When the roast is browned",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "When the roast is browned, pour in a little of the marinade."
+            },
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-8"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "Add apples, carrots and juniper berries to the pot if desired.",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "Add apples, carrots and juniper berries to the pot if desired."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": "if desired",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "Add apples, carrots and juniper berries to the pot if desired."
+            },
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-11",
+            "ingredient-12",
+            "ingredient-13"
+          ],
+          "tool_ids": [
+            "tool-1"
+          ]
+        },
+        {
+          "instruction": {
+            "value": "Cover the pot and braise the seitan roast gently until heated through.",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": "until tender",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "Cover the pot and braise the beef roast gently until tender."
+            },
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-8"
+          ],
+          "tool_ids": [
+            "tool-1"
+          ]
+        },
+        {
+          "instruction": {
+            "value": "Stir flour into the vegetable oil and loosen the mixture with marinade and vegan-labelled red wine.",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-15",
+            "ingredient-14",
+            "ingredient-16"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "Add soaked currants, raisins and sugar to taste, balancing sweetness and acidity.",
+            "status": "stated",
+            "evidence": {
+              "source": "B",
+              "page": "2",
+              "quote": "Add soaked currants, raisins and sugar to taste, balancing sweetness and acidity."
+            },
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-17",
+            "ingredient-18",
+            "ingredient-19"
+          ],
+          "tool_ids": []
+        },
+        {
+          "instruction": {
+            "value": "Let the seitan roast rest in the sauce before slicing and serving.",
+            "status": "derived",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "duration": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "condition": {
+            "value": null,
+            "status": "missing",
+            "evidence": null,
+            "review_item_ids": []
+          },
+          "ingredient_ids": [
+            "ingredient-8"
+          ],
+          "tool_ids": []
+        }
+      ]
+    },
+    "scale": null,
+    "vegan_requested": true,
+    "status": "needs_review",
+    "changes": [
+      {
+        "path": "/ingredients/7/name",
+        "before": "beef roast",
+        "after": "seitan roast",
+        "reason": "A seitan roast provides a sliceable, substantial centerpiece that can take on the marinade, brown, and braise in the recipe."
+      },
+      {
+        "path": "/ingredients/8/name",
+        "before": "bacon",
+        "after": "vegetable oil",
+        "reason": "Vegetable oil supplies the cooking fat used when rendering the bacon before browning the roast."
+      },
+      {
+        "path": "/ingredients/9/name",
+        "before": "butter",
+        "after": "vegan butter",
+        "reason": "Vegan butter supplies the additional fat for browning and is a real plant-based butter product."
+      },
+      {
+        "path": "/ingredients/13/name",
+        "before": "beef drippings",
+        "after": "vegetable oil",
+        "reason": "Vegetable oil provides the fat needed to stir in flour and form the sauce base."
+      },
+      {
+        "path": "/ingredients/15/name",
+        "before": "red wine",
+        "after": "vegan-labelled red wine",
+        "reason": "Vegan-labelled red wine can be used directly to loosen and flavor the sauce without uncertainty about animal-derived fining agents."
+      },
+      {
+        "path": "/steps/1/instruction",
+        "before": "Pour the marinade over the beef roast for a shorter rest.",
+        "after": "Pour the marinade over the seitan roast for a shorter rest.",
+        "reason": "The seitan roast can take on the marinade in the same resting step."
+      },
+      {
+        "path": "/steps/2/instruction",
+        "before": "For a longer rest, cool the marinade before adding the beef roast.",
+        "after": "For a longer rest, cool the marinade before adding the seitan roast.",
+        "reason": "Cooling the marinade before adding the seitan roast preserves the recipe's longer-rest method."
+      },
+      {
+        "path": "/steps/3/instruction",
+        "before": "Render the bacon, add butter, then brown the dried beef roast on all sides.",
+        "after": "Heat the vegetable oil, add vegan butter, then brown the dried seitan roast on all sides.",
+        "reason": "Heating vegetable oil replaces the fat-rendering role; vegan butter supplies the additional browning fat, and the seitan roast can be browned on all sides."
+      },
+      {
+        "path": "/steps/4/instruction",
+        "before": "When the roast is browned, pour in a little of the marinade.",
+        "after": "When the seitan roast is browned, pour in a little of the marinade.",
+        "reason": "This keeps the deglazing step tied to browning the replacement roast."
+      },
+      {
+        "path": "/steps/6/instruction",
+        "before": "Cover the pot and braise the beef roast gently until tender.",
+        "after": "Cover the pot and braise the seitan roast gently until heated through.",
+        "reason": "Seitan roast is already cooked and will not become tender like raw beef; gentle braising heats it through while it takes on the sauce."
+      },
+      {
+        "path": "/steps/7/instruction",
+        "before": "Stir flour into the beef drippings and loosen the mixture with marinade and red wine.",
+        "after": "Stir flour into the vegetable oil and loosen the mixture with marinade and vegan-labelled red wine.",
+        "reason": "Vegetable oil provides fat for the flour-thickened sauce, and vegan-labelled red wine retains the recipe's wine component."
+      },
+      {
+        "path": "/steps/9/instruction",
+        "before": "Let the beef roast rest in the sauce before slicing and serving.",
+        "after": "Let the seitan roast rest in the sauce before slicing and serving.",
+        "reason": "Resting the seitan roast in the sauce lets it take on the finished sauce before slicing."
+      }
+    ],
+    "review_items": [
+      {
+        "path": "/ingredients/7/quantity",
+        "reason": "Confirm the amount of the vegan replacement."
+      },
+      {
+        "path": "/ingredients/8/quantity",
+        "reason": "Confirm the amount of the vegan replacement."
+      },
+      {
+        "path": "/ingredients/9/quantity",
+        "reason": "Confirm the amount of the vegan replacement."
+      },
+      {
+        "path": "/ingredients/13/quantity",
+        "reason": "Confirm the amount of the vegan replacement."
+      },
+      {
+        "path": "/ingredients/15/quantity",
+        "reason": "Confirm the amount of the vegan replacement."
+      }
+    ]
   }
 }

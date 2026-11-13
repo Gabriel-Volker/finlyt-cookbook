@@ -6,7 +6,7 @@ from cookbook_ocr.adaptation import adapt_recipe
 from cookbook_ocr.providers import ProviderError
 from cookbook_ocr.vegan import validate_vegan_plan, vegan_plan_matches, vegan_plan_usable
 from cookbook_ocr.vegan_verification import verify_vegan_plan
-from test_adaptation import ingredient, recipe, step
+from test_adaptation import field, ingredient, recipe, step
 
 
 def proposal(changes=()):
@@ -97,6 +97,42 @@ class VeganVerificationTests(unittest.TestCase):
         self.assertEqual(verified["review_items"], [{"path": finding["path"], "reason": finding["reason"]}])
         with self.assertRaisesRegex(ValueError, "Neutral oil cannot be creamed"):
             adapt_recipe(self.recipe, vegan=True, vegan_plan=verified)
+
+    def test_can_verify_ingredient_identity_without_resolving_the_measure(self):
+        for quantity, unit, expected_path in (
+            (field(None), field(None), "/ingredients/0/quantity"),
+            (field(None, "needs_review"), field(None), "/ingredients/0/quantity"),
+            (field("100"), field(None, "needs_review"), "/ingredients/0/unit"),
+        ):
+            with self.subTest(path=expected_path, quantity_status=quantity["status"]):
+                self.recipe["ingredients"][0].update(quantity=quantity, unit=unit)
+                source = self.plan("vegan baking block")
+                self.assertEqual(source["status"], "ready")
+                self.gemini.respond_structured.return_value = clear_verdict("vegan baking block")
+
+                verified = verify_vegan_plan(self.gemini, self.recipe, source)
+
+                self.assertTrue(vegan_plan_usable(self.recipe, verified))
+                sent_ingredient = self.gemini.respond_structured.call_args.args[2]["recipe"]["ingredients"][0]
+                self.assertEqual(sent_ingredient["quantity"], quantity)
+                self.assertEqual(sent_ingredient["unit"], unit)
+                adapted = adapt_recipe(self.recipe, vegan=True, vegan_plan=verified)
+                replacement = adapted["recipe"]["ingredients"][0]
+                self.assertEqual(replacement["name"]["value"], "vegan baking block")
+                self.assertEqual(replacement["quantity"], quantity)
+                self.assertEqual(replacement["unit"], unit)
+                self.assertEqual({item["path"] for item in adapted["review_items"]}, {expected_path})
+
+    def test_blocks_incompatible_cooking_function_even_if_measure_is_missing(self):
+        self.recipe["ingredients"][0].update(quantity=field(None), unit=field(None))
+        source = self.plan("neutral oil")
+        self.gemini.respond_structured.return_value = finding_verdict(self.issue())
+
+        verified = verify_vegan_plan(self.gemini, self.recipe, source)
+
+        self.assertEqual(verified["reason_code"], "verification_failed")
+        self.assertEqual(verified["changes"], [])
+        self.assertFalse(vegan_plan_usable(self.recipe, verified))
 
     def test_does_not_verify_when_planner_abstains(self):
         for status, reason_code in (("needs_review", "insufficient_information"), ("unavailable", "no_viable_substitute")):

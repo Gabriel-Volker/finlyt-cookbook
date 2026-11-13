@@ -120,3 +120,7 @@ Gabriel chose Gemini to check Luna's vegan proposal for concrete incompatibiliti
 ## 2026-11-13 17:24 · Abstain when a vegan substitute cannot be justified
 
 Gabriel chose to offer a vegan variant only when a real ingredient performs the needed cooking function in that recipe. Require Luna to return a reason and empty changes when the information is insufficient or a viable adaptation cannot be made. Require Gemini to approve each exact proposed replacement before the application enables the variant. Keep the source recipe and its serving adjustment available when the variant is blocked. Record uncertainty explicitly in each AI stage using that stage's output contract.
+
+## 2026-11-13 18:08 · Assess vegan suitability separately from quantity
+
+Gabriel clarified that the app can offer a verified vegan substitute even when the source does not specify how much to use. Preserve the unknown measure and flag it in the adaptation. Require abstention when an unknown fact prevents verifying the ingredient or its use in the method.

@@ -283,7 +283,39 @@ class AdaptationTests(unittest.TestCase):
             adapted["steps"][0]["instruction"]["value"],
             "Add vegan butter, plant-based pan juices and vegan red wine.",
         )
-        self.assertEqual(result["review_items"], [])
+        self.assertEqual(result["status"], "needs_review")
+        self.assertEqual(
+            {item["path"] for item in result["review_items"]},
+            {f"/ingredients/{index}/quantity" for index in range(3)},
+        )
+        for original, replacement in zip(source["ingredients"], adapted["ingredients"]):
+            self.assertEqual(replacement["quantity"], original["quantity"])
+            self.assertEqual(replacement["unit"], original["unit"])
+
+    def test_vegan_scaling_preserves_disputed_quantity_and_scales_other_measures(self):
+        source = recipe("2", [
+            ingredient("fat", "butter"),
+            ingredient("onions", "onions", "2"),
+        ], [step("Sauté 2 onions in butter.", "onions", "fat")])
+        source["ingredients"][0]["quantity"].update(
+            status="needs_review", evidence={"source": "A", "page": "1", "quote": "[unreadable] butter"},
+            review_item_ids=[1],
+        )
+        plan = vegan_plan(source, [
+            ("/ingredients/0/name", "butter", "vegan butter"),
+            ("/steps/0/instruction", "Sauté 2 onions in butter.", "Sauté 2 onions in vegan butter."),
+        ])
+        self.assertEqual(plan["status"], "ready")
+        vegan = adapt_recipe(source, vegan=True, vegan_plan=plan)["recipe"]
+        scale = scaling_plan(vegan, scaling_rule("fat", "review"), scaling_rule("onions"), variant="vegan")
+        result = adapt_recipe(source, servings=4, vegan=True, vegan_plan=plan, scaling_plan=scale)
+        fat, onions = result["recipe"]["ingredients"]
+        self.assertEqual(fat["name"]["value"], "vegan butter")
+        self.assertEqual(fat["quantity"], source["ingredients"][0]["quantity"])
+        self.assertEqual(fat["unit"], source["ingredients"][0]["unit"])
+        self.assertEqual(onions["quantity"]["value"], "4")
+        self.assertEqual(result["recipe"]["steps"][0]["instruction"]["value"], "Sauté 4 onions in vegan butter.")
+        self.assertIn("/ingredients/0/quantity", {item["path"] for item in result["review_items"]})
 
     def test_numeric_units_ranges_and_exact_fractions(self):
         cases = [
@@ -437,6 +469,17 @@ class AdaptationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "change a measure"):
             adapt_recipe(source, vegan=True, vegan_plan=plan)
         self.assertEqual(source["steps"][0]["instruction"]["value"], "Add 2 cups milk.")
+
+    def test_vegan_plan_withholds_an_invented_amount_when_source_omits_it(self):
+        source = recipe("2", [ingredient("milk", "milk")], [step("Add milk.", "milk")])
+        plan = vegan_plan(source, [
+            ("/ingredients/0/name", "milk", "oat milk"),
+            ("/steps/0/instruction", "Add milk.", "Add 2 cups oat milk."),
+        ])
+        self.assertEqual(plan["status"], "needs_review")
+        self.assertEqual(plan["changes"], [])
+        with self.assertRaisesRegex(ValueError, "change a measure"):
+            adapt_recipe(source, vegan=True, vegan_plan=plan)
 
     def test_vegan_plan_flags_a_linked_step_that_still_names_the_original_ingredient(self):
         source = recipe("2", [ingredient("cheese", "Parmesan")], [step("Sprinkle Parmesan on top.", "cheese")])

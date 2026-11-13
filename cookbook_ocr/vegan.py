@@ -249,7 +249,9 @@ def validate_vegan_plan(recipe: dict, proposal: dict) -> dict:
         return _vegan_plan(recipe, status, reason_code, reason.strip(), [], warnings)
 
     for path, field in fields.items():
-        if field["status"] == "needs_review" and not any(item["path"] == path for item in warnings):
+        ingredient_measure = path.startswith("/ingredients/") and path.endswith(("/quantity", "/unit"))
+        if (field["status"] == "needs_review" and not ingredient_measure
+                and not any(item["path"] == path for item in warnings)):
             warn(path, "Resolve this source field to complete the vegan adaptation.")
 
     edits = {}
@@ -326,7 +328,15 @@ def veganize(
     for item in validated["changes"]:
         path = item["path"]
         keys = path[1:].split("/")
-        field = recipe[keys[0]] if len(keys) == 1 else recipe[keys[0]][int(keys[1])][keys[2]]
+        if len(keys) == 1:
+            field = recipe[keys[0]]
+        else:
+            record = recipe[keys[0]][int(keys[1])]
+            field = record[keys[2]]
+            if keys[0] == "ingredients" and keys[2] == "name":
+                quantity, unit = record["quantity"], record["unit"]
+                if quantity["value"] is None or quantity["status"] == "needs_review":
+                    warn(path.removesuffix("/name") + "/quantity", "Confirm the amount of the vegan replacement.")
+                if unit["status"] == "needs_review":
+                    warn(path.removesuffix("/name") + "/unit", "Confirm the unit for the vegan replacement.")
         change(path, field, item["after"], item["reason"])
-    for item in validated["review_items"]:
-        warn(item["path"], item["reason"])

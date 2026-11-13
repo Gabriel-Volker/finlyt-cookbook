@@ -208,6 +208,11 @@ class WebTests(unittest.TestCase):
     def test_adapt_rejects_unverified_vegan_plan_with_reason_and_no_adaptation(self):
         assets = Path(__file__).resolve().parents[1] / "cookbook_ocr" / "web_assets"
         report = json.loads((assets / "example.json").read_text(encoding="utf-8"))
+        report["vegan_plan"].update(
+            status="needs_review", reason_code="insufficient_information", changes=[],
+            reason="The recipe does not identify the animal-derived setting agent.", review_items=[],
+        )
+        report["vegan_plan"].pop("verification", None)
         headers = {"Content-Type": "application/json"}
         data = {"report": report, "vegan": True}
         status, _, response = self.request("POST", "/api/adapt", json.dumps(data), headers)
@@ -215,10 +220,26 @@ class WebTests(unittest.TestCase):
         result = json.loads(response)
         self.assertEqual(result["status"], "needs_review")
         self.assertEqual(result["reason_code"], "insufficient_information")
-        self.assertIn("roast quantity", result["error"])
+        self.assertIn("setting agent", result["error"])
         self.assertNotIn("adaptation", result)
 
         report["vegan_plan"].update(status="ready", reason_code=None, reason=None, review_items=[])
         status, _, response = self.request("POST", "/api/adapt", json.dumps(data), headers)
         self.assertEqual(status, 422)
         self.assertEqual(json.loads(response)["reason_code"], "verification_unavailable")
+
+    def test_adapt_applies_verified_vegan_example_with_missing_amounts(self):
+        assets = Path(__file__).resolve().parents[1] / "cookbook_ocr" / "web_assets"
+        report = json.loads((assets / "example.json").read_text(encoding="utf-8"))
+        request = {"report": report, "vegan": True, "servings": 6, "original_servings": 4}
+        status, _, response = self.request("POST", "/api/adapt", json.dumps(request), {"Content-Type": "application/json"})
+        self.assertEqual(status, 200)
+        result = json.loads(response)["adaptation"]
+        roast_index = next(i for i, item in enumerate(report["recipe"]["ingredients"]) if item["name"]["value"] == "beef roast")
+        before = report["recipe"]["ingredients"][roast_index]
+        roast = result["recipe"]["ingredients"][roast_index]
+        self.assertNotEqual(roast["name"]["value"], before["name"]["value"])
+        self.assertEqual(roast["quantity"], before["quantity"])
+        self.assertIsNone(roast["quantity"]["value"])
+        self.assertIn(f"/ingredients/{roast_index}/quantity", {item["path"] for item in result["review_items"]})
+        self.assertEqual(result["scale"]["factor"], "3/2")
