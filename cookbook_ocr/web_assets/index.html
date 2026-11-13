@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cookbook · Recipe workspace</title>
+    <link rel="stylesheet" href="/assets/styles.css">
+    <script type="module" src="/assets/app.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="#import">
+          <span class="brand-mark"><img src="/assets/images/book.svg" width="19" height="19" alt=""></span>
+          Cookbook
+        </a>
+        <nav class="workflow" aria-label="Recipe workflow">
+          <button type="button" class="nav-item" data-screen="import" aria-current="step">Import</button>
+          <img src="/assets/images/chevron.svg" width="13" height="13" alt="">
+          <button type="button" class="nav-item" data-screen="review" disabled>Review</button>
+          <img src="/assets/images/chevron.svg" width="13" height="13" alt="">
+          <button type="button" class="nav-item" data-screen="adapt" disabled>Adapt</button>
+        </nav>
+        <div class="file-label">
+          <img src="/assets/images/document.svg" width="15" height="15" alt="">
+          <span id="workspace-name">Recipe workspace</span>
+        </div>
+      </div>
+    </header>
+    <main class="container">
+      <section id="import" class="import-layout" aria-labelledby="import-title">
+        <div class="import-copy">
+          <div class="intro">
+            <h1 id="import-title">Import a recipe</h1>
+            <p>Upload a PDF or photo to extract ingredients and cooking steps.</p>
+          </div>
+          <div class="drop-zone" id="drop-zone">
+            <span class="upload-mark"><img src="/assets/images/upload.svg" width="24" height="24" alt=""></span>
+            <h2 id="drop-title">Drop your recipe here</h2>
+            <p>PDF, PNG or JPEG</p>
+            <button type="button" class="button primary file-picker" id="choose-file">
+              <img src="/assets/images/upload-white.svg" width="15" height="15" alt=""> Choose file
+            </button>
+            <input type="file" id="recipe-file" accept=".pdf,.png,.jpg,.jpeg" hidden>
+          </div>
+          <div class="example-card">
+            <img src="/assets/images/document-blue.svg" width="17" height="17" alt="">
+            <div>
+              <strong class="example-title">Sauerbraten</strong>
+              <p class="example-meta">Handwritten German recipe · 2 pages</p>
+            </div>
+            <button type="button" class="button text" id="try-example">
+              Try example <img src="/assets/images/arrow-blue.svg" width="15" height="15" alt="">
+            </button>
+          </div>
+          <p class="status-message" id="import-status" role="status" hidden></p>
+        </div>
+        <img class="hero-photo" src="/assets/images/notebook.png" width="488" height="634" alt="An open handwritten recipe notebook on a linen tablecloth">
+      </section>
+      <section id="review" aria-labelledby="review-title" hidden>
+        <div class="page-heading">
+          <div>
+            <h1 id="review-title">Recipe</h1>
+            <p id="review-subtitle"></p>
+          </div>
+          <div class="heading-actions">
+            <span class="badge info" id="reading-status"></span>
+            <button type="button" class="button primary" data-screen="adapt">
+              Adapt recipe <img src="/assets/images/arrow-white.svg" width="16" height="16" alt="">
+            </button>
+          </div>
+        </div>
+        <div class="workspace-grid">
+          <div class="card">
+            <div class="tabs" role="tablist" aria-label="Extracted recipe">
+              <button type="button" role="tab" class="tab" id="ingredients-tab" aria-controls="review-list" aria-selected="true" data-tab="ingredients">Ingredients</button>
+              <button type="button" role="tab" class="tab" id="steps-tab" aria-controls="review-list" aria-selected="false" data-tab="steps">Steps</button>
+            </div>
+            <div id="review-list" role="tabpanel" aria-labelledby="ingredients-tab"></div>
+          </div>
+          <aside class="stack" aria-label="Recipe evidence">
+            <section class="card card-body" aria-labelledby="evidence-title">
+              <div class="card-heading">
+                <h2 id="evidence-title">Source evidence</h2>
+                <button type="button" class="button text icon-button" id="open-source" aria-label="Open source page" title="Open source page">
+                  <img src="/assets/images/document-blue.svg" width="17" height="17" alt="">
+                </button>
+              </div>
+              <div id="evidence"></div>
+            </section>
+            <section class="card card-body" aria-labelledby="comparison-title">
+              <div class="card-heading">
+                <h2 id="comparison-title">Reading comparison</h2>
+                <span class="badge" id="reading-count"></span>
+              </div>
+              <div id="comparison"></div>
+            </section>
+          </aside>
+        </div>
+      </section>
+      <section id="adapt" aria-labelledby="adapt-title" hidden>
+        <div class="page-heading">
+          <div>
+            <h1 id="adapt-title">Adapt recipe</h1>
+            <p id="adapt-subtitle"></p>
+          </div>
+          <div class="heading-actions">
+            <button type="button" class="button secondary" data-screen="review">
+              <img src="/assets/images/back.svg" width="15" height="15" alt=""> Back to recipe
+            </button>
+            <button type="button" class="button primary" id="export-recipe">
+              <img src="/assets/images/download.svg" width="15" height="15" alt=""> Export JSON
+            </button>
+          </div>
+        </div>
+        <div class="workspace-grid">
+          <div class="stack">
+            <section class="card" aria-labelledby="changes-title">
+              <div class="section-head">
+                <h2 id="changes-title">Selected changes</h2>
+                <span class="badge" id="change-count">0 total</span>
+              </div>
+              <div id="changes"></div>
+            </section>
+            <section class="review-banner" id="adaptation-review" aria-live="polite" hidden></section>
+          </div>
+          <aside class="stack" aria-label="Adaptation">
+            <section class="card card-body" aria-labelledby="settings-title">
+              <div class="card-heading"><h2 id="settings-title">Adaptation settings</h2></div>
+              <form id="adapt-settings" class="settings-form">
+                <div class="field">
+                  <label for="original-servings">Original servings</label>
+                  <input id="original-servings" type="number" inputmode="numeric" min="1" step="1" aria-describedby="original-hint">
+                  <small id="original-hint"></small>
+                </div>
+                <div class="field">
+                  <label for="target-servings">Target servings</label>
+                  <input id="target-servings" type="number" inputmode="numeric" min="1" step="1" aria-describedby="target-hint">
+                  <small id="target-hint"></small>
+                </div>
+                <div class="toggle-row">
+                  <label for="vegan">
+                    <img src="/assets/images/leaf.svg" width="17" height="17" alt=""> Make vegan
+                  </label>
+                  <button type="button" id="vegan" class="toggle-control" role="switch" aria-checked="false" aria-label="Make vegan">
+                    <img src="/assets/images/toggle-on.svg" width="41" height="23" alt="">
+                  </button>
+                </div>
+                <p id="adapt-status" class="status-message" role="status" hidden></p>
+              </form>
+            </section>
+            <section class="card card-body" id="adapted-step-card" aria-labelledby="adapted-step-title" hidden>
+              <div class="card-heading">
+                <h2 id="adapted-step-title">Adapted steps</h2>
+                <span class="badge info">Adapted</span>
+              </div>
+              <div id="adapted-steps"></div>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </main>
+    <dialog id="source-dialog" aria-labelledby="source-title">
+      <div class="dialog-head">
+        <h2 id="source-title">Source page</h2>
+        <form method="dialog"><button type="submit" class="button secondary">Close</button></form>
+      </div>
+      <div id="source-content" aria-live="polite"></div>
+      <div class="preview-controls">
+        <button type="button" id="previous-page" class="button secondary">Previous</button>
+        <span id="source-page"></span>
+        <button type="button" id="next-page" class="button secondary">Next</button>
+      </div>
+    </dialog>
+  </body>
+</html>

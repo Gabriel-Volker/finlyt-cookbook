@@ -3,6 +3,8 @@
 !requirements.txt
 !cookbook_ocr/
 !cookbook_ocr/*.py
+!cookbook_ocr/web_assets/
+!cookbook_ocr/web_assets/**
 !prompts/
 !prompts/*.txt
 !prompts/*.json

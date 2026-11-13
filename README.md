@@ -13,6 +13,17 @@ docker run --rm --env-file .env --mount "type=bind,source=$PWD/Recipe.pdf,target
 
 The container reads the recipe and writes its JSON report through the bind mount. The build context includes only code, prompts, and dependency declarations.
 
+## Recipe workspace
+
+Start the web workspace in Docker and open `http://localhost:8000`.
+
+```powershell
+docker build -t finlyt-cookbook .
+docker run --rm --env-file .env -p 127.0.0.1:8000:8000 --entrypoint python finlyt-cookbook -m cookbook_ocr.web --host 0.0.0.0
+```
+
+To run it directly after installing the Python dependencies, use `python -m cookbook_ocr.web`. Upload a PDF, PNG, or JPEG up to 14 MB. Review the extracted ingredients and steps with their source excerpts, then adjust servings, apply vegan substitutions, and export the JSON report. **Try example** opens a bundled Sauerbraten example. The example and its adaptations work without API keys. Imported files and results are held for the current browser session.
+
 For a local run, use Python 3.10 or later and the same `.env`. Environment variables take precedence. Pass the full input path if the file is outside the project.
 
 ```powershell

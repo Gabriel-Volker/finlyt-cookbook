@@ -175,3 +175,11 @@ Gabriel asked Codex to handle these three cases, run the tests in Docker, and pu
 Scaling now reconciles explicit amounts in linked steps using exact arithmetic. The tests include tripling a total of 1½ cups split into 1 cup and ½ cup, and scaling a litre split into 250 mL and ¾ L. A condition that repeats a step amount does not count as another allocation. When the explicit amounts do not reconcile or could belong to multiple linked ingredients, the affected steps keep their written quantities and the report flags them for review. Implicit allocations and arbitrary alternate methods still require manual interpretation.
 
 The Docker build and all 45 tests completed by 15:11:41. Adapting the saved Sauerbraten extraction to six servings with four as the example baseline preserved the 750 mL of vinegar, 750 mL of water, and six onions. The report added a capacity check for the `Topf` without inferring a volume. It kept the qualitative amounts for apples and sugar in review. This verification ran offline using the existing extraction.
+
+## 2026-11-13 15:15–15:28 · Figma palette and web workspace
+
+Gabriel asked Codex to change the Figma prototype's green accent to blue before building the interface. Codex updated 84 nodes across Import, Review Ingredients, Review Steps, and Adapt. The main blue is `#23466B`. Codex checked the updated Figma renders and implemented the four views using the exported notebook photograph and icons and locally served DM Sans and DM Serif Text.
+
+The web workspace connects upload and page previews to the Python backend. Ingredient and step selection shows the corresponding source excerpt. Adaptation uses the existing serving and vegan rules and can export the report as JSON. The bundled Sauerbraten example uses a written example and works without API keys or the source PDF. Testing the example surfaced an English vegan substitution mismatch for butter, drippings, and wine. Codex corrected it and added a regression test.
+
+All 51 tests passed in Docker. Chromium checks covered desktop and mobile layouts, example review and adaptation, export, and a live upload of the supplied two-page recipe. The live extraction showed 18 ingredients and nine steps, and the browser opened previews of both pages. The application was verified at `http://localhost:8000`.

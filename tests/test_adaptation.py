@@ -163,6 +163,22 @@ class AdaptationTests(unittest.TestCase):
         self.assertEqual(result["status"], "needs_review")
         self.assertEqual(result["recipe"]["steps"][1]["instruction"]["value"], "Add 3 eggs.")
 
+    def test_vegan_sauerbraten_in_english_keeps_substitutions_consistent(self):
+        source = recipe(None, [
+            ingredient("fat", "butter"),
+            ingredient("drippings", "beef drippings"),
+            ingredient("wine", "red wine"),
+        ], [step("Add butter, beef drippings and red wine.", "fat", "drippings", "wine")])
+        source["title"] = field("Sauerbraten")
+        result = adapt_recipe(source, vegan=True)
+        adapted = result["recipe"]
+        self.assertEqual(adapted["ingredients"][0]["name"]["value"], "vegan butter")
+        self.assertEqual(
+            adapted["steps"][0]["instruction"]["value"],
+            "Add vegan butter, plant-based pan juices and vegan red wine.",
+        )
+        self.assertEqual(result["review_items"], [])
+
     def test_numeric_units_ranges_and_exact_fractions(self):
         cases = [
             ("½", "l", Fraction(3, 2), ("750", "ml")),

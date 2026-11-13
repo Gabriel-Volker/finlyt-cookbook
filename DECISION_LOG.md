@@ -84,3 +84,7 @@ Keep the scaling calculation deterministic. Recognized seasoning and vessel-depe
 Gabriel asked to preserve mixed fractions, adjust ingredient amounts divided across steps, and flag cookware capacity when scaling. The extraction validator checks that a quoted measure includes the complete number. The comparison prompt treats equivalent notations as the same amount while requiring evidence for both readings.
 
 Reuse one ingredient ID when the recipe divides a stated total between steps. Scale the written parts using exact arithmetic when compatible units reconcile to that total. Leave ambiguous allocations for review. For an increased yield, flag cookware when the larger batch may need a capacity check. Keep any stated vessel size as evidence for the review and leave vessel dimensions and cooking times as written.
+
+## 2026-11-13 15:28 · Browser recipe workspace
+
+Gabriel chose the Figma prototype and requested a blue accent. The web workspace follows its import, review, and adaptation views. A small Python HTTP server serves local assets and calls the existing extraction and adaptation functions. The workspace holds imported files and reports for the current browser session. The bundled example provides a way to explore review and adaptation without credentials.

@@ -1,7 +1,10 @@
 """Render PDFs as ordered, lossless page images for the Luna reader."""
 
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from math import isfinite
+from typing import TypeVar
 
 import pymupdf
 from PIL import Image
@@ -12,9 +15,21 @@ MAX_RASTER_PNG_BYTES = 36_000_000
 MIN_LONG_EDGE = 1_600
 MAX_LONG_EDGE = 3_000
 
+_PDF_WORKER = ThreadPoolExecutor(max_workers=1, thread_name_prefix="cookbook-pdf")
+_Result = TypeVar("_Result")
+
+
+def run_pdf_task(task: Callable[..., _Result], *args) -> _Result:
+    """Keep PyMuPDF operations from preview and extraction on one thread."""
+    return _PDF_WORKER.submit(task, *args).result()
+
 
 def rasterize_pdf(document: bytes) -> list[bytes] | None:
     """Return lossless PNGs, or None if the PDF exceeds the raster budget."""
+    return run_pdf_task(_rasterize_pdf, document)
+
+
+def _rasterize_pdf(document: bytes) -> list[bytes] | None:
     try:
         with pymupdf.open(stream=document, filetype="pdf") as pdf:
             if not pdf.is_pdf:

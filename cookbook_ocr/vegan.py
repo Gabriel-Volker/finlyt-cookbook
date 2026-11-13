@@ -17,7 +17,7 @@ class Substitution:
 SUBSTITUTIONS = (
     Substitution(r"Bratenstücke|Rinderbraten|Rindfleisch|Braten", "Seitan",
                  "Use a firm plant protein in place of the roast.", check_cooking=True),
-    Substitution(r"pot roast|beef roast|beef chunks|beef", "seitan",
+    Substitution(r"pot roast|beef roast|beef chunks|beef(?!\s+drippings\b)", "seitan",
                  "Use a firm plant protein in place of beef.", check_cooking=True),
     Substitution(r"carne bovina|carne de boi|assado bovino", "seitan",
                  "Use a firm plant protein in place of beef.", check_cooking=True),
@@ -88,7 +88,7 @@ ALREADY_PLANT_SUFFIX = re.compile(
     r"de (?:soja|coco|aveia|amendoim|amêndoas?|legumes))\b|\s*\(vegan\)", re.IGNORECASE
 )
 GERMAN_WORDS = re.compile(
-    r"\b(?:zum|dann|zugeben|dazugeben|erhitzen|hinzufügen|und|mit|den|soße|sauerbraten)\b",
+    r"\b(?:zum|dann|zugeben|dazugeben|erhitzen|hinzufügen|und|mit|den|soße)\b",
     re.IGNORECASE,
 )
 GERMAN_INGREDIENTS = re.compile(
@@ -117,7 +117,7 @@ def _replacement(rule: Substitution, german: bool, in_step: bool = False) -> str
 def _plant_term(before: str, after: str) -> bool:
     return bool(
         ALREADY_PLANT_PREFIX.search(before)
-        or re.search(r"\bvegan cream\s+$", before, re.I)
+        or re.search(r"\bvegan (?:cream|red)\s+$", before, re.I)
         or ALREADY_PLANT_SUFFIX.match(after)
     )
 
