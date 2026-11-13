@@ -355,3 +355,7 @@ Gabriel asked to collect the problems found, including OCR mistakes, and make GP
 ## 2026-11-13 19:15 · Verify Docker and record the production OCR preference
 
 Gabriel asked whether the local Docker service was current and explained his preference for Claude Sonnet in production and GPT-6.1 Terra in the demonstration. Codex recorded his reasoning in the [decision log](DECISION_LOG.md). The running container matched the latest local image, used GPT-6.1 Terra and Gemini 3.1 Flash-Lite for OCR and GPT-6 Luna for text tasks, and returned HTTP 200.
+
+## 2026-11-13 19:17 · Check large PDF limits
+
+Gabriel asked whether large PDFs can fail to transcribe. Codex checked the web upload limit, Terra's rasterization fallback, the OCR output budgets, provider error handling, and the official PDF input limits. A dense PDF can fit within the web upload limit and still exhaust the OCR output budget. Either reader's incomplete response aborts the import. The rasterized Terra path checks coverage by page marker. The direct PDF paths do not check the returned markers against the physical page count. Codex recorded the limits in [PROBLEMS.md](PROBLEMS.md).
