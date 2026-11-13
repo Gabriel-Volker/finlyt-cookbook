@@ -385,3 +385,7 @@ All four Sauerbraten outputs and three Portuguese examples were present. Six sav
 ## 2026-11-13 19:53 · Publish the submission repository
 
 Gabriel asked to make the repository public. Codex updated its visibility on GitHub and verified that the README could be fetched without authentication.
+
+## 2026-11-13 20:00 · Edit the README for submission
+
+Gabriel asked for a more focused README and an updated activity diagram. Codex aligned the README with the brief, retaining concrete trade-offs, evaluation limits, measurements, replay instructions, and example outputs. The English activity diagram now reflects the native text and OCR routes, import reuse, plan verification, human review, and local adaptation with prepared translations.

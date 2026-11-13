@@ -1,108 +1,39 @@
 # Cookbook Activity Diagram
 
-Web workflow from recipe import to JSON export.
+The web workflow from import to export. Import prepares the recipe and plans. Review saves human decisions with the source evidence. Adapt uses those decisions and the selected plan.
 
 ```mermaid
 flowchart TD
-    start(["Start"]) --> entry{"Upload or example?"}
+    start(["Open Cookbook"]) --> entry{"Upload or try example?"}
+    entry -->|"Try example"| saved["Load the bundled report"]
+    entry -->|"Upload"| upload["Validate file and check import cache"]
+    upload -->|"Cache hit"| savedReport["Reuse saved readings and plans"]
+    upload -->|"New file"| route{"Read text directly?"}
+    route -->|"TXT or eligible PDF"| native["Read native text with page markers"]
+    route -->|"Scan or image"| ocr["Run Gemini and Terra OCR in parallel"]
+    ocr --> blur{"Do both readers flag every page and the blur check concur?"}
+    blur -->|"Yes"| rescan(["Ask for a sharper copy"])
+    blur -->|"Otherwise"| compare["Check unreadable spans and compare differing readings with Luna"]
+    native --> extract["Extract with Luna and validate source evidence"]
+    compare --> extract
+    extract --> veganPlan["Propose with Luna and verify the vegan recipe with Gemini when viable"]
+    veganPlan --> scalePlan["Classify scaling for the original and any verified vegan variant"]
+    scalePlan --> translations["Prepare both display languages in one batch"]
+    savedReport --> translations
+    translations --> review["Review the recipe, source evidence and warnings"]
+    saved --> review
 
-    subgraph reading ["Import and read"]
-        upload["Validate PDF, PNG, JPEG or UTF-8 text"]
-        native{"Can the source be read directly?"}
-        readText["Read plain text or native PDF text"]
-        gemini["Transcribe with Gemini"]
-        terra["Transcribe with Terra"]
-        unreadable{"Severe blur and no readable text?"}
-        rescan(["Request a sharper copy"])
-        compare["Compare texts A and B with Luna"]
-        extract["Extract with Luna and validate evidence"]
-        plan["Ask Luna for a vegan plan"]
-        viable{"Luna found a viable plan?"}
-        verifyVegan["Ask Gemini to check the vegan proposal"]
-        verified{"Every replacement approved?"}
-        abstain["Save the reason and keep original scaling available"]
-        scalePlan["Classify scaling rules independently with Luna and Gemini"]
-        savePlans["Save plans and verification results"]
-        prepareOutput["Prepare both output languages and validate measures"]
-        example["Load the example report"]
-        upload --> native
-        native -->|"Yes"| readText
-        native -->|"No"| gemini
-        native -->|"No"| terra
-        readText --> extract
-        gemini --> unreadable
-        terra --> unreadable
-        unreadable -->|"Yes"| rescan
-        unreadable -->|"No or uncertain"| compare
-        compare --> extract
-        extract --> plan
-        plan --> viable
-        viable -->|"Yes"| verifyVegan
-        viable -->|"No or uncertain"| abstain
-        verifyVegan --> verified
-        verified -->|"Yes"| scalePlan
-        verified -->|"No or uncertain"| abstain
-        abstain --> scalePlan
-        scalePlan --> savePlans
-        savePlans --> prepareOutput
-    end
-
-    entry -->|"Upload file"| upload
-    entry -->|"Try example"| example
-
-    subgraph review ["Review"]
-        display["Show recipe and review flags in the selected language"]
-        inspect["Inspect excerpts and source page"]
-        resolve["Confirm or correct a recipe field"]
-        saveReview["Save decision and original evidence"]
-        display -.->|"Select item"| inspect
-        inspect -->|"Resolve a field"| resolve
-        resolve --> saveReview
-        saveReview -.->|"Review another field"| display
-    end
-
-    prepareOutput --> display
-    example --> display
-
-    subgraph adapt ["Adapt"]
-        options["Choose servings, vegan option, and output language"]
-        refreshPlan["Refresh plans for the reviewed recipe if needed"]
-        valid{"Serving counts valid?"}
-        correct["Ask for valid serving counts"]
-        requested{"Any adaptation requested?"}
-        base["Apply saved decisions to the original recipe"]
-        vegan["Apply the verified vegan plan if selected"]
-        scale["Compare outcomes and apply scaling rules in Python"]
-        outputLanguage["Select prepared language and insert current measures"]
-        output["Show recipe and keep original evidence"]
-        changes["Show changes and warnings"]
-        refreshPlan --> options
-        options --> valid
-        valid -->|"No"| correct
-        correct --> options
-        valid -->|"Yes or not required"| requested
-        requested -->|"Yes"| base
-        base --> vegan
-        vegan --> scale
-        scale --> changes
-        changes --> outputLanguage
-        requested -->|"No"| outputLanguage
-        outputLanguage --> output
-        changes -.->|"Change options"| options
-    end
-
-    display -->|"Open Adapt"| refreshPlan
-    saveReview -->|"Open Adapt"| refreshPlan
-    changes -.->|"Open flagged field"| inspect
-    output --> download(["Export JSON report"])
-
-    style reading fill:#E9F2FA,stroke:#8AA9C6,color:#1E1E1E
-    style review fill:#F0F4FA,stroke:#9AAFC8,color:#1E1E1E
-    style adapt fill:#E9F2FA,stroke:#8AA9C6,color:#1E1E1E
-    style correct fill:#FFECBD,stroke:#D5A43A,color:#1E1E1E
+    review -->|"Edit a field"| correction["Save the review decision with source evidence"]
+    correction --> review
+    review -->|"Open Adapt"| current["Reuse current plans or refresh stale plans and translations"]
+    current --> options["Choose servings, diet and output language"]
+    options --> apply["Apply verified vegan changes, then scale in Python when possible"]
+    apply --> display["Display adjusted recipe and warnings using prepared translations"]
+    display -->|"Change settings"| options
+    display -->|"Review a warning"| review
+    display -->|"Export"| report(["Download JSON with evidence and changes"])
 ```
 
-- Plain text and eligible digital PDFs go directly to extraction with their source text. For scanned PDFs, Gemini receives the file and Terra receives rasterized pages, with a PDF fallback above the local raster budget. Luna compares differing transcriptions, extracts the source recipe, and prepares a vegan plan from the validated fields.
-- The blur check can reject an upload only when both readers explicitly report unreadable text on every page and the image check corroborates severe blur. A PDF text layer prevents blur rejection.
-- Review keeps the original extraction and evidence alongside the reviewer's decisions. Unresolved fields and document-level alerts remain visible.
-- Adapt uses the reviewed recipe when decisions exist. Scaling requires a usable original serving count. Python applies the stored vegan plan before using the scaling rules for that variant. The export includes the original report, review decisions, both plans, and any adaptation.
+- Gemini reads the original PDF. Terra receives rendered pages or the original PDF above the raster budget. The blur check requires both OCR readers to flag every page and visual evidence of severe blur.
+- The original recipe remains available when the vegan plan cannot be verified. Changing the yield requires a stated or user-provided baseline. The app flags effects it cannot apply safely.
+- Changing servings uses the local Python calculation. Changing the language uses the prepared display output. Export preserves the original evidence and review decisions.
