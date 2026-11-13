@@ -251,8 +251,6 @@ def plan_vegan_recipe(openai: OpenAIClient, recipe: dict, extraction_issues: lis
                 prompt += (
                     f"\n\nThe previous response did not validate. {detail} "
                     "Use exact recipe paths and copy the before values verbatim. "
-                    "In rewritten steps and conditions, use only the replacement names. Do not refer to "
-                    "the replaced animal ingredients, including in phrases such as 'instead of'. "
                     "For a blocked verdict, return no edits and identify what prevents choosing a suitable substitute. "
                     "Leave missing amounts untouched without blocking otherwise suitable replacements."
                 )

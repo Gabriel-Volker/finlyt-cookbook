@@ -93,29 +93,62 @@ class VeganVerificationTests(unittest.TestCase):
         luna.respond.side_effect = [json.dumps(blocked), ProviderError("Unavailable")]
         self.assertEqual(plan_vegan_recipe(luna, source)["review_items"], blocked["review_items"])
 
-    def test_planner_retries_a_proposal_that_keeps_animal_ingredient_in_a_step(self):
-        source = self.plan("vegan baking block")
-        changes = source["changes"]
-        invalid = proposal([changes[0], {**changes[1], "after": "Cream the butter with the vegan baking block."}])
-        luna = Mock()
-        luna.respond.side_effect = [json.dumps(invalid), json.dumps(proposal(changes))]
-        with self.assertLogs("cookbook_ocr.pipeline", level="WARNING"):
-            plan = plan_vegan_recipe(luna, self.recipe)
-        self.assertEqual(plan["status"], "ready")
-        self.assertIn("/steps/0/instruction", luna.respond.call_args.kwargs["input"][0]["content"])
+    def test_verifier_can_accept_ingredient_references_in_context(self):
+        for original, replacement, before, after in (
+            ("Sahne", "ungesüßte pflanzliche Sahne", "Mit Sahne aufgießen.",
+             "Mit ungesüßter pflanzlicher Sahne aufgießen."),
+            ("leite", "leite vegetal (de aveia)", "Aqueça o leite.", "Aqueça o leite de aveia."),
+            ("milk", "unsweetened oat milk", "Use the listed liquid. Do not add milk.",
+             "Use the listed liquid. Do not add milk."),
+        ):
+            with self.subTest(ingredient=original):
+                source = recipe("4", [ingredient("liquid", original)], [
+                    step(before, "liquid", condition="When the sauce starts bubbling"),
+                ])
+                changes = [{
+                    "path": "/ingredients/0/name", "before": original, "after": replacement,
+                    "reason": "Use a plant-based liquid.",
+                }]
+                if before != after:
+                    changes.append({
+                        "path": "/steps/0/instruction", "before": before, "after": after,
+                        "reason": "Name the replacement in this step.",
+                    })
+                plan = validate_vegan_plan(source, proposal(changes))
+                self.assertEqual(plan["status"], "ready")
+                self.gemini.respond_structured.return_value = clear_verdict(replacement)
+                verified = verify_vegan_plan(self.gemini, source, plan)
+                sent = self.gemini.respond_structured.call_args.args[2]
+                self.assertEqual(sent["steps_to_check"], {
+                    "/steps/0/instruction": after, "/steps/0/condition": "When the sauce starts bubbling",
+                    "/steps/0/duration": None,
+                })
+                self.assertTrue(vegan_plan_usable(source, verified))
+                adapted = adapt_recipe(source, vegan=True, vegan_plan=verified)["recipe"]
+                self.assertEqual(adapted["steps"][0]["instruction"]["value"], after)
+                self.assertEqual(source["steps"][0]["instruction"]["value"], before)
 
-    def test_accepts_inflected_replacement_name_in_a_linked_german_step(self):
-        before = "Mit Rotwein ablöschen."
-        source = recipe("4", [ingredient("wine", "Rotwein")], [step(before, "wine")])
-        changes = [
-            {"path": "/ingredients/0/name", "before": "Rotwein", "after": "vegan gekennzeichneter Rotwein",
-             "reason": "Use wine confirmed vegan."},
-            {"path": "/steps/0/instruction", "before": before, "after": "Mit vegan gekennzeichnetem Rotwein ablöschen.",
-             "reason": "Use the confirmed wine."},
-        ]
-        self.assertEqual(validate_vegan_plan(source, proposal(changes))["status"], "ready")
-        changes[1]["after"] = "Mit vegan gekennzeichnetem Rotwein und Rotwein ablöschen."
-        self.assertEqual(validate_vegan_plan(source, proposal(changes))["status"], "needs_review")
+    def test_verifier_blocks_a_retained_animal_ingredient_in_a_final_step(self):
+        name_change, step_change = self.plan("vegan baking block")["changes"]
+        path = step_change["path"]
+        for additional_changes, final_text, excerpt in (
+            ([], step_change["before"], "the solid butter"),
+            ([{**step_change, "after": "Cream the vegan baking block and dairy butter with sugar."}],
+             "Cream the vegan baking block and dairy butter with sugar.", "and dairy butter"),
+        ):
+            with self.subTest(final_text=final_text):
+                plan = validate_vegan_plan(self.recipe, proposal([name_change, *additional_changes]))
+                finding = {
+                    "path": path, "kind": "animal_ingredient", "reason": "The step still requires dairy butter.",
+                    "evidence": [{"path": path, "quote": excerpt}],
+                }
+                self.gemini.respond_structured.return_value = finding_verdict(finding)
+                verified = verify_vegan_plan(self.gemini, self.recipe, plan)
+                self.assertEqual(self.gemini.respond_structured.call_args.args[2]["steps_to_check"][path], final_text)
+                self.assertEqual(verified["verification"]["findings"], [finding])
+                self.assertEqual(verified["changes"], [])
+                with self.assertRaisesRegex(ValueError, "still requires dairy butter"):
+                    adapt_recipe(self.recipe, vegan=True, vegan_plan=verified)
 
     def test_preserves_a_workable_substitute_without_review(self):
         source = self.plan("vegan baking block")

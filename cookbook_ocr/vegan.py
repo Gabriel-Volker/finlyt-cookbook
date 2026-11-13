@@ -192,9 +192,10 @@ def _measure_pattern(recipe: dict) -> re.Pattern:
     units = set(known_units()) | TIME_UNITS | OTHER_UNITS
     units.update(item["unit"]["value"] for item in recipe["ingredients"] if item["unit"]["value"])
     unit_pattern = "|".join(_phrase(unit) for unit in sorted(units, key=lambda unit: (-len(unit), unit)))
+    time_pattern = "|".join(sorted(TIME_UNITS, key=lambda unit: (-len(unit), unit)))
     return re.compile(
         rf"(?<![\d/⁄∕])(?P<number>{QUANTITY_PATTERN})(?![\d/⁄∕])"
-        rf"(?:(?P<ordinal>\.(?=\s*Tag(?:e|en)?\b))?\s*(?P<unit>{unit_pattern})(?!\w))?",
+        rf"(?:(?P<ordinal>\.(?=\s*(?:{time_pattern})(?!\w)))?\s*(?P<unit>{unit_pattern})(?!\w))?",
         re.IGNORECASE,
     )
 
@@ -244,44 +245,16 @@ def _preserves_ingredient_measures(pattern: re.Pattern, recipe: dict, edits: dic
         new_name = edits.get(f"{base}/name", {}).get("after", name)
         new_prep = edits.get(f"{base}/preparation", {}).get("after", prep)
         amounts = _ingredient_measures(pattern, before, name, prep)
-        if amounts and amounts != _ingredient_measures(pattern, after, new_name, new_prep):
+        matched = _ingredient_measures(pattern, after, new_name, new_prep)
+        # A literal match can prove a conflict. Contextual verification handles
+        # names with different inflections, shorthand, or word order.
+        if amounts and Counter(matched) - Counter(amounts):
             return False
     return True
 
 
 def _text(value) -> bool:
     return isinstance(value, str) and bool(value.strip())
-
-
-def _linked_name_pattern(name: str, *, replacement: bool = False) -> re.Pattern:
-    # A qualified replacement can keep the original noun with inflected German
-    # modifiers, e.g. "veganer Fond" becomes "veganen Fond" in a step.
-    words = name.split()
-    phrases = []
-    for word in words[:-1]:
-        modifier = re.fullmatch(r"(vegan|pflanzlich|gekennzeichnet)(?:e|en|em|er|es)?", word, re.I) if replacement else None
-        phrases.append(rf"{modifier[1]}(?:e|en|em|er|es)?" if modifier else re.escape(word))
-    phrase = r"\s+".join([*phrases, re.escape(words[-1])])
-    return re.compile(rf"(?<!\w){phrase}(?!\w)", re.I)
-
-
-def _review_linked_steps(recipe: dict, edits: dict, warn: Callable[[str, str], None]) -> None:
-    """Flag literal references to a replaced ingredient left in linked steps."""
-    substitutions = {}
-    for index, ingredient in enumerate(recipe["ingredients"]):
-        edit = edits.get(f"/ingredients/{index}/name")
-        if edit:
-            substitutions[ingredient["id"]] = (
-                _linked_name_pattern(edit["before"]),
-                _linked_name_pattern(edit["after"], replacement=True),
-            )
-    for index, step in enumerate(recipe["steps"]):
-        references = [substitutions[key] for key in step["ingredient_ids"] if key in substitutions]
-        for name in ("instruction", "condition"):
-            path = f"/steps/{index}/{name}"
-            text = edits.get(path, {}).get("after", step[name]["value"]) or ""
-            if any(before.search(after.sub("", text)) for before, after in references):
-                warn(path, "Check this step. It still refers to an ingredient that the vegan plan replaces.")
 
 
 def validate_vegan_plan(recipe: dict, proposal: dict) -> dict:
@@ -390,7 +363,6 @@ def validate_vegan_plan(recipe: dict, proposal: dict) -> dict:
             del edits[path]
             warn(path, "Check the proposed vegan change. It would change a measure or add a number.")
 
-    _review_linked_steps(recipe, edits, warn)
     if warnings:
         return _vegan_plan(recipe, "needs_review", "insufficient_information", warnings[0]["reason"], [], warnings)
     return _vegan_plan(recipe, "ready", None, None, list(edits.values()), [])

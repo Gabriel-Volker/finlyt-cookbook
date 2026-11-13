@@ -78,7 +78,13 @@ def _validated_finding(finding, recipe: dict, fields: dict, changes: dict) -> di
         reference = {"path": source_path, "quote": quote}
         if reference not in evidence:
             evidence.append(reference)
-    if not has_source_quote or (kind in {"animal_ingredient", "unsupported_substitute"} and not has_result_quote):
+    # A retained or newly added animal ingredient is a property of the final
+    # recipe. A quote from that field is enough even if the source never used it.
+    if kind == "animal_ingredient":
+        grounded = has_result_quote
+    else:
+        grounded = has_source_quote and (kind != "unsupported_substitute" or has_result_quote)
+    if not grounded:
         return None
     return {"path": path, "kind": kind, "reason": reason.strip(), "evidence": evidence}
 
@@ -109,6 +115,12 @@ def verify_vegan_plan(gemini: GeminiClient | None, recipe: dict, plan: dict) -> 
         return plan
     replacements = proposed_vegan_substitutions(plan["changes"])
     ingredient_names = vegan_ingredient_names(recipe, plan["changes"])
+    changes = {change["path"]: change["after"] for change in plan["changes"]}
+    steps_to_check = {}
+    for index, step in enumerate(recipe["steps"]):
+        for name in REVIEW_FIELDS["steps"]:
+            path = f"/steps/{index}/{name}"
+            steps_to_check[path] = changes.get(path, step[name]["value"])
     prompt = (PROMPTS_DIR / "verify_vegan.system.txt").read_text(encoding="utf-8")
     schema = json.loads((PROMPTS_DIR / "verify_vegan.schema.json").read_text(encoding="utf-8"))
     approvals_schema = schema["properties"]["approved_substitutions"]
@@ -124,6 +136,7 @@ def verify_vegan_plan(gemini: GeminiClient | None, recipe: dict, plan: dict) -> 
             "ingredients_to_check": [
                 {"path": path, "ingredient": name} for path, name in ingredient_names.items()
             ],
+            "steps_to_check": steps_to_check,
         })
     except (ProviderError, ValueError):
         return unavailable("Gemini could not verify the vegan plan.")
@@ -159,7 +172,6 @@ def verify_vegan_plan(gemini: GeminiClient | None, recipe: dict, plan: dict) -> 
         for index, record in enumerate(recipe[collection])
         for name in names
     }
-    changes = {change["path"]: change["after"] for change in plan["changes"]}
     findings = []
     for item in result["findings"]:
         finding = _validated_finding(item, recipe, fields, changes)

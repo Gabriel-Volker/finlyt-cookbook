@@ -456,7 +456,10 @@ class AdaptationTests(unittest.TestCase):
 
     def test_vegan_plan_cannot_be_used_after_source_changes(self):
         source = recipe("2", [ingredient("meat", "beef")], [step("Brown the beef.", "meat")])
-        plan = vegan_plan(source, [("/ingredients/0/name", "beef", "seitan")])
+        plan = vegan_plan(source, [
+            ("/ingredients/0/name", "beef", "seitan"),
+            ("/steps/0/instruction", "Brown the beef.", "Brown the seitan."),
+        ])
         source["ingredients"][0]["name"]["value"] = "lamb"
         with self.assertRaisesRegex(ValueError, "plan"):
             adapt_recipe(source, vegan=True, vegan_plan=plan)
@@ -479,13 +482,4 @@ class AdaptationTests(unittest.TestCase):
         self.assertEqual(plan["status"], "needs_review")
         self.assertEqual(plan["changes"], [])
         with self.assertRaisesRegex(ValueError, "change a measure"):
-            adapt_recipe(source, vegan=True, vegan_plan=plan)
-
-    def test_vegan_plan_flags_a_linked_step_that_still_names_the_original_ingredient(self):
-        source = recipe("2", [ingredient("cheese", "Parmesan")], [step("Sprinkle Parmesan on top.", "cheese")])
-        plan = vegan_plan(source, [("/ingredients/0/name", "Parmesan", "vegan Parmesan")])
-        self.assertEqual(plan["status"], "needs_review")
-        self.assertEqual(plan["changes"], [])
-        self.assertEqual(plan["review_items"][0]["path"], "/steps/0/instruction")
-        with self.assertRaisesRegex(ValueError, "still refers to an ingredient"):
             adapt_recipe(source, vegan=True, vegan_plan=plan)

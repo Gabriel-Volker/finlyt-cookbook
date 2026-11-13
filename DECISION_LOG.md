@@ -124,3 +124,7 @@ Gabriel chose to offer a vegan variant only when a real ingredient performs the 
 ## 2026-11-13 18:08 · Assess vegan suitability separately from quantity
 
 Gabriel clarified that the app can offer a verified vegan substitute even when the source does not specify how much to use. Preserve the unknown measure and flag it in the adaptation. Require abstention when an unknown fact prevents verifying the ingredient or its use in the method.
+
+## 2026-11-13 19:02 · Generalize validation across recipes
+
+Gabriel asked that fixes apply to recipes generally. Treat specific OCR failures as regression cases. Have the independent verifier interpret final ingredients and steps in context, including grammatical variants and negations. Keep deterministic validation for recipe fields and recognizable numeric conflicts.
