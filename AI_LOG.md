@@ -140,3 +140,18 @@ Gabriel asked Codex to rasterize both recipe pages and compare their cost and tr
 Both requests reported zero cache reads and three ordinary input tokens. Estimates use the [standard Luna rates](https://developers.openai.com/api/docs/pricing) and [30-minute cache-write accounting](https://developers.openai.com/api/docs/guides/prompt-caching). PNGs used 59.4% fewer input tokens and cost 31.6% less in this pair. The image request generated more reasoning tokens and took 6.88 seconds longer. The earlier PDF run cost an estimated $0.00282455.
 
 Both formats recovered all three measured ingredients, the title, the year and all four illustration labels. The recipe body matched exactly across the two requests and the earlier PDF run. The PNGs recovered `Josefines` as written in the scan. The fresh PDF request gave `Josefinens`, while the earlier PDF request gave `Jose[unleserlich]ines`. The PNG response also put the second page's illustration labels after the recipe, where they appear on the page. Transcriptions and usage metadata are saved locally. These are single runs for each format in the paired comparison.
+
+## 2026-11-13 14:48:29–14:49:24 · Gemini PDF and PNG comparison
+
+Gabriel asked for the same benchmark on Gemini and made pipeline rasterization conditional on lower cost and fast local conversion. Codex ran Gemini 3.1 Flash-Lite with the original transcription prompt, the original PDF and the two native-size Poppler PNGs from the Luna test. Both images went into one request. Codex compared the formats at the API defaults and again with low media resolution for both formats.
+
+| Input | Input tokens | Visual tokens | Output tokens | API time | Estimated USD |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| PDF, default | 1,178 | 1,064 | 436 | 8.05 s | $0.0009485 |
+| Two PNGs, default | 2,274 | 2,160 | 430 | 10.06 s | $0.0012135 |
+| PDF, low | 634 | 520 | 429 | 3.56 s | $0.0008020 |
+| Two PNGs, low | 634 | 520 | 431 | 6.20 s | $0.0008050 |
+
+Estimates use the [standard Gemini 3.1 Flash-Lite rates](https://aistudio.google.com/docs/pricing#gemini-3.1-flash-lite). No call reported cached or thinking tokens. All four transcriptions recovered the title, `Josefines`, `Anno 1887`, half a litre each of vinegar and water, and four onions. The low-detail PNG output wrote the fractions as `1/2`. Differences outside the recipe included section labels and descriptions of the illustrations. Local transcriptions and usage records are saved with the benchmark.
+
+The two PNGs cost 27.9% more at the default and used the same input tokens as the PDF at low detail. The low-detail PNG response had two extra output tokens. Native-size PNG rendering on this machine took about 0.4 seconds of CPU with PyMuPDF and Pillow in a separate local measurement. Codex left the PDF route in the pipeline because the Gemini test did not show a cost reduction from rasterizing.

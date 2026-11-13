@@ -68,3 +68,7 @@ Both OCR providers receive the fixed prompt separately from the attachment. The 
 Gabriel chose to require an original serving count whenever the recipe does not give a single reliable yield. Codex used exact rational arithmetic and limited unit conversions to g/kg and mL/L. Quantities in steps are changed when they can be tied to the same ingredient measure. Cooking temperatures and times are independent of the serving factor. Household units are kept in their original system, and unquantified ingredients stay unquantified.
 
 Apply scaling first and then vegan rules. The rules preserve ingredient IDs and update references and techniques in the steps. For Sauerbraten, that includes sautéing smoked tofu and removing the original meat-only marinating and resting times. The vegan vocabulary is limited. Recognized unsupported animal ingredients are sent for review. The adapted report records each changed field and keeps the original recipe and evidence for comparison.
+
+## 2026-11-13 14:49 · Keep direct PDF input
+
+Gabriel made pipeline rasterization conditional on cost savings on Gemini as well as a fast conversion. On this scan, Gemini used more input tokens for PNGs at default detail and the same number at low detail. The [benchmark](AI_LOG.md#2026-11-13-144829144924--gemini-pdf-and-png-comparison) records the result. Direct PDF remains the pipeline input.
