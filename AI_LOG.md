@@ -359,3 +359,7 @@ Gabriel asked whether the local Docker service was current and explained his pre
 ## 2026-11-13 19:17 · Check large PDF limits
 
 Gabriel asked whether large PDFs can fail to transcribe. Codex checked the web upload limit, Terra's rasterization fallback, the OCR output budgets, provider error handling, and the official PDF input limits. A dense PDF can fit within the web upload limit and still exhaust the OCR output budget. Either reader's incomplete response aborts the import. The rasterized Terra path checks coverage by page marker. The direct PDF paths do not check the returned markers against the physical page count. Codex recorded the limits in [PROBLEMS.md](PROBLEMS.md).
+
+## 2026-11-13 19:19–19:20 · Check a slow web import
+
+Gabriel reported a slow import of the original `Recipe.pdf`. Codex observed an active outbound API connection and monitored the Docker logs. Import returned HTTP 200 at 19:19:47. Adaptation and output requests also returned HTTP 200. The import shows one progress message while it waits for OCR, comparison, recipe extraction, and adaptation plans.
