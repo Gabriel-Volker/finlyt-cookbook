@@ -255,6 +255,8 @@ class WebTests(unittest.TestCase):
         original = deepcopy(report)
         decisions = [
             {"path": "/ingredients/0/quantity", "action": "correct", "value": "1/4"},
+            {"path": "/steps/0/instruction", "action": "correct",
+             "value": report["recipe"]["steps"][0]["instruction"]["value"].replace("1/2 l vinegar", "1/4 l vinegar")},
             {"path": "/servings", "action": "confirm", "value": "4"},
             {"path": f"/ingredients/{roast_index}/name", "action": "confirm", "value": "beef roast"},
             {"path": "/title", "action": "correct", "value": "Reviewed Sauerbraten"},
@@ -346,6 +348,50 @@ class WebTests(unittest.TestCase):
         status, _, response = self.request("POST", "/api/adapt", json.dumps(data), headers)
         self.assertEqual(status, 422)
         self.assertEqual(json.loads(response)["reason_code"], "verification_unavailable")
+
+    def test_review_saves_corrections_without_waiting_for_adaptation_providers(self):
+        source = recipe("4", [ingredient("sugar", "sugar", "1", "cup")], [step("Mix the sugar.", "sugar")])
+        data = {
+            "report": {"recipe": source, "vegan_plan": None, "scaling_plan": None},
+            "decisions": [{"path": "/ingredients/0/quantity", "action": "correct", "value": "2"}],
+            "refresh_plans": False,
+        }
+        headers = {"Content-Type": "application/json"}
+        with patch.object(CookbookHandler, "_refresh_plan") as vegan, patch.object(CookbookHandler, "_refresh_scaling") as scale:
+            status, _, body = self.request("POST", "/api/review", json.dumps(data), headers)
+            self.assertEqual(status, 200)
+            result = json.loads(body)
+            self.assertEqual(set(result), {"review"})
+            reviewed = result["review"]["recipe"]
+            self.assertEqual(reviewed["ingredients"][0]["quantity"]["value"], "2")
+            vegan.assert_not_called()
+            scale.assert_not_called()
+
+            vegan.return_value = {"status": "unavailable"}
+            scale.return_value = {"original": {"status": "ready"}}
+            status, _, body = self.request("POST", "/api/plans", json.dumps(data), headers)
+            self.assertEqual(status, 200)
+            self.assertEqual(json.loads(body), {"vegan_plan": vegan.return_value, "scaling_plan": scale.return_value})
+            self.assertEqual(vegan.call_args.args[1], reviewed)
+            self.assertEqual(scale.call_args.args[1], reviewed)
+
+    def test_servings_correction_reuses_verified_vegan_plan_without_a_provider(self):
+        source = recipe(None, [ingredient("oil", "olive oil")], [step("Add olive oil.", "oil")])
+        plan = vegan_plan(source, [])
+        data = {
+            "report": {"recipe": source, "vegan_plan": plan, "plan_decisions": []},
+            "decisions": [{"path": "/servings", "action": "correct", "value": "4"}],
+        }
+        with patch("cookbook_ocr.web.load_openai_key", side_effect=ValueError), patch(
+            "cookbook_ocr.web.plan_vegan_recipe",
+        ) as plan_vegan:
+            status, _, body = self.request("POST", "/api/plans", json.dumps(data), {"Content-Type": "application/json"})
+        self.assertEqual(status, 200)
+        refreshed = json.loads(body)["vegan_plan"]
+        self.assertEqual(refreshed["status"], "ready")
+        self.assertNotEqual(refreshed["recipe_fingerprint"], plan["recipe_fingerprint"])
+        self.assertEqual(refreshed["verification"], plan["verification"])
+        plan_vegan.assert_not_called()
 
     def test_adapt_applies_verified_vegan_example_with_missing_amounts(self):
         assets = Path(__file__).resolve().parents[1] / "cookbook_ocr" / "web_assets"

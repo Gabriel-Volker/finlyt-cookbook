@@ -1,8 +1,11 @@
 import unittest
 from copy import deepcopy
+from unittest.mock import Mock
 
 from cookbook_ocr.adaptation import adapt_recipe
-from cookbook_ocr.scaling_plan import validate_scaling_plan
+from cookbook_ocr.pipeline import _classify_scaling
+from cookbook_ocr.review import review_recipe
+from cookbook_ocr.scaling_plan import rebase_scaling_plan, scaling_plan_matches, validate_scaling_plan
 from test_adaptation import ingredient, recipe, scaling_rule, step
 
 
@@ -17,6 +20,82 @@ def verified_plan(source, luna_rules, gemini_rules):
 
 
 class ScalingVerificationTests(unittest.TestCase):
+    def test_recovers_valid_rules_across_provider_attempts_and_flags_other_ingredients(self):
+        source = recipe("2", [ingredient("water", "water", "½", "l"), ingredient("flour", "flour", "100", "g"),
+                              ingredient("salt", "salt", "2", "g")],
+                        [step("Add ½ l water and 100 g flour, then season with 2 g salt.", "water", "flour", "salt")])
+        wrong_quote = scaling_rule("salt", evidence=(("/steps/0/instruction", "12 g salt"),))
+        respond = Mock(side_effect=[
+            {"rules": [scaling_rule("water"), wrong_quote]},
+            {"rules": [scaling_rule("flour"), wrong_quote]},
+        ])
+
+        with self.assertLogs("cookbook_ocr.pipeline", level="WARNING"):
+            plan = _classify_scaling(source, "Luna", respond)
+        self.assertEqual(respond.call_count, 2)
+        self.assertEqual(plan["status"], "needs_review")
+        self.assertEqual([rule["mode"] for rule in plan["rules"]], ["proportional", "proportional", "review"])
+        self.assertIn("quote verified text", plan["rules"][2]["reason"])
+
+        result = adapt_recipe(source, servings=3, scaling_plan={"original": plan})
+        self.assertEqual([item["quantity"]["value"] for item in result["recipe"]["ingredients"]], ["750", "150", "2"])
+        self.assertEqual(result["recipe"]["steps"][0]["instruction"]["value"],
+                         "Add 750 ml water and 150 g flour, then season with 2 g salt.")
+        self.assertEqual([item["path"] for item in result["review_items"]], ["/ingredients/2/quantity"])
+
+    def test_recovers_flattened_whitespace_without_accepting_invented_evidence(self):
+        original = "Use 20 ml oil once\nfor the whole recipe."
+        source = recipe("4", [ingredient("oil", "oil", "20", "ml")], [step(original, "oil")])
+        fixed = scaling_rule("oil", "fixed", evidence=(("/steps/0/instruction", original.replace("\n", " ")),))
+        plan = validate_scaling_plan(source, {"rules": [fixed]})
+        self.assertEqual(plan["rules"][0]["mode"], "fixed")
+        self.assertEqual(plan["rules"][0]["evidence"][0]["quote"], original)
+
+    def test_holds_reviewed_quantity_until_the_linked_step_agrees(self):
+        source = recipe("2", [ingredient("onions", "onions", "4"), ingredient("salt", "salt", "2", "g")],
+                        [step("Add 4 onions and 2 g salt.", "onions", "salt")])
+        quantity = {"path": "/ingredients/0/quantity", "action": "correct", "value": "5"}
+        instruction = {"path": "/steps/0/instruction", "action": "correct", "value": "Add 5 onions and 2 g salt."}
+        rules = [scaling_rule("onions"), scaling_rule("salt")]
+
+        reviewed = review_recipe(source, [quantity])["recipe"]
+        result = adapt_recipe(reviewed, servings=4, scaling_plan=verified_plan(reviewed, rules, rules))
+        self.assertEqual([item["quantity"]["value"] for item in result["recipe"]["ingredients"]], ["5", "4"])
+        self.assertEqual(result["recipe"]["steps"][0]["instruction"]["value"], "Add 4 onions and 4 g salt.")
+        self.assertEqual(result["scale"]["ingredients"][0]["mode"], "review")
+        self.assertEqual([item["path"] for item in result["review_items"]], ["/steps/0/instruction"])
+
+        reviewed = review_recipe(source, [quantity, instruction])["recipe"]
+        result = adapt_recipe(reviewed, servings=4, scaling_plan=verified_plan(reviewed, rules, rules))
+        self.assertEqual([item["quantity"]["value"] for item in result["recipe"]["ingredients"]], ["10", "4"])
+        self.assertEqual(result["recipe"]["steps"][0]["instruction"]["value"], "Add 10 onions and 4 g salt.")
+
+    def test_title_corrections_reuse_rules_but_yield_corrections_require_revalidation(self):
+        source = recipe("2", [ingredient("water", "water", "½", "l")], [step("Add ½ l water.", "water")])
+        plan = validate_scaling_plan(source, {"rules": [scaling_rule("water")]})
+        revised = review_recipe(source, [{"path": "/title", "action": "correct", "value": "New title"}])["recipe"]
+        self.assertTrue(scaling_plan_matches(revised, plan))
+        revised["servings"]["value"] = "3"
+        self.assertFalse(scaling_plan_matches(revised, plan))
+
+    def test_offline_rebase_keeps_unaffected_verified_rules(self):
+        source = recipe("2", [ingredient("water", "water", "½", "l"), ingredient("salt", "salt", "2", "g")],
+                        [step("Add ½ l water.", "water"), step("Stir in 2 g salt.", "salt")])
+        rules = [scaling_rule("water"), scaling_rule("salt")]
+        plan = verified_plan(source, rules, rules)["original"]
+        correction = {"path": "/ingredients/1/quantity", "action": "correct", "value": "3"}
+        revised = review_recipe(source, [correction])["recipe"]
+
+        updated = rebase_scaling_plan(source, revised, plan)
+        self.assertEqual(updated["recovered_ingredients"], ["salt"])
+        self.assertEqual(updated["verification"]["recovered_ingredients"], ["salt"])
+        self.assertEqual([rule["mode"] for rule in updated["rules"]], ["proportional", "review"])
+        self.assertEqual(updated["verification"]["rules"], updated["rules"])
+        result = adapt_recipe(revised, servings=4, scaling_plan={"original": updated})
+        self.assertEqual(result["scale"]["verification"]["status"], "completed")
+        self.assertEqual([item["quantity"]["value"] for item in result["recipe"]["ingredients"]], ["1", "3"])
+        self.assertEqual(result["recipe"]["steps"][0]["instruction"]["value"], "Add 1 l water.")
+
     def test_does_not_scale_an_ingredient_with_an_unresolved_linked_instruction(self):
         unresolved = step(None, "oil")
         unresolved["instruction"]["status"] = "needs_review"

@@ -24,9 +24,12 @@ from .pipeline import UnreadableRecipeError, plan_vegan_recipe, refresh_scaling_
 from .providers import GeminiClient, MIME_TYPES, OpenAIClient, ProviderError
 from .raster import run_pdf_task
 from .review import review_recipe
-from .scaling_plan import SCALING_RULE_DISPLAY_TEXTS
+from .scaling_plan import SCALING_RULE_DISPLAY_TEXTS, rebase_scaling_plan
 from .translation import TranslationError, translate_output
-from .vegan import VEGAN_AMOUNT_WARNING, VEGAN_UNIT_WARNING, unavailable_vegan_plan, vegan_plan_matches, vegan_plan_usable
+from .vegan import (
+    VEGAN_AMOUNT_WARNING, VEGAN_UNIT_WARNING, rebind_vegan_plan, unavailable_vegan_plan,
+    vegan_plan_matches, vegan_plan_usable,
+)
 from .vegan_verification import verify_vegan_plan
 
 
@@ -197,14 +200,21 @@ class CookbookHandler(BaseHTTPRequestHandler):
             if url.path == "/api/review":
                 data, report = self._recipe_request()
                 review = review_recipe(report["recipe"], data.get("decisions"))
+                refresh = data.get("refresh_plans", True)
+                if type(refresh) is not bool:
+                    raise RequestError("Plan refresh preference must be true or false.")
                 response = {"review": review}
-                if "vegan_plan" in report:
-                    response["vegan_plan"] = self._refresh_plan(report, review["recipe"])
-                if "scaling_plan" in report:
-                    response["scaling_plan"] = self._refresh_scaling(
-                        report, review["recipe"], response.get("vegan_plan"),
-                    )
+                if refresh:
+                    response.update(self._plans(report, review["recipe"], existing_only=True))
                 self._json(response)
+                return
+            if url.path == "/api/plans":
+                data, report = self._recipe_request()
+                review = review_recipe(report["recipe"], data.get("decisions", []))
+                retry = data.get("retry", False)
+                if type(retry) is not bool:
+                    raise RequestError("Plan retry preference must be true or false.")
+                self._json(self._plans(report, review["recipe"], retry=retry))
                 return
             if url.path == "/api/adapt":
                 response, status = self._adapt()
@@ -299,39 +309,75 @@ class CookbookHandler(BaseHTTPRequestHandler):
                 raise RequestError("The request contains an invalid recipe object.") from None
         return {"output": {"language": language, **output}}
 
-    def _refresh_plan(self, report: dict, recipe: dict) -> dict:
-        plan = report["vegan_plan"]
-        if report.get("example") is True:
-            if vegan_plan_matches(recipe, plan):
-                return plan
+    def _plans(self, report: dict, recipe: dict, *, existing_only: bool = False, retry: bool = False) -> dict:
+        previous = (review_recipe(report["recipe"], report["plan_decisions"])["recipe"]
+                    if "plan_decisions" in report else report["recipe"])
+        plans = {}
+        if not existing_only or "vegan_plan" in report:
+            plans["vegan_plan"] = self._refresh_plan(report, recipe, previous=previous, retry=retry)
+        if not existing_only or "scaling_plan" in report:
+            plans["scaling_plan"] = self._refresh_scaling(report, recipe, plans.get("vegan_plan"), previous=previous, retry=retry)
+        return plans
+
+    def _refresh_plan(self, report: dict, recipe: dict, *, previous: dict, retry: bool = False) -> dict:
+        plan = report.get("vegan_plan")
+        if not vegan_plan_matches(recipe, plan) and isinstance(plan, dict) and previous != recipe:
+            plan = rebind_vegan_plan(previous, recipe, plan) or plan
+        example_recipe = report.get("example") is True
+        if example_recipe and not vegan_plan_matches(recipe, plan):
             example = json.loads((ASSETS / "example.json").read_text(encoding="utf-8"))
             if vegan_plan_matches(recipe, example.get("vegan_plan")):
                 return example["vegan_plan"]
-            return unavailable_vegan_plan(
-                recipe, "insufficient_information", "The offline example plan no longer matches the reviewed recipe.",
-            )
-        if not vegan_plan_matches(recipe, plan):
+        retryable = isinstance(plan, dict) and plan.get("status") in {"needs_review", "unavailable"}
+        if not vegan_plan_matches(recipe, plan) or (retry and retryable):
             try:
                 key = load_openai_key()
             except (OSError, ValueError):
+                reason = ("This edited example needs API keys to rebuild its vegan plan." if example_recipe
+                          else "Set OPENAI_API_KEY to refresh the vegan plan.")
                 return unavailable_vegan_plan(
-                    recipe, "provider_unavailable", "Set OPENAI_API_KEY to refresh the vegan plan.",
+                    recipe, "provider_unavailable", reason,
                 )
             plan = plan_vegan_recipe(OpenAIClient(key), recipe, report.get("extraction_issues"))
         if plan["status"] != "ready" or vegan_plan_usable(recipe, plan):
             return plan
         return verify_vegan_plan(optional_gemini_client(), recipe, plan)
 
-    def _refresh_scaling(self, report: dict, recipe: dict, vegan_plan: dict | None) -> dict:
+    def _refresh_scaling(self, report: dict, recipe: dict, vegan_plan: dict | None, *, previous: dict, retry: bool = False) -> dict:
+        stored = report.get("scaling_plan")
         if report.get("example") is True:
             example = json.loads((ASSETS / "example.json").read_text(encoding="utf-8"))
-            return refresh_scaling_plans(None, recipe, vegan_plan, example.get("scaling_plan"))
+            if recipe == example["recipe"]:
+                return refresh_scaling_plans(None, recipe, vegan_plan, example.get("scaling_plan"))
         try:
             client = OpenAIClient(load_openai_key())
         except (OSError, ValueError):
             client = None
+        if isinstance(stored, dict):
+            stored = dict(stored)
+            prior_vegan = report.get("vegan_plan")
+            versions = {"original": (previous, recipe)}
+            if vegan_plan_usable(previous, prior_vegan) and vegan_plan_usable(recipe, vegan_plan):
+                versions["vegan"] = (
+                    adapt_recipe(previous, vegan=True, vegan_plan=prior_vegan)["recipe"],
+                    adapt_recipe(recipe, vegan=True, vegan_plan=vegan_plan)["recipe"],
+                )
+            for variant, (before, after) in versions.items():
+                prior = stored.get(variant)
+                if client is None or {key: value for key, value in before.items() if key != "title"} == {
+                    key: value for key, value in after.items() if key != "title"
+                }:
+                    stored[variant] = rebase_scaling_plan(before, after, prior) or prior
+            if retry and client is not None:
+                for variant, plan in list(stored.items()):
+                    if not isinstance(plan, dict):
+                        continue
+                    if plan.get("recovered_ingredients"):
+                        del stored[variant]
+                    elif (plan.get("verification") or {}).get("recovered_ingredients"):
+                        stored[variant] = {key: value for key, value in plan.items() if key != "verification"}
         return refresh_scaling_plans(
-            client, recipe, vegan_plan, report.get("scaling_plan"), gemini=optional_gemini_client(),
+            client, recipe, vegan_plan, stored, gemini=optional_gemini_client() if client else None,
         )
 
     def _adapt(self) -> tuple[dict, HTTPStatus]:

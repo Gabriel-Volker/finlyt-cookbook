@@ -2,10 +2,12 @@
 
 import json
 import re
+import unicodedata
 from collections import Counter
 from collections.abc import Callable
 from hashlib import sha256
 
+from .extraction import UNREADABLE
 from .quantities import QUANTITY_PATTERN, known_units
 from .review import REVIEW_FIELDS
 
@@ -19,6 +21,20 @@ VEGAN_AMOUNT_WARNING = "Confirm the amount of the vegan replacement."
 VEGAN_UNIT_WARNING = "Confirm the unit for the vegan replacement."
 PLAN_STATUSES = ("ready", "needs_review", "unavailable")
 REMOVABLE_FIELDS = {"preparation", "condition", "duration"}
+# Match unambiguous standalone names. Qualifiers such as "vegan butter" or
+# "coconut milk" must be evaluated in context by the verifier.
+_ANIMAL_NAMES = frozenset({
+    "bacon", "beef", "beef drippings", "beef roast", "beef stock", "butter", "chicken",
+    "chicken stock", "cow's milk", "cream", "dairy cream", "dairy butter", "egg", "egg white",
+    "egg whites", "egg yolk", "egg yolks", "eggs", "fish sauce", "gelatin", "ghee", "ham",
+    "honey", "lard", "milk", "pork", "sour cream", "whey",
+    "bratenfond", "ei", "eier", "eigelb", "gelatine", "huhnerbruhe", "honig", "kuhmilch",
+    "milch", "molke", "rinderbraten", "rinderbruhe", "rindfleisch", "sahne", "schinken", "schmalz",
+    "schweinefleisch", "speck",
+    "banha", "caldo de carne", "caldo de frango", "carne bovina", "carne de porco", "creme de leite",
+    "frango", "gelatina", "leite", "leite condensado", "leite de vaca", "manteiga", "mel", "ovo", "ovos",
+    "presunto", "soro de leite", "toucinho",
+})
 TIME_UNITS = frozenset(
     "s sec secs second seconds sek sekunde sekunden segundo segundos "
     "min mins minute minutes minuten minuto minutos "
@@ -80,6 +96,29 @@ def vegan_substitutions_approved(changes: list, approvals) -> bool:
     return True
 
 
+def vegan_ingredient_names(recipe: dict, changes: list) -> dict[str, str | None]:
+    replacements = proposed_vegan_substitutions(changes)
+    names = {}
+    for index, ingredient in enumerate(recipe["ingredients"]):
+        path = f"/ingredients/{index}/name"
+        names[path] = replacements.get(path, ingredient["name"]["value"])
+    return names
+
+
+def vegan_animal_review(ingredient_names: dict[str, str | None]) -> list[dict]:
+    """Catch clear animal ingredients even if the verifier overlooks them."""
+    findings = []
+    for path, name in ingredient_names.items():
+        if not name:
+            continue
+        normalized = unicodedata.normalize("NFKD", name.casefold().replace("’", "'"))
+        normalized = "".join(char for char in normalized if not unicodedata.combining(char))
+        normalized = re.sub(r"(?<=\w)-[ \t]*\r?\n[ \t]*(?=\w)", "", normalized)
+        if " ".join(normalized.split()).strip(".,") in _ANIMAL_NAMES:
+            findings.append({"path": path, "reason": "The proposed recipe still contains an animal ingredient."})
+    return findings
+
+
 def vegan_plan_usable(recipe: dict, plan: dict | None) -> bool:
     if not vegan_plan_matches(recipe, plan) or plan["status"] != "ready" or plan.get("review_items") != []:
         return False
@@ -91,7 +130,22 @@ def vegan_plan_usable(recipe: dict, plan: dict | None) -> bool:
         and plan.get("reason_code") is None and plan.get("reason") is None
         and isinstance(plan.get("changes"), list)
         and vegan_substitutions_approved(plan["changes"], verification.get("approved_substitutions"))
+        and not vegan_source_review(recipe)
+        and not vegan_animal_review(vegan_ingredient_names(recipe, plan["changes"]))
     )
+
+
+def rebind_vegan_plan(previous_recipe: dict, recipe: dict, plan: dict | None) -> dict | None:
+    """Retain verified ingredient and method decisions after a title or yield edit."""
+    if not vegan_plan_usable(previous_recipe, plan):
+        return None
+    relevant = set(previous_recipe) | set(recipe)
+    relevant.discard("servings")
+    if all(change["path"] != "/title" for change in plan["changes"]):
+        relevant.discard("title")
+    if any(previous_recipe.get(key) != recipe.get(key) for key in relevant):
+        return None
+    return {**plan, "recipe_fingerprint": _fingerprint(recipe)}
 
 
 def _vegan_plan(recipe: dict, status: str, reason_code: str | None, reason: str | None,
@@ -111,6 +165,25 @@ def unavailable_vegan_plan(recipe: dict, reason_code: str, reason: str, review_i
     return _vegan_plan(recipe, "unavailable", reason_code, reason, [], list(review_items))
 
 
+def vegan_source_review(recipe: dict) -> dict | None:
+    """Identify the source values a reviewer must supply before planning."""
+    review = []
+    for collection, key, reason in (
+        ("ingredients", "name", "Verify the ingredient name so its role and a vegan substitute can be assessed."),
+        ("steps", "instruction", "Verify the preparation step so the vegan method can be assessed."),
+    ):
+        for index, record in enumerate(recipe[collection]):
+            field = record[key]
+            if field["status"] == "needs_review" or not _text(field["value"]) or UNREADABLE.search(field["value"]):
+                review.append({"path": f"/{collection}/{index}/{key}", "reason": reason})
+    if not review:
+        return None
+    return _vegan_plan(
+        recipe, "needs_review", "insufficient_information",
+        "Review the flagged ingredient names or preparation steps before making the recipe vegan.", [], review,
+    )
+
+
 def _phrase(text: str) -> str:
     return r"\s+".join(re.escape(word) for word in text.split())
 
@@ -121,13 +194,13 @@ def _measure_pattern(recipe: dict) -> re.Pattern:
     unit_pattern = "|".join(_phrase(unit) for unit in sorted(units, key=lambda unit: (-len(unit), unit)))
     return re.compile(
         rf"(?<![\d/⁄∕])(?P<number>{QUANTITY_PATTERN})(?![\d/⁄∕])"
-        rf"(?:[ \t]*(?P<unit>{unit_pattern})(?!\w))?",
+        rf"(?:(?P<ordinal>\.(?=\s*Tag(?:e|en)?\b))?\s*(?P<unit>{unit_pattern})(?!\w))?",
         re.IGNORECASE,
     )
 
 
 def _measure(match: re.Match) -> tuple[str, str]:
-    return match["number"], (match["unit"] or "").casefold().rstrip(".")
+    return match["number"] + (match["ordinal"] or ""), (match["unit"] or "").casefold().rstrip(".")
 
 
 def _measures(pattern: re.Pattern, value: str | None) -> list[tuple[str, str]]:
@@ -180,14 +253,27 @@ def _text(value) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
+def _linked_name_pattern(name: str, *, replacement: bool = False) -> re.Pattern:
+    # A qualified replacement can keep the original noun with inflected German
+    # modifiers, e.g. "veganer Fond" becomes "veganen Fond" in a step.
+    words = name.split()
+    phrases = []
+    for word in words[:-1]:
+        modifier = re.fullmatch(r"(vegan|pflanzlich|gekennzeichnet)(?:e|en|em|er|es)?", word, re.I) if replacement else None
+        phrases.append(rf"{modifier[1]}(?:e|en|em|er|es)?" if modifier else re.escape(word))
+    phrase = r"\s+".join([*phrases, re.escape(words[-1])])
+    return re.compile(rf"(?<!\w){phrase}(?!\w)", re.I)
+
+
 def _review_linked_steps(recipe: dict, edits: dict, warn: Callable[[str, str], None]) -> None:
     """Flag literal references to a replaced ingredient left in linked steps."""
     substitutions = {}
     for index, ingredient in enumerate(recipe["ingredients"]):
         edit = edits.get(f"/ingredients/{index}/name")
         if edit:
-            substitutions[ingredient["id"]] = tuple(
-                re.compile(rf"(?<!\w){_phrase(edit[key])}(?!\w)", re.I) for key in ("before", "after")
+            substitutions[ingredient["id"]] = (
+                _linked_name_pattern(edit["before"]),
+                _linked_name_pattern(edit["after"], replacement=True),
             )
     for index, step in enumerate(recipe["steps"]):
         references = [substitutions[key] for key in step["ingredient_ids"] if key in substitutions]
@@ -221,18 +307,16 @@ def validate_vegan_plan(recipe: dict, proposal: dict) -> dict:
 
     fields = {"/title": recipe["title"], "/servings": recipe["servings"]}
     editable = {"/title"}
-    review_paths = {"/recipe"}
+    record_paths = {}
     for collection, names in REVIEW_FIELDS.items():
         for index, entry in enumerate(recipe[collection]):
             base = f"/{collection}/{index}"
-            review_paths.add(base)
+            record_paths[base] = f"{base}/{'instruction' if collection == 'steps' else 'name'}"
             for name in names:
                 path = f"{base}/{name}"
                 fields[path] = entry[name]
                 if name in EDITABLE_FIELDS.get(collection, ()):
                     editable.add(path)
-    review_paths.update(fields)
-
     warnings = []
 
     def warn(path, reason):
@@ -243,18 +327,18 @@ def validate_vegan_plan(recipe: dict, proposal: dict) -> dict:
     for item in proposal["review_items"]:
         if not isinstance(item, dict) or not _text(item.get("path")) or not _text(item.get("reason")):
             raise ValueError("The vegan plan returned an invalid review item.")
-        if item["path"] not in review_paths:
+        path = record_paths.get(item["path"], item["path"])
+        if path not in fields and path != "/recipe":
             raise ValueError("The vegan plan review item refers to an unknown recipe field.")
-        warn(item["path"], item["reason"])
+        warn(path, item["reason"])
 
     if status != "ready":
         return _vegan_plan(recipe, status, reason_code, reason.strip(), [], warnings)
 
-    for path, field in fields.items():
-        ingredient_measure = path.startswith("/ingredients/") and path.endswith(("/quantity", "/unit"))
-        if (field["status"] == "needs_review" and not ingredient_measure
-                and not any(item["path"] == path for item in warnings)):
-            warn(path, "Resolve this source field to complete the vegan adaptation.")
+    if source_review := vegan_source_review(recipe):
+        for item in source_review["review_items"]:
+            if not any(warning["path"] == item["path"] for warning in warnings):
+                warn(item["path"], item["reason"])
 
     edits = {}
     seen = set()

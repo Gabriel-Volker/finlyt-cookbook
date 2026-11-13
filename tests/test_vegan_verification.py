@@ -1,10 +1,18 @@
+import json
 import unittest
 from copy import deepcopy
 from unittest.mock import Mock
 
 from cookbook_ocr.adaptation import adapt_recipe
+from cookbook_ocr.pipeline import plan_vegan_recipe
 from cookbook_ocr.providers import ProviderError
-from cookbook_ocr.vegan import validate_vegan_plan, vegan_plan_matches, vegan_plan_usable
+from cookbook_ocr.vegan import (
+    rebind_vegan_plan,
+    validate_vegan_plan,
+    vegan_plan_matches,
+    vegan_plan_usable,
+    vegan_source_review,
+)
 from cookbook_ocr.vegan_verification import verify_vegan_plan
 from test_adaptation import field, ingredient, recipe, step
 
@@ -59,6 +67,56 @@ class VeganVerificationTests(unittest.TestCase):
             ],
         }
 
+    def test_planner_reconsiders_a_stated_timing_before_abstaining(self):
+        source = recipe("4", [ingredient("beef", "beef")], [
+            step("If serving after 2 days, cover the beef in marinade.", "beef",
+                 condition="If serving after 2 days"),
+        ])
+        blocked = {
+            "status": "needs_review", "reason_code": "insufficient_information",
+            "reason": "The meat-specific timing is not suitable for a plant roast.", "changes": [],
+            "review_items": [{"path": "/steps/0/condition", "reason": "Check whether the timing can change."}],
+        }
+        adapted = proposal([
+            {"path": "/ingredients/0/name", "before": "beef", "after": "seitan roast",
+             "reason": "Use an established plant-based roast."},
+            {"path": "/steps/0/instruction", "before": "If serving after 2 days, cover the beef in marinade.",
+             "after": "Brush the seitan roast with the marinade before searing.", "reason": "Keep the marinade flavor."},
+            {"path": "/steps/0/condition", "before": "If serving after 2 days", "after": None,
+             "reason": "The plant roast does not require the long soak."},
+        ])
+        luna = Mock()
+        luna.respond.side_effect = [json.dumps(blocked), json.dumps(adapted)]
+        self.assertEqual(plan_vegan_recipe(luna, source)["status"], "ready")
+        self.assertIn("stated timing is not missing", luna.respond.call_args.kwargs["input"][0]["content"])
+
+        luna.respond.side_effect = [json.dumps(blocked), ProviderError("Unavailable")]
+        self.assertEqual(plan_vegan_recipe(luna, source)["review_items"], blocked["review_items"])
+
+    def test_planner_retries_a_proposal_that_keeps_animal_ingredient_in_a_step(self):
+        source = self.plan("vegan baking block")
+        changes = source["changes"]
+        invalid = proposal([changes[0], {**changes[1], "after": "Cream the butter with the vegan baking block."}])
+        luna = Mock()
+        luna.respond.side_effect = [json.dumps(invalid), json.dumps(proposal(changes))]
+        with self.assertLogs("cookbook_ocr.pipeline", level="WARNING"):
+            plan = plan_vegan_recipe(luna, self.recipe)
+        self.assertEqual(plan["status"], "ready")
+        self.assertIn("/steps/0/instruction", luna.respond.call_args.kwargs["input"][0]["content"])
+
+    def test_accepts_inflected_replacement_name_in_a_linked_german_step(self):
+        before = "Mit Rotwein ablöschen."
+        source = recipe("4", [ingredient("wine", "Rotwein")], [step(before, "wine")])
+        changes = [
+            {"path": "/ingredients/0/name", "before": "Rotwein", "after": "vegan gekennzeichneter Rotwein",
+             "reason": "Use wine confirmed vegan."},
+            {"path": "/steps/0/instruction", "before": before, "after": "Mit vegan gekennzeichnetem Rotwein ablöschen.",
+             "reason": "Use the confirmed wine."},
+        ]
+        self.assertEqual(validate_vegan_plan(source, proposal(changes))["status"], "ready")
+        changes[1]["after"] = "Mit vegan gekennzeichnetem Rotwein und Rotwein ablöschen."
+        self.assertEqual(validate_vegan_plan(source, proposal(changes))["status"], "needs_review")
+
     def test_preserves_a_workable_substitute_without_review(self):
         source = self.plan("vegan baking block")
         verdict = clear_verdict("vegan baking block")
@@ -77,6 +135,7 @@ class VeganVerificationTests(unittest.TestCase):
         self.assertEqual(sent["recipe"], self.recipe)
         self.assertEqual(sent["changes"], source["changes"])
         self.assertEqual(sent["substitutions_to_approve"], verdict["approved_substitutions"])
+        self.assertEqual(sent["ingredients_to_check"], verdict["approved_substitutions"])
         approvals_schema = schema["properties"]["approved_substitutions"]
         self.assertEqual(approvals_schema["maxItems"], 1)
         self.assertEqual(approvals_schema["items"]["properties"]["path"]["enum"], ["/ingredients/0/name"])
@@ -145,6 +204,67 @@ class VeganVerificationTests(unittest.TestCase):
                 self.assertIs(verify_vegan_plan(self.gemini, self.recipe, plan), plan)
                 self.gemini.respond_structured.assert_not_called()
                 self.assertFalse(vegan_plan_usable(self.recipe, plan))
+
+    def test_unknown_ingredient_and_instruction_offer_exact_review_targets(self):
+        source = deepcopy(self.recipe)
+        source["ingredients"][0]["name"] = field(None, "needs_review")
+        source["steps"][0]["instruction"] = field(None, "needs_review")
+        blocked = vegan_source_review(source)
+        self.assertEqual(blocked["status"], "needs_review")
+        self.assertEqual(blocked["reason_code"], "insufficient_information")
+        self.assertEqual({item["path"] for item in blocked["review_items"]}, {
+            "/ingredients/0/name", "/steps/0/instruction",
+        })
+        self.assertEqual(blocked["changes"], [])
+
+        plan = validate_vegan_plan(source, {
+            **proposal(), "status": "needs_review", "reason_code": "insufficient_information", "reason": "Verify the source.",
+            "review_items": [
+                {"path": "/ingredients/0", "reason": "Verify the ingredient."},
+                {"path": "/steps/0", "reason": "Verify the instruction."},
+            ],
+        })
+        self.assertEqual({item["path"] for item in plan["review_items"]}, {
+            "/ingredients/0/name", "/steps/0/instruction",
+        })
+
+    def test_verified_plan_survives_title_and_serving_edits_but_not_method_edits(self):
+        self.recipe["title"] = field(None, "needs_review")
+        self.recipe["servings"] = field(None, "needs_review")
+        self.assertIsNone(vegan_source_review(self.recipe))
+        self.gemini.respond_structured.return_value = clear_verdict("vegan baking block")
+        verified = verify_vegan_plan(self.gemini, self.recipe, self.plan("vegan baking block"))
+        self.assertTrue(vegan_plan_usable(self.recipe, verified))
+
+        edited = deepcopy(self.recipe)
+        edited["title"] = field("Cookies")
+        edited["servings"] = field("6")
+        rebound = rebind_vegan_plan(self.recipe, edited, verified)
+        self.assertTrue(vegan_plan_usable(edited, rebound))
+        self.assertTrue(vegan_plan_usable(self.recipe, verified))
+        self.assertEqual(rebound["changes"], verified["changes"])
+
+        edited["steps"][0]["instruction"] = field("Melt the butter.")
+        self.assertIsNone(rebind_vegan_plan(self.recipe, edited, verified))
+
+    def test_vegan_recipe_may_change_meat_only_marination_timing(self):
+        original_instruction = "Den Rinderbraten nach dem 1. Tag oder 2. Tag aus der Marinade nehmen."
+        source = recipe("4", [ingredient("meat", "Rinderbraten")], [
+            step(original_instruction, "meat", condition="nach dem 1. Tag oder 2. Tag"),
+        ])
+        plan = validate_vegan_plan(source, proposal([
+            {"path": "/ingredients/0/name", "before": "Rinderbraten", "after": "Seitanbraten", "reason": "Plant roast."},
+            {"path": "/steps/0/instruction", "before": original_instruction,
+             "after": "Den Seitanbraten mit der Marinade bestreichen.", "reason": "Flavor the plant roast."},
+            {"path": "/steps/0/condition", "before": "nach dem 1. Tag oder 2. Tag", "after": None,
+             "reason": "The meat-only marination period does not apply."},
+        ]))
+        self.assertEqual(plan["status"], "ready")
+        plan = validate_vegan_plan(source, proposal([
+            {"path": "/steps/0/instruction", "before": original_instruction,
+             "after": original_instruction.replace("1. Tag", "1 Tag"), "reason": "Change the time."},
+        ]))
+        self.assertEqual(plan["status"], "needs_review")
 
     def test_rejects_an_abstention_containing_a_partial_recipe(self):
         plan = self.plan("vegan baking block")
@@ -223,6 +343,17 @@ class VeganVerificationTests(unittest.TestCase):
         self.assertFalse(vegan_plan_usable(source, plan))
         self.gemini.respond_structured.return_value = clear_verdict()
         self.assertTrue(vegan_plan_usable(source, verify_vegan_plan(self.gemini, source, plan)))
+
+    def test_blocks_clear_verdict_when_final_ingredient_list_still_contains_butter(self):
+        plan = validate_vegan_plan(self.recipe, proposal())
+        self.gemini.respond_structured.return_value = clear_verdict()
+        verified = verify_vegan_plan(self.gemini, self.recipe, plan)
+        self.assertEqual(verified["status"], "unavailable")
+        self.assertEqual(verified["reason_code"], "verification_failed")
+        self.assertEqual([item["path"] for item in verified["review_items"]], ["/ingredients/0/name"])
+        sent = self.gemini.respond_structured.call_args.args[2]
+        self.assertEqual(sent["ingredients_to_check"], [{"path": "/ingredients/0/name", "ingredient": "butter"}])
+        self.assertFalse(vegan_plan_usable(self.recipe, {**plan, "verification": {"provider": "gemini", **clear_verdict()}}))
 
     def test_omission_requires_an_ingredient_still_present_after_the_changes(self):
         finding = {

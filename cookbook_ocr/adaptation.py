@@ -232,6 +232,16 @@ def _apply_step_edits(text, edits, warn):
     return text
 
 
+def _reviewed_measure_conflicts(steps, ingredient, measure: _ScaledIngredient) -> list[str]:
+    if not any(ingredient[key]["status"] == "reviewed" for key in ("quantity", "unit")):
+        return []
+    matches = list(dict.fromkeys(_step_measures(steps, ingredient["id"], measure.patterns)))
+    unresolved = set(_step_measures(steps, ingredient["id"], measure.review_patterns)) - set(matches)
+    conflicts = {item.path for item in unresolved}
+    list(_step_amounts_for_scale(matches, measure, lambda path, _: conflicts.add(path)))
+    return sorted(conflicts)
+
+
 def _scale_steps(recipe, measures, batch_ingredients, held_ingredients, original_servings, servings, change, warn):
     edits_by_path = {}
     owners = {}
@@ -388,11 +398,13 @@ def adapt_recipe(
                         warn(f"{path}/quantity", reason)
                         continue
                 if any(ingredient[key]["status"] == "needs_review" for key in ("name", "quantity", "unit")):
+                    held_ingredients.append(ingredient)
                     warn(path, SCALE_UNRESOLVED_WARNING)
                     continue
                 if multiplier is None:
                     reason = rule["reason"] if rule["mode"] == "review" else SCALE_BASELINE_WARNING
                     applied["reason"] = reason
+                    held_ingredients.append(ingredient)
                     warn(f"{path}/quantity", reason)
                     continue
                 reason = proportional_source_conflict(adapted, index, ingredient) if rule["mode"] == "proportional" else None
@@ -414,11 +426,20 @@ def adapt_recipe(
                     continue
                 scaled, scaled_unit = adjusted
                 if rule["mode"] != "per_batch":
-                    measures[ingredient["id"]] = _ScaledIngredient(
+                    measure = _ScaledIngredient(
                         quantity, unit, scaled, scaled_unit, multiplier,
                         _ingredient_measure_patterns(ingredient),
                         _ingredient_measure_patterns(ingredient, review_only=True),
                     )
+                    conflicts = _reviewed_measure_conflicts(adapted["steps"], ingredient, measure)
+                    if conflicts:
+                        reason = "The reviewed amount does not match the linked preparation. Check the step before scaling."
+                        applied.update(mode="review", multiplier=None, reason=reason)
+                        held_ingredients.append(ingredient)
+                        for step_path in conflicts:
+                            warn(step_path, reason)
+                        continue
+                    measures[ingredient["id"]] = measure
                 change(f"{path}/quantity", quantity_field, scaled, rule["reason"])
                 change(f"{path}/unit", unit_field, scaled_unit, SCALE_UNIT_REASON)
                 count = parse_number(scaled) if unit is None else None

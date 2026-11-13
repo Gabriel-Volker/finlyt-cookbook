@@ -11,8 +11,9 @@ const countLabel = (number, name) => `${number} ${name}${number === 1 ? "" : "s"
 const state = {
   screen: "import", file: null, filename: "", report: null, example: false,
   tab: "ingredients", pages: 1, page: 1,
-  review: null, reviewPath: "", reviewing: false,
-  scalingPlan: null, veganPlan: null,
+  review: null, reviewPath: "", reviewing: false, reviewDrafts: new Map(),
+  scalingPlan: null, veganPlan: null, planDecisions: [],
+  plansStatus: "current", planRequest: 0, plansError: "", savedPlans: new Map(),
   adaptation: null, adaptationReady: false, adaptRequest: 0,
   output: null, outputRequest: 0, reviewOutput: null, reviewOutputRequest: 0,
   translationSession: null, localizedOutputs: new Map(), previewRequest: 0, busy: false,
@@ -65,13 +66,14 @@ function show(screen) {
   workspaceOutput.hidden = importing;
   $("#output-language-hint").hidden = !importing;
   message("#output-status");
+  $("#retry-output").hidden = true;
   if (screen === "review") {
     renderReview();
     updateReviewOutput();
   }
   if (screen === "adapt") {
-    renderAdaptation();
-    updateAdaptation();
+    if (state.plansStatus === "stale") refreshPlans();
+    else updateAdaptation();
   }
   window.scrollTo(0, 0);
 }
@@ -98,8 +100,14 @@ function loadReport(report, file) {
   state.reviewOutputRequest++;
   state.reviewPath = "";
   state.reviewing = false;
+  state.reviewDrafts.clear();
   state.scalingPlan = report.scaling_plan ?? null;
   state.veganPlan = report.vegan_plan ?? null;
+  state.planDecisions = [];
+  state.plansStatus = "current";
+  state.plansError = "";
+  state.planRequest++;
+  state.savedPlans = new Map([["[]", {vegan_plan: state.veganPlan, scaling_plan: state.scalingPlan}]]);
   state.adaptation = null;
   state.adaptationReady = false;
   state.adaptRequest++;
@@ -212,7 +220,7 @@ function editValue(path, label, text, className = "") {
 }
 
 function editableText(field, missing = "—") {
-  return field.status === "needs_review" ? "Needs review" : clean(value(field)) || missing;
+  return field?.status === "needs_review" ? "Needs review" : clean(value(field)) || missing;
 }
 
 function renderReview() {
@@ -230,7 +238,7 @@ function renderReview() {
   status.classList.toggle("warning", reviewNeeded);
   status.classList.toggle("info", !reviewNeeded);
   const label = pendingFields || documentIssues ? "Needs review" : documentFindings.length ? "Document findings"
-    : reviewNeeded ? "Needs review" : state.review?.decisions.length ? "Review updated" : "Readings agree";
+    : reviewNeeded ? "Needs review" : state.review?.decisions.length ? "Review updated" : "No discrepancies detected";
   status.innerHTML = `${reviewNeeded ? icon("warning") : icon("check", 12)} ${label}`;
   const readings = Object.keys(report.transcriptions || {});
   $("#reading-count").textContent = countLabel(readings.length, "reading");
@@ -249,14 +257,14 @@ function renderReview() {
       const name = ingredientLabel(item);
       const evidence = item.quantity.evidence || item.name.evidence;
       const page = evidence?.page;
-      const optional = editableText(item.optional_when, "");
+      const optional = optionalNote(item);
       const quantity = editValue(`${base}/quantity`, `Edit quantity for ${name}`, escape(editableText(item.quantity)));
       const unit = editableText(item.unit, "");
       return `<tr data-row-edit="${base}/quantity">
         <th scope="row">${editValue(`${base}/name`, `Edit name for ${name}`, escape(name))}</th>
         <td><div class="edit-amount">${quantity}${unit ? editValue(`${base}/unit`, `Edit unit for ${name}`, escape(unit)) : ""}</div></td>
         <td>${editValue(`${base}/preparation`, `Edit preparation for ${name}`, escape(editableText(item.preparation)))}
-          ${optional ? editValue(`${base}/optional_when`, `Edit optionality for ${name}`, escape(optional)) : ""}</td>
+          ${optional ? editValue(`${base}/optional_when`, `Edit optionality for ${name}`, escape(optional), "optional-note") : ""}</td>
         <td>${page ? `<button type="button" class="edit-value" data-source-page="${escape(page)}"
           data-source-reading="${escape(evidence.source || "A")}">Page ${escape(page)}</button>` : "—"}</td>
       </tr>`;
@@ -305,7 +313,7 @@ function renderComparison() {
     ? `${countLabel(reviews.length + issues.length, "original finding")}.`
     : (state.review?.status ?? state.report.status) === "needs_review" ? "Some extracted fields need review."
       : state.review?.decisions.length ? "Review decisions saved."
-      : `Both readings agree on the recipe.${variations.length ? ` ${countLabel(variations.length, "difference")} treated as equivalent.` : ""}`;
+      : `No discrepancies were detected.${variations.length ? ` ${countLabel(variations.length, "difference")} treated as equivalent.` : ""}`;
   const list = [...reviews, ...issues].map((item, index) => {
     const page = item.page ?? item.evidence?.page;
     const key = index < reviews.length ? `comparison:${index}` : `extraction:${index - reviews.length}`;
@@ -359,6 +367,34 @@ function flaggedFields() {
   return reviewFields().filter(({field}) => field.status === "needs_review");
 }
 
+function reviewInputValue() {
+  return $("#field-review-links").hidden ? $("#field-review-value").value
+    : [...$("#field-review-references").selectedOptions].map((option) => option.value);
+}
+
+function sameReviewValue(first, second) {
+  if (Array.isArray(first) && Array.isArray(second)) {
+    return first.length === second.length && first.every((value) => second.includes(value));
+  }
+  return String(first ?? "").trim() === String(second ?? "").trim();
+}
+
+function refreshReviewActions() {
+  const path = state.reviewPath;
+  const selected = reviewFields().find((item) => item.path === path);
+  if (!selected) return;
+  const saved = state.review?.decisions.find((item) => item.path === path);
+  const current = reviewInputValue();
+  const hasValue = Array.isArray(current) || current.trim() !== "";
+  const draft = !sameReviewValue(current, saved ? saved.value : selected.field.value);
+  if (draft) state.reviewDrafts.set(path, current);
+  else state.reviewDrafts.delete(path);
+  $("#field-review-confirm").disabled = state.reviewing || !hasValue
+    || (selected.field.value != null && !sameReviewValue(current, selected.field.value));
+  $("#field-review-save").disabled = state.reviewing || !hasValue;
+  $("#field-review-discard").hidden = !draft;
+}
+
 function renderFieldReview() {
   const fields = reviewFields();
   const selected = fields.find(({path}) => path === state.reviewPath);
@@ -376,7 +412,8 @@ function renderFieldReview() {
   $("#field-review-reopen").textContent = selected.field.status === "needs_review" ? "Reopen" : "Undo review";
   const reviewedValue = decision ? decision.value : selected.field.value;
   const isReference = Boolean(selected.collection);
-  const sourceValue = Array.isArray(reviewedValue) ? reviewedValue : [];
+  const editableValue = state.reviewDrafts.get(selected.path) ?? reviewedValue;
+  const sourceValue = Array.isArray(editableValue) ? editableValue : [];
   $("#field-review-text").hidden = isReference;
   $("#field-review-value").disabled = isReference;
   $("#field-review-links").hidden = !isReference;
@@ -387,7 +424,7 @@ function renderFieldReview() {
     return `<option value="${escape(entry.id)}"${sourceValue.includes(entry.id) ? " selected" : ""}>${escape(name)}</option>`;
   }).join("") : "";
   const input = $("#field-review-value");
-  input.value = isReference ? "" : reviewedValue ?? "";
+  input.value = isReference ? "" : editableValue ?? "";
   input.rows = selected.name === "instruction" ? 4 : 2;
   $("#field-review-value-label").textContent = reviewFieldLabels[selected.name];
   const needsReview = selected.field.status === "needs_review" && !decision;
@@ -427,6 +464,7 @@ function renderFieldReview() {
       </div>`).join("")}
     ${issue ? `<p>${escape(localizedText(state.reviewOutput, `extraction:${issueIndex}`, issue.reason))}</p>` : ""}
     <button type="button" class="button text" data-source-page="${escape(page)}" data-source-reading="${escape(evidence?.source || issue?.evidence?.source || "A")}">Open source page</button>`;
+  refreshReviewActions();
 }
 
 function focusReviewValue() {
@@ -435,11 +473,15 @@ function focusReviewValue() {
 }
 
 let reviewTrigger;
+let returnFromReview = false;
+let reviewScroll = 0;
 
-function openFieldReview(path, trigger) {
-  if (state.reviewing) return;
+function openFieldReview(path, trigger, returnToAdapt = false) {
   const dialog = $("#field-review");
+  if (state.reviewing || dialog.open || !reviewFields().some((field) => field.path === path)) return;
   reviewTrigger = trigger;
+  returnFromReview = returnToAdapt;
+  reviewScroll = window.scrollY;
   state.reviewPath = path;
   message("#field-review-status");
   renderFieldReview();
@@ -457,10 +499,11 @@ function setReviewBusy(busy) {
     control.disabled = (busy && !control.dataset.sourcePage) || (control.id === "field-review-value" && isReference)
       || (control.id === "field-review-references" && !isReference);
   }
+  if (!busy) refreshReviewActions();
 }
 
 function hasVeganPlan() {
-  return state.veganPlan?.protocol_version === 2 && state.veganPlan.status === "ready"
+  return state.plansStatus === "current" && state.veganPlan?.protocol_version === 2 && state.veganPlan.status === "ready"
     && state.veganPlan.verification?.status === "clear";
 }
 
@@ -473,60 +516,138 @@ function currentScalingPlan(vegan) {
 }
 
 function hasScalingPlan(vegan) {
-  return ["ready", "needs_review"].includes(currentScalingPlan(vegan)?.status);
+  return state.plansStatus === "current" && ["ready", "needs_review"].includes(currentScalingPlan(vegan)?.status);
+}
+
+function reviewIssuePath(path) {
+  if (typeof path !== "string") return null;
+  const match = /^\/(ingredients|tools|steps)\/(\d+)$/.exec(path);
+  if (match) {
+    const [, collection, index] = match;
+    const fields = collection === "steps" ? ["instruction", "condition", "duration"]
+      : collection === "ingredients" ? ["name", "quantity", "unit"] : ["name"];
+    const record = currentRecipe()[collection]?.[Number(index)];
+    path += `/${fields.find((name) => record?.[name]?.status === "needs_review") || fields[0]}`;
+  }
+  return reviewFields().some((field) => field.path === path) ? path : null;
+}
+
+function reviewIssueLink(path, recipe) {
+  const editable = reviewIssuePath(path);
+  if (!editable) return "";
+  const field = editable.split("/").pop();
+  const label = editable === "/servings" ? "Original servings"
+    : `${reviewLabel(editable, recipe)} · ${reviewFieldLabels[field] || "Review"}`;
+  return ` <button type="button" class="button text issue-link" data-review-issue="${escape(editable)}">${escape(label)}</button>`;
 }
 
 function renderVeganOption() {
   const control = $("#vegan");
   const available = hasVeganPlan();
   control.disabled = !available;
-  if (!available) control.setAttribute("aria-checked", "false");
   const hint = available ? "The vegan plan is verified and ready to apply."
-    : localizedText(state.output, "vegan:reason", state.veganPlan?.reason) || "No verified vegan plan is available for this recipe.";
+    : state.plansStatus !== "current" ? "A current vegan plan is needed for the reviewed recipe."
+      : localizedText(state.output, "vegan:reason", state.veganPlan?.reason) || "No verified vegan plan is available for this recipe.";
   message("#vegan-plan-status", hint);
-  const review = available ? [] : state.veganPlan?.review_items || [];
+  const review = available || state.plansStatus !== "current" ? [] : state.veganPlan?.review_items || [];
   const details = $("#vegan-plan-review");
   details.hidden = !review.length;
+  const recipe = state.output?.recipe ?? currentRecipe();
   details.innerHTML = review.map((item, index) =>
-    `<li>${escape(localizedText(state.output, `vegan:review:${index}`, item.reason))}</li>`).join("");
+    `<li>${escape(localizedText(state.output, `vegan:review:${index}`, item.reason))}${reviewIssueLink(item.path, recipe)}</li>`).join("");
+  $("#vegan-review-source").hidden = available || state.plansStatus !== "current" || Boolean(review.length)
+    || !currentRecipeHasPendingFields();
+}
+
+function currentRecipeHasPendingFields() {
+  return state.review ? Boolean(state.review.unresolved_paths?.length) : Boolean(flaggedFields().length);
+}
+
+function reviewDecisions() {
+  return (state.review?.decisions || []).map(({path, action, value}) => ({path, action, value}));
+}
+
+function reviewPlanKey() {
+  return JSON.stringify(reviewDecisions().sort((first, second) => first.path.localeCompare(second.path)));
+}
+
+function recipeRequest(decisions = reviewDecisions()) {
+  return {
+    report: {
+      recipe: state.report.recipe,
+      extraction_issues: state.report.extraction_issues,
+      scaling_plan: state.scalingPlan,
+      vegan_plan: state.veganPlan,
+      plan_decisions: state.planDecisions,
+      example: state.example,
+    },
+    decisions,
+  };
+}
+
+function applyPlans(plans) {
+  state.scalingPlan = plans.scaling_plan ?? null;
+  state.veganPlan = plans.vegan_plan ?? null;
+  state.planDecisions = reviewDecisions();
+  state.plansStatus = "current";
+  state.plansError = "";
+}
+
+async function refreshPlans(retry = false) {
+  if (state.plansStatus === "pending") return;
+  const sequence = ++state.planRequest;
+  const key = reviewPlanKey();
+  state.plansStatus = "pending";
+  state.plansError = "";
+  if (state.screen === "adapt") updateAdaptation();
+  try {
+    const result = await request("/api/plans", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({...recipeRequest(), retry}),
+    });
+    if (sequence !== state.planRequest) return;
+    applyPlans(result);
+    if (state.savedPlans.size >= 8) state.savedPlans.delete(state.savedPlans.keys().next().value);
+    state.savedPlans.set(key, result);
+  } catch (error) {
+    if (sequence !== state.planRequest) return;
+    state.plansStatus = "failed";
+    state.plansError = error.message;
+  }
+  if (state.screen === "adapt") updateAdaptation();
 }
 
 async function saveFieldReview(action, clear = false) {
   if (state.reviewing) return;
   const report = state.report;
   const path = state.reviewPath;
-  const referenceList = $("#field-review-references");
-  const isReference = !$("#field-review-links").hidden;
-  const verified = isReference ? [...referenceList.selectedOptions].map((option) => option.value)
-    : clear ? null : $("#field-review-value").value.trim();
+  const input = reviewInputValue();
+  const verified = Array.isArray(input) ? input : clear ? null : input.trim();
   if (action && !clear && verified === "") {
     message("#field-review-status", "Enter the verified value.", true);
     return;
   }
-  const decisions = (state.review?.decisions || [])
-    .filter((item) => item.path !== path)
-    .map(({path, action, value}) => ({path, action, value}));
+  const decisions = reviewDecisions().filter((item) => item.path !== path);
   if (action) decisions.push({path, action, value: verified});
 
   setReviewBusy(true);
-  message("#field-review-status", !state.example
-    ? "Saving review and checking adaptation plans…" : "Saving review…");
+  message("#field-review-status", "Saving review…");
   try {
     const result = await request("/api/review", {
       method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({report: {
-        recipe: report.recipe,
-        extraction_issues: report.extraction_issues,
-        scaling_plan: state.scalingPlan,
-        vegan_plan: state.veganPlan,
-        example: state.example,
-      }, decisions}),
+      body: JSON.stringify({...recipeRequest(decisions), refresh_plans: false}),
     });
     if (report !== state.report) return;
     state.review = result.review;
+    state.reviewDrafts.delete(path);
     state.reviewOutput = null;
-    state.scalingPlan = result.scaling_plan ?? null;
-    state.veganPlan = result.vegan_plan ?? null;
+    state.planRequest++;
+    const saved = state.savedPlans.get(reviewPlanKey());
+    if (saved) applyPlans(saved);
+    else {
+      state.plansStatus = "stale";
+      state.plansError = "";
+    }
     state.adaptation = null;
     state.adaptationReady = false;
     state.adaptRequest++;
@@ -557,65 +678,77 @@ function scheduleAdaptation() {
   window.clearTimeout(adaptationTimer);
   state.adaptRequest++;
   state.adaptationReady = false;
-  clearOutput();
+  state.outputRequest++;
+  $("#export-recipe").disabled = true;
+  message("#adapt-status", "Updating preview…");
   adaptationTimer = window.setTimeout(updateAdaptation, 220);
 }
 
 async function updateAdaptation() {
   if (state.screen !== "adapt") return;
   const sequence = ++state.adaptRequest;
-  state.adaptation = null;
   state.adaptationReady = false;
-  clearOutput();
+  state.outputRequest++;
+  $("#export-recipe").disabled = true;
+  renderVeganOption();
   const original = $("#original-servings");
   const target = $("#target-servings");
   const servings = quantityField(target);
   const baseline = original.readOnly ? null : quantityField(original);
   const vegan = veganSelected();
   const invalid = !target.checkValidity() || (servings !== null && !original.checkValidity());
-  if (servings !== null && !hasScalingPlan(vegan)) {
-    renderAdaptation();
-    const recovery = vegan && hasScalingPlan(false)
-      ? "Clear the target servings to make the recipe vegan, or turn off Make vegan to scale the original."
-      : "Clear the target servings to continue.";
-    message("#adapt-status", recovery, true);
-    return;
+  let scaleMessage = "";
+  if (invalid) scaleMessage = "Enter positive whole numbers for servings.";
+  else if (servings !== null && !original.readOnly && baseline === null) {
+    scaleMessage = "Enter the original servings to scale the recipe.";
+  } else if (servings !== null && !hasScalingPlan(vegan) && (baseline ?? Number(original.value)) !== servings) {
+    scaleMessage = state.plansStatus === "pending" ? "The scaling plan is still updating."
+      : vegan ? "Serving adjustment is unavailable for the vegan recipe."
+      : "Serving adjustment is unavailable for this recipe.";
   }
-  if (invalid || (servings !== null && !original.readOnly && baseline === null)) {
-    renderAdaptation();
-    message("#adapt-status", invalid ? "Enter positive whole numbers for servings." : "Enter the original servings to scale the recipe.", true);
-    return;
-  }
-  if (servings === null && !vegan) {
+  const requestedServings = scaleMessage ? null : servings;
+  if (requestedServings === null && !vegan) {
+    state.adaptation = null;
     state.adaptationReady = true;
-    message("#adapt-status");
+    message("#adapt-status", scaleMessage ? `${scaleMessage} Showing the reviewed recipe.` : "", Boolean(scaleMessage));
     updateOutput();
     return;
   }
   message("#adapt-status", "Updating recipe…");
   try {
-    const report = await request("/api/adapt", {
+    const adapt = (requested) => request("/api/adapt", {
       method: "POST", headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
         report: {
           recipe: state.report.recipe,
           ...(state.review ? {review: {decisions: state.review.decisions}} : {}),
-          ...(servings !== null ? {scaling_plan: state.scalingPlan} : {}),
+          ...(requested !== null ? {scaling_plan: state.scalingPlan} : {}),
           ...(vegan ? {vegan_plan: state.veganPlan} : {}),
         },
-        servings,
-        original_servings: servings === null ? null : baseline, vegan,
+        servings: requested,
+        original_servings: requested === null ? null : baseline, vegan,
       }),
     });
+    let report;
+    try {
+      report = await adapt(requestedServings);
+    } catch (error) {
+      if (sequence !== state.adaptRequest || state.screen !== "adapt") return;
+      if (!vegan || requestedServings === null) throw error;
+      scaleMessage = error.message;
+      report = await adapt(null);
+    }
     if (sequence !== state.adaptRequest || state.screen !== "adapt") return;
     state.adaptation = report.adaptation;
     state.adaptationReady = true;
-    message("#adapt-status");
+    message("#adapt-status", scaleMessage ? `${scaleMessage} Showing the vegan recipe at its original yield.` : "", Boolean(scaleMessage));
     updateOutput();
   } catch (error) {
     if (sequence !== state.adaptRequest || state.screen !== "adapt") return;
-    renderAdaptation();
-    message("#adapt-status", error.message, true);
+    state.adaptation = null;
+    state.adaptationReady = true;
+    message("#adapt-status", `${error.message} Showing the reviewed recipe.`, true);
+    updateOutput();
   }
 }
 
@@ -627,6 +760,7 @@ function clearOutput() {
   $("#adaptation-review").hidden = true;
   $("#export-recipe").disabled = true;
   message("#output-status");
+  $("#retry-output").hidden = true;
 }
 
 function displayLanguage() {
@@ -643,9 +777,15 @@ function outputTexts(adaptation = null) {
     add(`comparison:${index}:section`, item.section);
   });
   (state.report.extraction_issues || []).forEach((item, index) => add(`extraction:${index}`, item.reason));
-  add("vegan:reason", state.veganPlan?.reason);
-  (state.veganPlan?.review_items || []).forEach((item, index) => add(`vegan:review:${index}`, item.reason));
-  for (const variant of ["original", "vegan"]) add(`scaling-plan:${variant}`, state.scalingPlan?.[variant]?.reason);
+  if (state.plansStatus === "current") {
+    add("vegan:reason", state.veganPlan?.reason);
+    (state.veganPlan?.review_items || []).forEach((item, index) => add(`vegan:review:${index}`, item.reason));
+    for (const variant of ["original", "vegan"]) {
+      const plan = state.scalingPlan?.[variant];
+      add(`scaling-plan:${variant}`, plan?.reason);
+      (plan?.review_items || []).forEach((item, index) => add(`scaling-plan:${variant}:${index}`, item.reason));
+    }
+  }
   (adaptation?.changes || []).forEach(({path, reason}) => add(`change:${path}`, reason));
   (adaptation?.scale?.ingredients || []).forEach(({ingredient_id, reason}) => add(`scale:${ingredient_id}`, reason));
   (adaptation?.review_items || []).forEach((item, index) => add(`adaptation:${index}`, item.reason));
@@ -715,6 +855,7 @@ async function updateReviewOutput() {
   state.reviewOutput = null;
   renderReviewOutput();
   message("#output-status");
+  $("#retry-output").hidden = true;
   if (language === "english" && !state.example) message("#output-status", "Preparing the English recipe. The source is shown during translation.");
   try {
     const output = await localizeOutput(recipe, language, texts);
@@ -725,6 +866,7 @@ async function updateReviewOutput() {
   } catch (error) {
     if (sequence !== state.reviewOutputRequest || state.screen !== "review") return;
     message("#output-status", `${error.message} The source is shown.`, true);
+    $("#retry-output").hidden = false;
   }
 }
 
@@ -755,8 +897,10 @@ async function updateOutput() {
     message("#output-status");
   } catch (error) {
     if (sequence !== state.outputRequest || state.screen !== "adapt") return;
-    if (language === "original") $("#export-recipe").disabled = false;
-    const recovery = language === "english" ? "Uncheck English output to view and export the original language." : "The original recipe is available with the recorded notes.";
+    applyOutput({language: "original", recipe, texts: {}}, language === "original");
+    $("#retry-output").hidden = false;
+    const recovery = language === "english" ? "Showing the original recipe text. Uncheck English output to export it."
+      : "The original recipe is available with the recorded notes.";
     message("#output-status", `${error.message} ${recovery}`, true);
   }
 }
@@ -764,7 +908,9 @@ async function updateOutput() {
 function reviewLabel(path, recipe) {
   const match = /^\/(ingredients|tools|steps)\/(\d+)/.exec(path);
   if (!match) return "Recipe";
-  const item = recipe[match[1]][Number(match[2])];
+  const index = Number(match[2]);
+  const item = recipe[match[1]]?.[index];
+  if (match[1] === "ingredients" && !value(item?.name)) return `Ingredient ${index + 1}`;
   if (match[1] === "ingredients") return ingredientLabel(item);
   if (match[1] === "tools") return clean(value(item?.name)) || "Utensil";
   return stepLabel(item || {}, Number(match[2]));
@@ -809,15 +955,38 @@ function renderAdaptation() {
   $("#adapt-subtitle").textContent = [adaptationLabel, yieldText].filter(Boolean).join(" · ");
   const factor = adapted?.scale?.factor;
   const vegan = veganSelected();
+  const variant = vegan ? "vegan" : "original";
   const canScale = hasScalingPlan(vegan);
-  const scaleHint = !canScale
-    ? localizedText(output, `scaling-plan:${vegan ? "vegan" : "original"}`, currentScalingPlan(vegan)?.reason)
+  const plan = currentScalingPlan(vegan);
+  const scaleHint = state.plansStatus !== "current" ? "A current scaling plan is needed for the reviewed recipe."
+    : !canScale
+    ? localizedText(output, `scaling-plan:${variant}`, plan?.reason)
       || (vegan ? "Serving adjustment is unavailable for the vegan recipe."
       : "Serving adjustment is unavailable for this recipe.")
     : factor ? `Serving scale factor: ${factor}.` : "Enter a target to scale quantities.";
-  const verification = adapted?.scale?.verification ?? currentScalingPlan(vegan)?.verification;
-  $("#target-hint").textContent = verification?.status === "unavailable" && canScale
-    ? `${scaleHint} Gemini verification is unavailable.` : scaleHint;
+  const verification = adapted?.scale?.verification ?? plan?.verification;
+  const partialScale = plan?.recovered_ingredients?.length || plan?.verification?.recovered_ingredients?.length;
+  const verificationHint = verification?.status === "unavailable" ? "Gemini verification is unavailable."
+    : partialScale ? "Some quantities require review before scaling." : "";
+  $("#target-hint").textContent = [scaleHint, canScale && verificationHint].filter(Boolean).join(" ");
+
+  const planIssues = state.plansStatus === "current" ? plan?.review_items || [] : [];
+  const scaleIssues = $("#scaling-plan-review");
+  scaleIssues.hidden = !planIssues.length;
+  scaleIssues.innerHTML = planIssues.map((item, index) => `<li>${escape(localizedText(output,
+    `scaling-plan:${variant}:${index}`, item.reason))}${reviewIssueLink(item.path, original)}</li>`).join("");
+  const refresh = $("#retry-plans");
+  const retryable = ["invalid_output", "provider_unavailable", "verification_unavailable"];
+  const retryAvailable = [state.veganPlan, state.scalingPlan?.original, state.scalingPlan?.vegan].some((candidate) =>
+    retryable.includes(candidate?.reason_code) || retryable.includes(candidate?.verification?.reason_code)
+    || candidate?.recovered_ingredients?.length || candidate?.verification?.recovered_ingredients?.length);
+  refresh.hidden = state.plansStatus === "current" && !retryAvailable;
+  refresh.disabled = state.plansStatus === "pending";
+  refresh.textContent = state.plansStatus === "pending" ? "Updating adaptation plans…"
+    : state.plansStatus === "stale" ? "Update adaptation plans" : "Retry adaptation plans";
+  message("#plans-status", state.plansStatus === "failed" ? state.plansError
+    : state.plansStatus === "pending" ? "You can review or export the recipe while the plans update." : "",
+    state.plansStatus === "failed");
 
   if (!output) return;
   renderRecipeOutput(output);
@@ -853,16 +1022,17 @@ function renderAdaptation() {
   const banner = $("#adaptation-review");
   banner.hidden = !reviews.length;
   banner.innerHTML = reviews.length ? `<h2>${icon("warning")} ${countLabel(reviews.length, "item")} to review</h2>
-    <ul>${reviews.map((item, index) => `<li><strong>${escape(reviewLabel(item.path, output.recipe))}</strong> · ${escape(localizedText(output, `adaptation:${index}`, item.reason))}</li>`).join("")}</ul>` : "";
+    <ul>${reviews.map((item, index) => `<li><strong>${escape(reviewLabel(item.path, output.recipe))}</strong> · ${escape(localizedText(output, `adaptation:${index}`, item.reason))}${reviewIssueLink(item.path, original)}</li>`).join("")}</ul>` : "";
 }
 
 function renderRecipeOutput({language, recipe}) {
   $("#recipe-output").hidden = false;
+  $("#recipe-output-title").textContent = state.adaptation?.vegan_requested ? "Vegan recipe" : state.adaptation?.scale ? "Scaled recipe" : "Reviewed recipe";
   $("#recipe-output-language").textContent = language === "english" ? "English" : "Original language";
   const rows = recipe.ingredients.map((item) => `<tr>
     <th scope="row">${escape(ingredientLabel(item))}</th>
     <td>${escape(ingredientAmount(item) || "—")}</td>
-    <td>${escape([clean(value(item.preparation)), clean(value(item.optional_when))].filter(Boolean).join(" · ") || "—")}</td>
+    <td>${escape(editableText(item.preparation))}${optionalNote(item) ? `<small class="optional-note">${escape(optionalNote(item))}</small>` : ""}</td>
   </tr>`).join("");
   $("#output-ingredients").innerHTML = rows ? table(["Ingredient", "Amount", "Preparation"], rows)
     : '<p class="empty">No ingredients were extracted.</p>';
@@ -873,14 +1043,24 @@ function renderRecipeOutput({language, recipe}) {
   $("#output-no-steps").hidden = Boolean(recipe.steps.length);
 }
 
+function optionalNote(item) {
+  if (item.optional_when?.status === "needs_review") return "Check optionality";
+  const condition = clean(value(item.optional_when));
+  if (!condition) return "";
+  return /^(?:optional|opcional|you can also|auch kann man|também pode)[.!:]?$/iu.test(condition)
+    ? "Optional" : `Optional · ${condition}`;
+}
+
 function exportReport() {
-  if (!state.output) return;
+  if (!state.output || $("#export-recipe").disabled) return;
   const report = {...state.report};
   if (state.review) report.review = state.review;
-  if (state.scalingPlan) report.scaling_plan = state.scalingPlan;
+  if (state.scalingPlan && state.plansStatus === "current") report.scaling_plan = state.scalingPlan;
   else delete report.scaling_plan;
-  if (state.veganPlan) report.vegan_plan = state.veganPlan;
+  if (state.veganPlan && state.plansStatus === "current") report.vegan_plan = state.veganPlan;
   else delete report.vegan_plan;
+  if (state.plansStatus === "current") report.plan_decisions = state.planDecisions;
+  else delete report.plan_decisions;
   if (state.adaptation) report.adaptation = state.adaptation;
   else delete report.adaptation;
   report.output = state.output;
@@ -950,6 +1130,14 @@ for (const eventName of ["dragover", "dragleave", "drop"]) {
 }
 document.addEventListener("click", (event) => {
   const button = event.target.closest("button");
+  const issue = button?.dataset.reviewIssue;
+  if (issue) {
+    const collection = issue.split("/")[1];
+    if (collection in reviewTabs) state.tab = collection;
+    show("review");
+    openFieldReview(issue, button, true);
+    return;
+  }
   if (button?.dataset.screen) show(button.dataset.screen);
   if (button?.dataset.tab && button.dataset.tab !== state.tab) {
     state.tab = button.dataset.tab;
@@ -981,16 +1169,35 @@ $("#field-review").addEventListener("cancel", (event) => {
   if (state.reviewing) event.preventDefault();
 });
 $("#field-review").addEventListener("close", () => {
+  if (returnFromReview) {
+    returnFromReview = false;
+    reviewTrigger = null;
+    show("adapt");
+    $("#settings-title").focus({preventScroll: true});
+    return;
+  }
   const path = reviewTrigger?.dataset.editField;
   const trigger = reviewTrigger?.isConnected ? reviewTrigger
     : (path && $(`[data-edit-field="${path}"]`)) || $(`#${state.tab}-tab`);
-  trigger.focus({preventScroll: true});
+  trigger?.focus({preventScroll: true});
+  window.scrollTo(0, reviewScroll);
   reviewTrigger = null;
 });
 $("#field-review-path").addEventListener("change", (event) => {
+  refreshReviewActions();
   state.reviewPath = event.target.value;
   renderFieldReview();
   message("#field-review-status");
+  focusReviewValue();
+});
+for (const selector of ["#field-review-value", "#field-review-references"]) {
+  $(selector).addEventListener("input", refreshReviewActions);
+}
+$("#field-review-discard").addEventListener("click", () => {
+  state.reviewDrafts.delete(state.reviewPath);
+  renderFieldReview();
+  message("#field-review-status");
+  focusReviewValue();
 });
 $("#field-review-form").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -1007,9 +1214,14 @@ $("#output-english").addEventListener("change", () => {
   if (state.screen === "review") updateReviewOutput();
   if (state.screen === "adapt") updateOutput();
 });
+$("#retry-output").addEventListener("click", () => {
+  if (state.screen === "review") updateReviewOutput();
+  else if (state.screen === "adapt") updateOutput();
+});
 $("#vegan").addEventListener("click", (event) => {
   const control = event.currentTarget;
   control.setAttribute("aria-checked", String(control.getAttribute("aria-checked") !== "true"));
   scheduleAdaptation();
 });
+$("#retry-plans").addEventListener("click", () => refreshPlans(true));
 $("#export-recipe").addEventListener("click", exportReport);

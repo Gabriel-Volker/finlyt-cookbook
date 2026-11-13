@@ -773,6 +773,33 @@ h3 {
   white-space: pre-wrap;
 }
 
+.issue-link {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  text-align: start;
+  text-decoration: underline;
+}
+
+.output-feedback:has(#retry-output:not([hidden])) {
+  padding-bottom: 8px;
+}
+
+.output-feedback > #retry-output {
+  margin-inline: var(--page-gutter);
+}
+
+.optional-note {
+  display: block;
+  width: fit-content;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+#retry-plans {
+  justify-self: start;
+}
+
 .output-card > h3 {
   padding: 0 22px 10px;
 }

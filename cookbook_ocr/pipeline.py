@@ -10,8 +10,8 @@ from .providers import GeminiClient, OpenAIClient, ProviderError
 from .quality import assess_blur
 from .quantities import QUANTITY_PATTERN, known_units, quantity_matches
 from .raster import prepare_pdf
-from .scaling_plan import scaling_plan_matches, validate_scaling_plan
-from .vegan import unavailable_vegan_plan, validate_vegan_plan, vegan_plan_usable
+from .scaling_plan import recover_scaling_plan, scaling_plan_matches, validate_scaling_plan
+from .vegan import unavailable_vegan_plan, validate_vegan_plan, vegan_plan_usable, vegan_source_review
 from .vegan_verification import verify_vegan_plan
 
 
@@ -206,6 +206,8 @@ def plan_vegan_recipe(openai: OpenAIClient, recipe: dict, extraction_issues: lis
         return unavailable_vegan_plan(
             recipe, "insufficient_information", "Vegan planning needs extracted ingredients and steps.",
         )
+    if blocked := vegan_source_review(recipe):
+        return blocked
 
     def omit_evidence(value):
         if isinstance(value, dict):
@@ -218,12 +220,30 @@ def plan_vegan_recipe(openai: OpenAIClient, recipe: dict, extraction_issues: lis
     prompt = (PROMPTS_DIR / "plan_vegan.system.txt").read_text(encoding="utf-8")
     schema = json.loads((PROMPTS_DIR / "plan_vegan.schema.json").read_text(encoding="utf-8"))
     data = {"recipe": omit_evidence(recipe)}
+    first_plan = None
     for attempt in range(2):
         try:
             candidate = _structured_response(openai, prompt, schema, "vegan_plan", data, max_output_tokens=8192)
-            return validate_vegan_plan(recipe, candidate)
+            plan = validate_vegan_plan(recipe, candidate)
+            if candidate["status"] == "ready" and plan["status"] != "ready":
+                first_plan = plan
+                issues = " ".join(f"{item['path']}: {item['reason']}" for item in plan["review_items"])
+                raise ValueError(issues)
+            if (attempt == 0 and candidate.get("status") == "needs_review"
+                    and _needs_timing_reconsideration(recipe, plan)):
+                first_plan = plan
+                prompt += (
+                    "\n\nReconsider the recipe's animal-specific timing. A stated timing is not missing information. "
+                    "Changing the preparation method for a plant ingredient is within scope. Try a known vegan "
+                    "method that preserves the culinary purpose of those steps, with a qualitative cue in place of "
+                    "an inapplicable animal-specific time. Update the linked condition or duration and the step "
+                    "together. Leave timings for unchanged preparations intact. If there is still no viable "
+                    "technique, explain the remaining culinary constraint."
+                )
+                continue
+            return plan
         except ProviderError:
-            return unavailable_vegan_plan(recipe, "provider_unavailable", "Luna could not prepare a vegan plan.")
+            return first_plan or unavailable_vegan_plan(recipe, "provider_unavailable", "Luna could not prepare a vegan plan.")
         except ValueError as error:
             detail = "The response was not valid JSON." if isinstance(error, json.JSONDecodeError) else str(error)
             LOGGER.warning("Vegan plan validation failed on attempt %d: %s", attempt + 1, detail)
@@ -231,12 +251,25 @@ def plan_vegan_recipe(openai: OpenAIClient, recipe: dict, extraction_issues: lis
                 prompt += (
                     f"\n\nThe previous response did not validate. {detail} "
                     "Use exact recipe paths and copy the before values verbatim. "
+                    "In rewritten steps and conditions, use only the replacement names. Do not refer to "
+                    "the replaced animal ingredients, including in phrases such as 'instead of'. "
                     "For a blocked verdict, return no edits and identify what prevents choosing a suitable substitute. "
                     "Leave missing amounts untouched without blocking otherwise suitable replacements."
                 )
-    return unavailable_vegan_plan(
-        recipe, "invalid_output", "The vegan proposal could not be validated. Try importing the recipe again.",
+    return first_plan or unavailable_vegan_plan(
+        recipe, "invalid_output", "The vegan proposal could not be validated. Retry adaptation plans.",
     )
+
+
+def _needs_timing_reconsideration(recipe: dict, plan: dict) -> bool:
+    for item in plan["review_items"]:
+        match = re.fullmatch(r"/steps/([0-9]+)/(condition|duration)", item["path"])
+        if match:
+            index, field = match.groups()
+            source = recipe["steps"][int(index)][field]
+            if source["status"] in {"stated", "reviewed"} and source["value"]:
+                return True
+    return False
 
 
 def plan_recipe_scaling(openai: OpenAIClient, recipe: dict) -> dict:
@@ -253,29 +286,40 @@ def plan_recipe_scaling(openai: OpenAIClient, recipe: dict) -> dict:
 def _classify_scaling(recipe: dict, provider: str, respond) -> dict:
     prompt = (PROMPTS_DIR / "plan_scaling.system.txt").read_text(encoding="utf-8")
     schema = json.loads((PROMPTS_DIR / "plan_scaling.schema.json").read_text(encoding="utf-8"))
+    proposals = []
     for attempt in range(2):
         try:
             proposal = respond(prompt, schema, {"recipe": recipe})
+            if isinstance(proposal, dict) and isinstance(proposal.get("rules"), list):
+                proposals.append(proposal)
             return validate_scaling_plan(recipe, proposal)
         except ProviderError:
+            if proposals:
+                break
             return {"status": "unavailable", "reason_code": "provider_unavailable",
                     "reason": f"{provider} could not prepare a scaling plan."}
-        except ValueError:
+        except ValueError as error:
+            LOGGER.warning("%s scaling plan validation failed on attempt %d: %s", provider, attempt + 1, error)
             if attempt == 0:
                 prompt += (
                     "\n\nThe previous result did not validate. Return each ingredient ID exactly once. "
                     "Check that each quotation occurs literally inside one permitted field or its evidence. "
                     "Use separate citations for separate fields and select review if a rule lacks evidence."
                 )
+    if proposals:
+        return recover_scaling_plan(recipe, proposals)
     return {"status": "unavailable", "reason_code": "invalid_output",
-            "reason": f"{provider}'s scaling plan failed validation."}
+            "reason": f"{provider} could not return a usable scaling plan. Try refreshing the adaptation options."}
 
 
 def _verify_scaling(gemini: GeminiClient, recipe: dict) -> dict:
     checked = _classify_scaling(recipe, "Gemini", gemini.respond_structured)
     if checked["status"] == "unavailable":
         return {"provider": "gemini", **checked}
-    return {"provider": "gemini", "status": "completed", "rules": checked["rules"]}
+    result = {"provider": "gemini", "status": "completed", "rules": checked["rules"]}
+    if checked.get("recovered_ingredients"):
+        result["recovered_ingredients"] = checked["recovered_ingredients"]
+    return result
 
 
 def refresh_scaling_plans(

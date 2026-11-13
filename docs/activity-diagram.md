@@ -48,12 +48,10 @@ flowchart TD
         inspect["Inspect excerpts and source page"]
         resolve["Confirm or correct a recipe field"]
         saveReview["Save decision and original evidence"]
-        refreshPlan["Refresh plans for the reviewed recipe"]
         display -.->|"Select item"| inspect
         inspect -->|"Resolve a field"| resolve
         resolve --> saveReview
-        saveReview --> refreshPlan
-        refreshPlan -.->|"Review another field"| display
+        saveReview -.->|"Review another field"| display
     end
 
     savePlans --> display
@@ -61,6 +59,7 @@ flowchart TD
 
     subgraph adapt ["Adapt"]
         options["Choose servings, vegan option, and output language"]
+        refreshPlan["Refresh plans for the reviewed recipe if needed"]
         valid{"Serving counts valid?"}
         correct["Ask for valid serving counts"]
         requested{"Any adaptation requested?"}
@@ -71,6 +70,7 @@ flowchart TD
         translate["Translate the final recipe and validate measures"]
         output["Show recipe and keep original evidence"]
         changes["Show changes and warnings"]
+        refreshPlan --> options
         options --> valid
         valid -->|"No"| correct
         correct --> options
@@ -87,8 +87,9 @@ flowchart TD
         changes -.->|"Change options"| options
     end
 
-    display -->|"Open Adapt"| options
-    refreshPlan -->|"Open Adapt"| options
+    display -->|"Open Adapt"| refreshPlan
+    saveReview -->|"Open Adapt"| refreshPlan
+    changes -.->|"Open flagged field"| inspect
     output --> download(["Export JSON report"])
 
     style reading fill:#E9F2FA,stroke:#8AA9C6,color:#1E1E1E

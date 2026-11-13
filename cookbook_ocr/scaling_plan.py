@@ -5,7 +5,7 @@ import re
 from fractions import Fraction
 from hashlib import sha256
 
-from .extraction import UNREADABLE
+from .extraction import UNREADABLE, _source_quotes
 from .quantities import QUANTITY_PATTERN, quantity_matches, scale_quantity, unit_aliases
 from .review import REVIEW_FIELDS
 
@@ -39,8 +39,9 @@ _AMBIGUOUS_BATCH = re.compile(
 _NEGATION = re.compile(r"\b(?:not|never|don't|do not|não|nunca|nicht|nie)\b", re.IGNORECASE)
 
 
-def _fingerprint(recipe: dict) -> str:
-    data = json.dumps(recipe, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+def _fingerprint(recipe: dict, *, legacy: bool = False) -> str:
+    fields = recipe if legacy else {key: value for key, value in recipe.items() if key != "title"}
+    data = json.dumps(fields, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return sha256(data.encode("utf-8")).hexdigest()
 
 
@@ -48,7 +49,7 @@ def scaling_plan_matches(recipe: dict, plan: dict | None) -> bool:
     """Check whether a stored scaling plan belongs to these recipe fields."""
     return (
         isinstance(plan, dict) and plan.get("status") in PLAN_STATUSES
-        and plan.get("recipe_fingerprint") == _fingerprint(recipe)
+        and plan.get("recipe_fingerprint") in (_fingerprint(recipe), _fingerprint(recipe, legacy=True))
     )
 
 
@@ -80,6 +81,21 @@ def _evidence_source(field: dict | None, quote: str) -> str | None:
             return original
     value = field["value"] or ""
     return value if quote in value else None
+
+
+def _restore_quote(field: dict | None, quote: str) -> str | None:
+    if _evidence_source(field, quote) is not None:
+        return quote
+    if not field or field["status"] not in {"stated", "reviewed", "derived"} or UNREADABLE.search(quote):
+        return None
+    candidates = [field["value"] or ""]
+    if field["status"] == "stated":
+        candidates.append((field.get("evidence") or {}).get("quote") or "")
+    for source in candidates:
+        matches = _source_quotes(source, quote)
+        if len(matches) == 1:
+            return matches[0].group()
+    return None
 
 
 def _confirms_batch_size(quote: str, source: str, count: int) -> bool:
@@ -126,7 +142,7 @@ def _supports_ingredient_mode(fields: dict, references: list[dict], index: int, 
         path, quote = item["path"], item["quote"]
         source = _evidence_source(fields[path], quote)
         for sentence in _SENTENCE_END.split(source):
-            if quote not in sentence or _NEGATION.search(sentence) or not wording.search(quote):
+            if quote not in sentence or _NEGATION.search(sentence) or not wording.search(" ".join(quote.split())):
                 continue
             own_value = path.startswith(prefix) and quote in (fields[path]["value"] or "")
             if own_value or (path.startswith((prefix, "/steps/")) and any(
@@ -190,7 +206,8 @@ def _normalize_rule(recipe: dict, index: int, ingredient: dict, rule: dict) -> d
         path, quote = item.get("path"), item.get("quote")
         if not isinstance(path, str) or not isinstance(quote, str) or not quote.strip():
             raise ValueError("A scaling rule cites invalid evidence.")
-        if _evidence_source(fields.get(path), quote) is None:
+        quote = _restore_quote(fields.get(path), quote)
+        if quote is None:
             raise ValueError("A scaling rule must quote verified text from a related recipe field.")
         reference = {"path": path, "quote": quote}
         if reference not in references:
@@ -238,10 +255,103 @@ def validate_scaling_plan(recipe: dict, proposal: dict) -> dict:
     if ingredients.keys() != rules.keys():
         raise ValueError("A scaling plan must specify each existing ingredient exactly once.")
 
+    return _plan(recipe, [rules[ingredient_id] for ingredient_id in ingredients])
+
+
+def recover_scaling_plan(recipe: dict, proposals: list[dict]) -> dict:
+    """Keep validated provider rules after retry and hold unsupported amounts."""
+    ingredients = {item["id"]: (index, item) for index, item in enumerate(recipe["ingredients"])}
+    recovered = {}
+    failures = {}
+    for proposal in proposals:
+        candidates = {}
+        for rule in proposal["rules"]:
+            ingredient_id = rule.get("ingredient_id") if isinstance(rule, dict) else None
+            if isinstance(ingredient_id, str) and ingredient_id in ingredients:
+                candidates.setdefault(ingredient_id, []).append(rule)
+        for ingredient_id, (index, ingredient) in ingredients.items():
+            rules = candidates.get(ingredient_id, [])
+            if not rules:
+                failures[ingredient_id] = "The model omitted this ingredient. Confirm how its amount should scale."
+            elif len(rules) != 1:
+                failures[ingredient_id] = "The model proposed multiple rules for this ingredient. Confirm how its amount should scale."
+            else:
+                try:
+                    recovered[ingredient_id] = _normalize_rule(recipe, index, ingredient, rules[0])
+                except ValueError as error:
+                    failures[ingredient_id] = f"{error} Confirm how this ingredient should scale."
+
+    held = [ingredient_id for ingredient_id in ingredients if ingredient_id not in recovered]
+    for ingredient_id in held:
+        recovered[ingredient_id] = _review_rule(
+            ingredient_id, failures.get(ingredient_id, "No scaling rule was available. Confirm how this amount should scale."),
+        )
+    plan = _plan(recipe, [recovered[ingredient_id] for ingredient_id in ingredients])
+    if held:
+        plan["recovered_ingredients"] = held
+    return plan
+
+
+def _review_rule(ingredient_id: str, reason: str) -> dict:
+    return {"ingredient_id": ingredient_id, "mode": "review", "batch_servings": None, "evidence": [], "reason": reason}
+
+
+def rebase_scaling_plan(previous_recipe: dict, recipe: dict, plan: dict | None) -> dict | None:
+    """Keep unchanged classifications when the reviewed recipe cannot be reclassified."""
+    if not scaling_plan_matches(previous_recipe, plan):
+        return None
+    if scaling_plan_matches(recipe, plan):
+        return plan
+    before = {item["id"]: (index, item) for index, item in enumerate(previous_recipe["ingredients"])}
+    unchanged = set()
+    for index, item in enumerate(recipe["ingredients"]):
+        ingredient_id = item["id"]
+        if ingredient_id not in before:
+            continue
+        previous_index, previous_item = before[ingredient_id]
+        if (_evidence_fields(previous_recipe, previous_index, previous_item) == _evidence_fields(recipe, index, item)
+                and _linked_steps(previous_recipe, ingredient_id) == _linked_steps(recipe, ingredient_id)):
+            unchanged.add(ingredient_id)
+
+    def rebase_rules(proposal: dict) -> list[dict]:
+        previous_rules = {rule["ingredient_id"]: rule for rule in validate_scaling_plan(previous_recipe, proposal)["rules"]}
+        return [
+            previous_rules[item["id"]] if item["id"] in unchanged else _review_rule(
+                item["id"], "The recipe changed. Confirm how this ingredient should scale.",
+            ) for item in recipe["ingredients"]
+        ]
+
+    try:
+        updated = _plan(recipe, rebase_rules(plan))
+    except ValueError:
+        return None
+    def track_held(previous: dict, current: dict):
+        previously_held = previous.get("recovered_ingredients") or []
+        held = [item["id"] for item in recipe["ingredients"] if item["id"] not in unchanged or item["id"] in previously_held]
+        if held:
+            current["recovered_ingredients"] = held
+
+    track_held(plan, updated)
+    verification = plan.get("verification")
+    if isinstance(verification, dict) and verification.get("status") == "completed":
+        try:
+            updated["verification"] = {**verification, "rules": rebase_rules(verification)}
+        except ValueError:
+            pass
+        else:
+            track_held(verification, updated["verification"])
+    return updated
+
+
+def _linked_steps(recipe: dict, ingredient_id: str) -> list[dict]:
+    return [step for step in recipe["steps"] if ingredient_id in step["ingredient_ids"]]
+
+
+def _plan(recipe: dict, rules: list[dict]) -> dict:
     return {
-        "status": "needs_review" if any(rule["mode"] == "review" for rule in rules.values()) else "ready",
+        "status": "needs_review" if any(rule["mode"] == "review" for rule in rules) else "ready",
         "recipe_fingerprint": _fingerprint(recipe),
-        "rules": [rules[ingredient_id] for ingredient_id in ingredients],
+        "rules": rules,
     }
 
 

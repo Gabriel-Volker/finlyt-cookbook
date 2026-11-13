@@ -10,6 +10,8 @@ from .vegan import (
     proposed_vegan_substitutions,
     unavailable_vegan_plan,
     validate_vegan_plan,
+    vegan_animal_review,
+    vegan_ingredient_names,
     vegan_plan_matches,
     vegan_plan_usable,
     vegan_substitutions_approved,
@@ -106,6 +108,7 @@ def verify_vegan_plan(gemini: GeminiClient | None, recipe: dict, plan: dict) -> 
     if plan["status"] != "ready":
         return plan
     replacements = proposed_vegan_substitutions(plan["changes"])
+    ingredient_names = vegan_ingredient_names(recipe, plan["changes"])
     prompt = (PROMPTS_DIR / "verify_vegan.system.txt").read_text(encoding="utf-8")
     schema = json.loads((PROMPTS_DIR / "verify_vegan.schema.json").read_text(encoding="utf-8"))
     approvals_schema = schema["properties"]["approved_substitutions"]
@@ -117,6 +120,9 @@ def verify_vegan_plan(gemini: GeminiClient | None, recipe: dict, plan: dict) -> 
             "recipe": recipe, "changes": plan["changes"], "review_items": plan["review_items"],
             "substitutions_to_approve": [
                 {"path": path, "ingredient": name} for path, name in replacements.items()
+            ],
+            "ingredients_to_check": [
+                {"path": path, "ingredient": name} for path, name in ingredient_names.items()
             ],
         })
     except (ProviderError, ValueError):
@@ -133,6 +139,9 @@ def verify_vegan_plan(gemini: GeminiClient | None, recipe: dict, plan: dict) -> 
             or not vegan_substitutions_approved(plan["changes"], result["approved_substitutions"])
         ):
             return unavailable("Gemini did not explicitly approve every vegan substitution.")
+        if review_items := vegan_animal_review(ingredient_names):
+            reason = "An animal ingredient remains in the proposed recipe."
+            return unavailable_vegan_plan(recipe, "verification_failed", reason, review_items)
         return {**plan, "verification": {
             "provider": "gemini", "status": status, "reason_code": None, "reason": None,
             "findings": [], "approved_substitutions": result["approved_substitutions"],

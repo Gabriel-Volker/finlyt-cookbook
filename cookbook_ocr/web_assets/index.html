@@ -29,7 +29,10 @@
           <div id="workspace-output-language" hidden></div>
         </div>
       </div>
-      <p id="output-status" class="status-message output-status" role="status" hidden></p>
+      <div class="output-feedback">
+        <p id="output-status" class="status-message output-status" role="status" hidden></p>
+        <button type="button" id="retry-output" class="button text issue-link" hidden>Retry translation</button>
+      </div>
     </header>
     <main class="container">
       <section id="import" class="import-layout" aria-labelledby="import-title">
@@ -155,7 +158,7 @@
           </div>
           <aside class="stack" aria-label="Adaptation">
             <section class="card card-body" aria-labelledby="settings-title">
-              <div class="card-heading"><h2 id="settings-title">Adaptation settings</h2></div>
+              <div class="card-heading"><h2 id="settings-title" tabindex="-1">Adaptation settings</h2></div>
               <form id="adapt-settings" class="settings-form">
                 <div class="field">
                   <label for="original-servings">Original servings</label>
@@ -167,6 +170,7 @@
                   <input id="target-servings" type="number" inputmode="numeric" min="1" step="1" aria-describedby="target-hint">
                   <small id="target-hint"></small>
                 </div>
+                <ul id="scaling-plan-review" class="comparison-list" hidden></ul>
                 <div class="toggle-row">
                   <label for="vegan">
                     <img src="/assets/images/leaf.svg" width="17" height="17" alt=""> Make vegan
@@ -177,7 +181,10 @@
                 </div>
                 <p id="vegan-plan-status" class="status-message" role="status" hidden></p>
                 <ul id="vegan-plan-review" class="comparison-list" hidden></ul>
+                <button type="button" class="button text issue-link" id="vegan-review-source" data-screen="review" hidden>Review unresolved fields</button>
                 <p id="adapt-status" class="status-message" role="status" hidden></p>
+                <button type="button" class="button secondary" id="retry-plans" hidden>Retry adaptation plans</button>
+                <p id="plans-status" class="status-message" role="status" hidden></p>
               </form>
             </section>
           </aside>
@@ -205,8 +212,9 @@
           <small id="field-review-links-hint">Select the entries used in this step. Use Ctrl or Command to select several.</small>
         </div>
         <div class="field-review-actions">
-          <button type="submit" class="button primary" value="correct">Save correction</button>
-          <button type="submit" class="button secondary" value="confirm">Confirm value</button>
+          <button type="submit" class="button primary" id="field-review-save" value="correct">Save correction</button>
+          <button type="submit" class="button secondary" id="field-review-confirm" value="confirm">Confirm value</button>
+          <button type="button" class="button text" id="field-review-discard" hidden>Discard draft</button>
           <button type="button" class="button text" id="field-review-clear" hidden>Mark not stated</button>
           <button type="button" class="button text" id="field-review-reopen" hidden>Undo review</button>
         </div>
