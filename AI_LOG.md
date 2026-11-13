@@ -297,3 +297,9 @@ The four Sauerbraten files cover extraction, scaling to six servings, the vegan 
 Gabriel reported that clicking an item still required searching the full field list to change it. Codex replaced the separate editor with a dialog opened from the clicked value, step, or utensil. The dialog focuses the selected field and shows only fields for the same item. It retains source excerpts and restores focus to the trigger when closed. Flagged fields can also open their editor directly from the pending list.
 
 All 113 tests passed in Docker. Chromium verified the deployed app at `127.0.0.1:8000` on desktop and at a 390 × 700 viewport. The checks covered editing a late row without moving the document, preserving an unsaved value during source preview, saving, confirming, clearing, undoing, editing step links, and opening a flagged field with both OCR excerpts. Codex rebuilt and restarted the local container.
+
+## 2026-11-13 18:06–18:07 · Diagnose the blocked vegan toggle on the uploaded Sauerbraten
+
+Gabriel asked why the uploaded recipe displayed `Luna's vegan plan failed validation.` Codex traced the message to the Luna planner's `invalid_output` branch, before Gemini verification. The Docker log records successful import and scaling HTTP requests. The app discards the validation exception and planner response, so the original rule violation could not be recovered. The serving settings apply downstream of vegan planning.
+
+Codex replayed only the Luna planning call against a previously saved German extraction from the same PDF. The plan passed validation with `needs_review`, `insufficient_information`, zero edits, and four review items for the roast, bacon, butter, and pan juices. The replay confirms missing ingredient details on that extraction. It did not reproduce the original invalid output. The investigation changed only this log.
