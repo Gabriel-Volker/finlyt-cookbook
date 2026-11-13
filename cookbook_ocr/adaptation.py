@@ -51,7 +51,7 @@ OIL_PURPOSE = (
 
 
 def _portion_count(field: dict) -> int | None:
-    if field["status"] != "stated" or field["value"] is None:
+    if field["status"] not in {"stated", "reviewed"} or field["value"] is None:
         return None
     match = YIELD.fullmatch(field["value"].strip().rstrip(".:"))
     value = parse_number(match[1]) if match else None
@@ -290,20 +290,24 @@ def adapt_recipe(
 
     scale = None
     if servings is not None:
-        stated_count = _portion_count(recipe["servings"])
-        if stated_count is not None and original_servings not in (None, stated_count):
-            raise ValueError("--original-servings conflicts with the serving count stated in the recipe.")
-        source_count = stated_count or original_servings
+        yield_field = recipe["servings"]
+        recipe_count = _portion_count(yield_field)
+        if recipe_count is not None and original_servings not in (None, recipe_count):
+            raise ValueError("--original-servings conflicts with the serving count in the recipe.")
+        source_count = recipe_count or original_servings
         if source_count is None:
             raise ValueError("The recipe has no confirmed serving count. Supply --original-servings.")
+        source = "user" if recipe_count is None else "recipe"
+        if recipe_count is not None and yield_field["status"] == "reviewed":
+            source = "review"
         factor = Fraction(servings, source_count)
         scale = {
             "original_servings": source_count,
-            "original_servings_source": "recipe" if stated_count is not None else "user",
+            "original_servings_source": source,
             "target_servings": servings,
             "factor": str(factor),
         }
-        if factor != 1 or stated_count is None:
+        if factor != 1 or recipe_count is None:
             change("/servings", adapted["servings"], str(servings), "Use the requested serving count.")
         measures = {}
         if factor != 1:

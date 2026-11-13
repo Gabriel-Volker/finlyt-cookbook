@@ -1,59 +1,66 @@
-# Cookbook · Diagrama de atividades
+# Cookbook Activity Diagram
 
-Fluxo atual da interface web, da importação ao download do relatório.
+Web workflow from recipe import to JSON export.
 
 ```mermaid
 flowchart TD
-    start(["Início"]) --> entry{"Arquivo ou exemplo?"}
+    start(["Start"]) --> entry{"Upload or example?"}
 
-    subgraph reading ["Importação e leitura"]
-        upload["Validar PDF, PNG ou JPEG"]
-        gemini["Transcrever com Gemini"]
-        luna["Transcrever com Luna"]
-        compare["Comparar textos A e B com Luna"]
-        extract["Extrair com Luna e validar evidências"]
-        example["Carregar relatório do exemplo"]
-        upload -->|"OCR em paralelo"| gemini
-        upload -->|"OCR em paralelo"| luna
+    subgraph reading ["Import and read"]
+        upload["Validate PDF, PNG or JPEG"]
+        gemini["Transcribe with Gemini"]
+        luna["Transcribe with Luna"]
+        compare["Compare texts A and B with Luna"]
+        extract["Extract with Luna and validate evidence"]
+        example["Load the example report"]
+        upload -->|"Parallel OCR"| gemini
+        upload -->|"Parallel OCR"| luna
         gemini --> compare
         luna --> compare
         compare --> extract
     end
 
-    entry -->|"Enviar arquivo"| upload
+    entry -->|"Upload file"| upload
     entry -->|"Try example"| example
 
     subgraph review ["Review"]
-        display["Exibir ingredientes, passos e alertas"]
-        inspect["Consultar trecho e página de origem"]
-        display -.->|"Selecionar item"| inspect
+        display["Show recipe and review flags"]
+        inspect["Inspect excerpts and source page"]
+        resolve["Confirm or correct a flagged field"]
+        saveReview["Save decision and original evidence"]
+        display -.->|"Select item"| inspect
+        inspect -->|"Resolve a field"| resolve
+        resolve --> saveReview
+        saveReview -.->|"Review another field"| display
     end
 
     extract --> display
     example --> display
 
     subgraph adapt ["Adapt"]
-        options["Definir porções e opção vegana"]
-        valid{"Porções válidas, se exigidas?"}
-        correct["Pedir porções ou correção"]
-        requested{"Há ajuste solicitado?"}
-        scale["Escalar medidas e passos, se solicitado"]
-        vegan["Aplicar regras veganas, se solicitado"]
-        changes["Exibir mudanças e alertas"]
+        options["Choose servings and vegan option"]
+        valid{"Serving counts valid?"}
+        correct["Ask for valid serving counts"]
+        requested{"Any adaptation requested?"}
+        base["Apply saved decisions to the original recipe"]
+        scale["Scale measures and steps if requested"]
+        vegan["Apply Python vegan rules if requested"]
+        changes["Show changes and warnings"]
         options --> valid
-        valid -->|"Não"| correct
+        valid -->|"No"| correct
         correct --> options
-        valid -->|"Sim"| requested
-        requested -->|"Sim"| scale
+        valid -->|"Yes or not required"| requested
+        requested -->|"Yes"| base
+        base --> scale
         scale --> vegan
         vegan --> changes
-        changes -.->|"Alterar opções"| options
+        changes -.->|"Change options"| options
     end
 
-    display -->|"Abrir Adapt"| options
-    inspect -.->|"Abrir Adapt"| options
-    requested -->|"Não · relatório original"| download(["Exportar JSON"])
-    changes -->|"Incluir adaptação"| download
+    display -->|"Open Adapt"| options
+    saveReview -->|"Open Adapt"| options
+    requested -->|"No"| download(["Export JSON report"])
+    changes -->|"Include adaptation"| download
 
     style reading fill:#E9F2FA,stroke:#8AA9C6,color:#1E1E1E
     style review fill:#F0F4FA,stroke:#9AAFC8,color:#1E1E1E
@@ -61,6 +68,6 @@ flowchart TD
     style correct fill:#FFECBD,stroke:#D5A43A,color:#1E1E1E
 ```
 
-- Em PDFs, Gemini recebe o arquivo original. Luna recebe as páginas rasterizadas, com fallback para PDF quando o documento excede o limite local. A comparação começa após as duas transcrições.
-- Review permite consultar as evidências e seguir para Adapt com alertas pendentes. Um campo ligado a uma divergência fica sem valor e mantém a evidência para conferência.
-- A escala exige uma contagem original confirmada. Adapt reaplica as regras em Python sobre a receita original a cada mudança. O JSON inclui a receita adaptada completa e os avisos que ainda exigem revisão.
+- For PDF uploads, Gemini receives the file and Luna receives rasterized pages, with a PDF fallback above the local raster budget. Luna compares the two transcriptions before a separate extraction call.
+- Review keeps the original extraction and evidence alongside the reviewer's decisions. Unresolved fields and document-level alerts remain visible.
+- Adapt uses the reviewed recipe when decisions exist. Scaling requires a usable original serving count. When both options are selected, Python scales first and then applies vegan substitutions and step rules. The export includes the original report, review decisions, and any adaptation.

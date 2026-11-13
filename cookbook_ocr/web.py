@@ -19,6 +19,7 @@ from .adaptation import adapt_recipe
 from .pipeline import run_pipeline
 from .providers import GeminiClient, MIME_TYPES, OpenAIClient, ProviderError
 from .raster import run_pdf_task
+from .review import review_recipe
 
 
 ASSETS = Path(__file__).with_name("web_assets")
@@ -170,6 +171,10 @@ class CookbookHandler(BaseHTTPRequestHandler):
                     raise RequestError(str(error), HTTPStatus.SERVICE_UNAVAILABLE) from None
                 self._json(run_pipeline(document, filename, GeminiClient(gemini_key), OpenAIClient(openai_key)))
                 return
+            if url.path == "/api/review":
+                data, report = self._recipe_request()
+                self._json({"review": review_recipe(report["recipe"], data.get("decisions"))})
+                return
             if url.path == "/api/adapt":
                 self._json(self._adapt())
                 return
@@ -181,7 +186,7 @@ class CookbookHandler(BaseHTTPRequestHandler):
         except ValueError as error:
             self._json({"error": str(error)}, HTTPStatus.BAD_REQUEST)
 
-    def _adapt(self) -> dict:
+    def _recipe_request(self) -> tuple[dict, dict]:
         if self.headers.get_content_type() != "application/json":
             raise RequestError("Send the recipe report as JSON.", HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
         try:
@@ -193,12 +198,24 @@ class CookbookHandler(BaseHTTPRequestHandler):
         report = data.get("report")
         if not isinstance(report, dict) or not isinstance(report.get("recipe"), dict):
             raise RequestError("The request must contain a recipe report.")
+        return data, report
+
+    def _adapt(self) -> dict:
+        data, report = self._recipe_request()
         vegan = data.get("vegan", False)
         if type(vegan) is not bool:
             raise RequestError("Vegan preference must be true or false.")
+        recipe = report["recipe"]
+        if "review" in report:
+            submitted_review = report["review"]
+            if not isinstance(submitted_review, dict):
+                raise RequestError("The review must contain the decisions made on the original recipe.")
+            review = review_recipe(recipe, submitted_review.get("decisions"))
+            recipe = review["recipe"]
+            report = {**report, "review": review}
         try:
             result = adapt_recipe(
-                report["recipe"], servings=data.get("servings"),
+                recipe, servings=data.get("servings"),
                 original_servings=data.get("original_servings"), vegan=vegan,
             )
         except (AttributeError, KeyError, TypeError):

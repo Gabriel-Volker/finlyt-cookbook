@@ -24,6 +24,8 @@ docker run --rm --env-file .env -p 127.0.0.1:8000:8000 --entrypoint python finly
 
 To run it directly after installing the Python dependencies, use `python -m cookbook_ocr.web`. Upload a PDF, PNG, or JPEG up to 14 MB. Review the extracted ingredients and steps with their source excerpts, then adjust servings, apply vegan substitutions, and export the JSON report. **Try example** opens a bundled Sauerbraten example. The example and its adaptations work without API keys. Imported files and results are held for the current browser session.
 
+In **Review**, select a flagged field, inspect its evidence, and enter the value you verified on the source page. Use **Confirm** to accept a reading or **Correct** to supply a corrected value. The report retains the original `recipe`, OCR texts, and comparison. The `review` section contains the reviewed recipe, the decisions, and paths still awaiting review. **Adapt** uses the reviewed values. The [activity diagram](docs/activity-diagram.md) shows these steps.
+
 For a local run, use Python 3.10 or later and the same `.env`. Environment variables take precedence. Pass the full input path if the file is outside the project.
 
 ```powershell
@@ -53,15 +55,15 @@ python -m cookbook_ocr outputs/recipe-review.json --vegan --output outputs/recip
 python -m cookbook_ocr outputs/recipe-review.json --servings 6 --original-servings 4 --vegan --output outputs/recipe-vegan-6.json
 ```
 
-Omit `--original-servings` if the recipe states a single positive whole number of servings. The Sauerbraten gives no yield. The examples use four only as a user-provided baseline for the calculation.
+Omit `--original-servings` if the recipe states a single positive whole number of servings or the reviewer supplied one. The Sauerbraten gives no yield. The examples use four as a user-provided baseline for the calculation.
 
 Scaling uses exact fractions for numeric measures and ranges, including mixed fractions such as `1 1/2` and `1½`. The extractor checks that its evidence includes the whole measure. Scaling converts between g and kg or mL and L when doing so makes a measure easier to use. Household units retain their scale and volume stays separate from mass. Unstated quantities remain empty. Steps are updated when a measure matches the linked ingredient, when explicit parts across linked steps add up to the stated total, or when a portioning instruction matches the original yield. Conflicting or ambiguous allocations require review. Cooking times and temperatures are kept during scaling.
 
 Python applies the serving factor after extraction. It keeps the source amounts for recognized salt and pepper names and for oil explicitly used to fry or grease a pan, and flags these amounts for review. Amounts spelled out in prose and allocations without clear ingredient links can need manual reconciliation. For a larger yield, the report flags recognized cooking vessels for a capacity or batch size check and cites the vessel's size when stated. Vessel dimensions and capacity stay as written.
 
-Vegan adaptation runs after scaling. Python rules cover a limited set of ingredient names and cooking methods in German, English, and Portuguese. For Sauerbraten, the rules substitute seitan, smoked tofu, vegan butter and vegan-labelled wine, and adapt marinating, browning and making the sauce. Known animal-derived ingredients without a matching rule are flagged for review. Check ingredient labels and any unsupported terms before relying on the vegan result.
+Vegan adaptation runs on demand after any requested scaling. It uses Python rules and makes no model calls. The rules cover a limited set of ingredient names and cooking methods in German, English, and Portuguese. For Sauerbraten, they substitute seitan, smoked tofu, vegan butter and vegan-labelled wine, and adapt marinating, browning and making the sauce. Known animal-derived ingredients without a matching rule are flagged for review. Check ingredient labels and any unsupported terms before relying on the vegan result.
 
-The original `recipe` and OCR evidence remain in the report. Read the result in `adaptation.recipe`, the before and after values and reasons in `adaptation.changes`, and any open questions in `adaptation.review_items`. Adapting a report again starts from its original `recipe`.
+The original `recipe` and OCR evidence remain in the report. Read the result in `adaptation.recipe`, the before and after values and reasons in `adaptation.changes`, and any open questions in `adaptation.review_items`. Adapting an exported report reapplies the saved review decisions to the original `recipe` before running the adaptation.
 
 Run the local tests with `python -m unittest discover -s tests -v`.
 

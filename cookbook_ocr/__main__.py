@@ -7,6 +7,7 @@ from pathlib import Path
 from .adaptation import adapt_recipe
 from .pipeline import run_pipeline
 from .providers import GeminiClient, OpenAIClient, ProviderError
+from .review import review_recipe
 
 
 def load_api_keys() -> tuple[str, str]:
@@ -67,10 +68,17 @@ def main() -> int:
                 document, args.recipe.name, GeminiClient(gemini_key), OpenAIClient(openai_key)
             )
         report.pop("adaptation", None)
+        recipe = report["recipe"]
+        if "review" in report:
+            review = report["review"]
+            if not isinstance(review, dict):
+                raise ValueError("The review must contain the decisions made on the original recipe.")
+            report["review"] = review_recipe(recipe, review.get("decisions"))
+            recipe = report["review"]["recipe"]
         if args.servings is not None or args.vegan:
             try:
                 report["adaptation"] = adapt_recipe(
-                    report["recipe"], servings=args.servings,
+                    recipe, servings=args.servings,
                     original_servings=args.original_servings, vegan=args.vegan,
                 )
             except (KeyError, TypeError, AttributeError):
@@ -86,9 +94,16 @@ def main() -> int:
         return 1
 
     review_count = len(report.get("comparison", {}).get("review_items", []))
+    review = report.get("review")
     if review_count:
-        print(f"Human review required for {review_count} transcription item(s).", file=sys.stderr)
-    if report.get("extraction_issues") or (report.get("status") == "needs_review" and not review_count):
+        message = (f"Original comparison flagged {review_count} transcription item(s)." if review
+                   else f"Human review required for {review_count} transcription item(s).")
+        print(message, file=sys.stderr)
+    unresolved_fields = (
+        review["unresolved_paths"] if review else
+        report.get("extraction_issues") or (report.get("status") == "needs_review" and not review_count)
+    )
+    if unresolved_fields:
         print("Human review required for unresolved recipe fields.", file=sys.stderr)
     if report.get("adaptation", {}).get("status") == "needs_review":
         print("Human review required for the recipe adaptation.", file=sys.stderr)

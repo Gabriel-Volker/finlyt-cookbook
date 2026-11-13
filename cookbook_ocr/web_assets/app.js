@@ -11,9 +11,15 @@ const countLabel = (number, name) => `${number} ${name}${number === 1 ? "" : "s"
 const state = {
   screen: "import", file: null, filename: "", report: null, example: false,
   tab: "ingredients", selected: 0, pages: 1, page: 1,
+  review: null, reviewPath: "", reviewing: false,
   adaptation: null, adaptRequest: 0, previewRequest: 0, busy: false,
+  previewReading: "A",
   previews: new Map(),
 };
+
+function currentRecipe() {
+  return state.review?.recipe ?? state.report.recipe;
+}
 
 async function request(url, options) {
   const response = await fetch(url, options);
@@ -30,17 +36,20 @@ function message(id, text = "", error = false) {
 }
 
 function show(screen) {
-  if (screen !== "import" && !state.report) return;
+  if ((screen !== "import" && !state.report) || (screen === "adapt" && state.reviewing)) return;
   state.screen = screen;
   for (const name of ["import", "review", "adapt"]) $(`#${name}`).hidden = name !== screen;
   for (const button of all(".nav-item")) {
     const name = button.dataset.screen;
-    button.disabled = name !== "import" && !state.report;
+    button.disabled = (name !== "import" && !state.report) || (name === "adapt" && state.reviewing);
     if (name === screen) button.setAttribute("aria-current", "step");
     else button.removeAttribute("aria-current");
   }
   $("#workspace-name").textContent = state.filename || "Recipe workspace";
-  if (screen === "review") renderReview();
+  if (screen === "review") {
+    renderReview();
+    renderFieldReview();
+  }
   if (screen === "adapt") {
     renderAdaptation();
     updateAdaptation();
@@ -64,22 +73,33 @@ function loadReport(report, file) {
   state.page = 1;
   state.selected = 0;
   state.tab = "ingredients";
+  state.review = null;
+  state.reviewPath = "";
+  state.reviewing = false;
   state.adaptation = null;
   state.adaptRequest++;
+  state.previewRequest++;
   state.previews.clear();
 
-  const source = report.recipe.servings;
-  const stated = source?.status === "stated" && /^(?:(?:serves|makes|yield|für|rende|para)\s+)?([1-9]\d*)(?:\s+(?:servings?|people|persons?|portions?|porç(?:ão|ões)|pessoas?|portionen?|personen?))?[.:]?$/i.exec(clean(value(source)));
-  const original = $("#original-servings");
-  original.value = stated?.[1] || (state.example ? 4 : "");
-  original.readOnly = Boolean(stated);
-  $("#original-hint").textContent = stated
-    ? "Stated in the recipe."
-    : state.example ? "Example assumption. The source has no serving count."
-      : "Enter the original yield to scale this recipe.";
+  updateOriginalServings(true);
   $("#target-servings").value = state.example ? 6 : "";
   $("#vegan").setAttribute("aria-checked", String(state.example));
+  message("#field-review-status");
   show("review");
+}
+
+function updateOriginalServings(reset = false) {
+  const source = currentRecipe().servings;
+  const known = ["stated", "reviewed"].includes(source?.status) && /^(?:(?:serves|makes|yield|für|rende|para)\s+)?([1-9]\d*)(?:\s+(?:servings?|people|persons?|portions?|porç(?:ão|ões)|pessoas?|portionen?|personen?))?[.:]?$/i.exec(clean(value(source)));
+  const original = $("#original-servings");
+  if (known || reset || original.readOnly) {
+    original.value = known?.[1] || (state.example ? 4 : "");
+  }
+  original.readOnly = Boolean(known);
+  $("#original-hint").textContent = known
+    ? source.status === "reviewed" ? "Set in Review." : "Stated in the recipe."
+    : state.example ? "Example assumption. The source has no serving count."
+      : "Enter the original yield to scale this recipe.";
 }
 
 async function importRecipe(file) {
@@ -160,14 +180,20 @@ function table(headers, body) {
 
 function renderReview() {
   const report = state.report;
-  const recipe = report.recipe;
+  const recipe = currentRecipe();
+  const fields = flaggedFields();
+  const linkedFindings = new Set(fields.flatMap(({field}) => field.review_item_ids || []));
+  const documentFindings = (report.comparison?.review_items || []).filter((item, index) => !linkedFindings.has(index + 1));
   $("#review-title").textContent = clean(value(recipe.title)) || "Untitled recipe";
   $("#review-subtitle").textContent = `${state.filename} · ${countLabel(state.pages, "page")}`;
-  const reviewNeeded = report.status === "needs_review";
+  const pendingFields = state.review ? state.review.status === "needs_review" : fields.length > 0;
+  const reviewNeeded = pendingFields || documentFindings.length > 0 || (!state.review && report.status === "needs_review");
   const status = $("#reading-status");
   status.classList.toggle("warning", reviewNeeded);
   status.classList.toggle("info", !reviewNeeded);
-  status.innerHTML = reviewNeeded ? `${icon("warning")} Needs review` : `${icon("check", 12)} Readings agree`;
+  const label = pendingFields ? "Needs review" : documentFindings.length ? "Document findings"
+    : reviewNeeded ? "Needs review" : state.review?.decisions.length ? "Fields reviewed" : "Readings agree";
+  status.innerHTML = `${reviewNeeded ? icon("warning") : icon("check", 12)} ${label}`;
   const readings = Object.keys(report.transcriptions || {});
   $("#reading-count").textContent = countLabel(readings.length, "reading");
 
@@ -210,7 +236,7 @@ function renderReview() {
 }
 
 function renderEvidence() {
-  const item = state.report.recipe[state.tab][state.selected];
+  const item = currentRecipe()[state.tab][state.selected];
   const field = evidenceField(item);
   const evidence = field?.evidence;
   const ingredient = state.tab === "ingredients";
@@ -220,32 +246,148 @@ function renderEvidence() {
     evidence?.source ? `Reading ${evidence.source}` : ""].filter(Boolean).join(" / ");
   $("#open-source").disabled = !evidence && !state.file;
   const amount = ingredient ? ingredientAmount(item) : "";
+  const label = field?.status === "reviewed" ? "Reviewed amount" : "Extracted amount";
   $("#evidence").innerHTML = item ? `<p>${escape(ingredient ? subject + detail : metadata)}</p>
     ${evidence ? `<div class="evidence-box">
       ${ingredient ? `<div class="evidence-meta">${escape(metadata)}</div>` : ""}
       <blockquote class="evidence-quote${ingredient ? " ingredient-quote" : ""}">“${escape(evidence.quote)}”</blockquote>
     </div>` : "<p>No source excerpt is available for this field.</p>"}
-    ${ingredient ? `<div class="fact-row"><span>Extracted amount</span><strong>${escape(amount || "Not stated")}</strong></div>` : ""}`
+    ${ingredient ? `<div class="fact-row"><span>${label}</span><strong>${escape(amount || "Not stated")}</strong></div>` : ""}`
     : "<p>Select a recipe item to view its evidence.</p>";
 }
 
 function renderComparison() {
-  const {recipe, comparison, extraction_issues: issues = []} = state.report;
+  const {comparison, extraction_issues: issues = []} = state.report;
+  const recipe = currentRecipe();
   const reviews = comparison?.review_items || [];
   const variations = comparison?.equivalent_variations || [];
   const intro = reviews.length || issues.length
-    ? `${countLabel(reviews.length + issues.length, "item")} to review.`
-    : state.report.status === "needs_review" ? "Some extracted fields need review."
+    ? `${countLabel(reviews.length + issues.length, "original finding")}.`
+    : (state.review?.status ?? state.report.status) === "needs_review" ? "Some extracted fields need review."
+      : state.review?.decisions.length ? "The flagged fields have been reviewed."
       : `Both readings agree on the recipe.${variations.length ? ` ${countLabel(variations.length, "difference")} treated as equivalent.` : ""}`;
   const list = [...reviews, ...issues].map((item) => `<li>
     ${item.page ? `<button class="button text" type="button" data-source-page="${escape(item.page)}">Page ${escape(item.page)}</button>` : ""}
     <strong>${escape(item.section || item.field || "Review")}</strong>
     <p>${escape(item.reason)}</p>
-    ${["a_excerpt", "b_excerpt"].filter((key) => item[key]).map((key) => `<blockquote>${escape(item[key])}</blockquote>`).join("")}
+    ${["A", "B"].filter((source) => item[`${source.toLowerCase()}_excerpt`]).map((source) =>
+      `<blockquote><span class="evidence-meta">Reading ${source}</span><br>${escape(item[`${source.toLowerCase()}_excerpt`])}</blockquote>`).join("")}
   </li>`).join("");
   $("#comparison").innerHTML = `<p>${escape(intro)}</p>
     ${list ? `<ul class="comparison-list">${list}</ul>` : ""}
     <div class="fact-row"><strong>Original servings</strong><span>${escape(value(recipe.servings) || (recipe.servings?.status === "needs_review" ? "Needs review" : "Not stated"))}</span></div>`;
+}
+
+const reviewFieldLabels = {
+  title: "Title", servings: "Original servings", name: "Name", quantity: "Quantity", unit: "Unit",
+  preparation: "Preparation", optional_when: "Optionality", instruction: "Instruction",
+  duration: "Duration", condition: "Condition",
+};
+
+function flaggedFields() {
+  const original = state.report.recipe;
+  const fields = [];
+  function add(item, names, path = "", label = "") {
+    for (const name of names) {
+      const field = item[name];
+      if (field?.status === "needs_review") {
+        fields.push({path: `${path}/${name}`, field, label: [label, reviewFieldLabels[name]].filter(Boolean).join(" · ")});
+      }
+    }
+  }
+  add(original, ["title", "servings"]);
+  original.ingredients.forEach((item, index) => add(item, ["name", "quantity", "unit", "preparation", "optional_when"],
+    `/ingredients/${index}`, clean(value(currentRecipe().ingredients[index].name)) || `Ingredient ${index + 1}`));
+  original.tools.forEach((item, index) => add(item, ["name"], `/tools/${index}`,
+    clean(value(currentRecipe().tools[index].name)) || `Utensil ${index + 1}`));
+  original.steps.forEach((item, index) => add(item, ["instruction", "duration", "condition"],
+    `/steps/${index}`, stepLabel(item, index)));
+  return fields;
+}
+
+function renderFieldReview() {
+  const fields = flaggedFields();
+  $("#field-review").hidden = fields.length === 0;
+  if (!fields.length) return;
+
+  const decisions = new Map((state.review?.decisions || []).map((decision) => [decision.path, decision]));
+  const selected = fields.find(({path}) => path === state.reviewPath)
+    || fields.find(({path}) => !decisions.has(path)) || fields[0];
+  state.reviewPath = selected.path;
+  const decision = decisions.get(selected.path);
+  const select = $("#field-review-path");
+  select.innerHTML = fields.map(({path, label}) =>
+    `<option value="${escape(path)}">${escape(label)}${decisions.has(path) ? " · Reviewed" : ""}</option>`).join("");
+  select.value = selected.path;
+  $("#field-review-count").textContent = `${decisions.size} of ${fields.length} reviewed`;
+  $("#field-review-reopen").hidden = !decision;
+  $("#field-review-value").value = decision?.value ?? value(selected.field);
+  $("#field-review-hint").textContent = selected.path === "/servings"
+    ? "Enter the original serving count as a positive whole number."
+    : "Confirm a reading after checking the source, or save a correction.";
+
+  const evidence = selected.field.evidence;
+  const related = (selected.field.review_item_ids || [])
+    .map((id) => state.report.comparison?.review_items[id - 1]).filter(Boolean);
+  const issue = state.report.extraction_issues?.find(({field}) => field === selected.path);
+  const page = evidence?.page || related.find((item) => item.page)?.page || 1;
+  $("#field-review-source").innerHTML = `
+    ${decision ? `<p><strong>${decision.action === "confirm" ? "Confirmed" : "Corrected"}</strong> · ${escape(decision.value)}</p>` : ""}
+    ${value(selected.field) ? `<p>Original extracted value · ${escape(value(selected.field))}</p>` : ""}
+    ${evidence ? `<div class="evidence-box">
+      <div class="evidence-meta">Original evidence${evidence.page ? ` · Page ${escape(evidence.page)}` : ""}${evidence.source ? ` · Reading ${escape(evidence.source)}` : ""}</div>
+      <blockquote class="evidence-quote">${escape(evidence.quote)}</blockquote>
+    </div>` : "<p>No original evidence was verified for this field.</p>"}
+    ${related.map((item) => `<div class="evidence-box"><p>${escape(item.reason)}</p>
+      ${["A", "B"].filter((source) => item[`${source.toLowerCase()}_excerpt`]).map((source) =>
+        `<div class="evidence-meta">Reading ${source}</div><blockquote class="evidence-quote">${escape(item[`${source.toLowerCase()}_excerpt`])}</blockquote>`).join("")}
+      </div>`).join("")}
+    ${issue ? `<p>${escape(issue.reason)}</p>` : ""}
+    <button type="button" class="button text" data-source-page="${escape(page)}" data-source-reading="${escape(evidence?.source || "A")}">Open source page</button>`;
+}
+
+function setReviewBusy(busy) {
+  state.reviewing = busy;
+  for (const control of all("#field-review-form select, #field-review-form textarea, #field-review-form button, button[data-screen='adapt']")) {
+    control.disabled = busy;
+  }
+}
+
+async function saveFieldReview(action) {
+  if (state.reviewing) return;
+  const report = state.report;
+  const path = state.reviewPath;
+  const verified = $("#field-review-value").value.trim();
+  if (action && !verified) {
+    message("#field-review-status", "Enter the verified value.", true);
+    return;
+  }
+  const decisions = (state.review?.decisions || [])
+    .filter((item) => item.path !== path)
+    .map(({path, action, value}) => ({path, action, value}));
+  if (action) decisions.push({path, action, value: verified});
+
+  setReviewBusy(true);
+  message("#field-review-status", "Saving review…");
+  try {
+    const result = await request("/api/review", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({report: {recipe: report.recipe}, decisions}),
+    });
+    if (report !== state.report) return;
+    state.review = result.review;
+    state.adaptation = null;
+    state.adaptRequest++;
+    updateOriginalServings();
+    renderReview();
+    renderFieldReview();
+    message("#field-review-status", action === "confirm" ? "Value confirmed."
+      : action === "correct" ? "Correction saved." : "Field reopened for review.");
+  } catch (error) {
+    if (report === state.report) message("#field-review-status", error.message, true);
+  } finally {
+    if (report === state.report) setReviewBusy(false);
+  }
 }
 
 function quantityField(input) {
@@ -289,7 +431,8 @@ async function updateAdaptation() {
     const report = await request("/api/adapt", {
       method: "POST", headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
-        report: {recipe: state.report.recipe}, servings,
+        report: {recipe: state.report.recipe, ...(state.review ? {review: {decisions: state.review.decisions}} : {})},
+        servings,
         original_servings: servings === null ? null : baseline, vegan,
       }),
     });
@@ -309,14 +452,14 @@ async function updateAdaptation() {
 function reviewLabel(path) {
   const match = /^\/(ingredients|tools|steps)\/(\d+)/.exec(path);
   if (!match) return "Recipe";
-  const item = state.report.recipe[match[1]][Number(match[2])];
+  const item = currentRecipe()[match[1]][Number(match[2])];
   if (match[1] === "ingredients") return ingredientLabel(item);
   if (match[1] === "tools") return clean(value(item?.name)) || "Utensil";
   return stepLabel(item || {}, Number(match[2]));
 }
 
 function renderAdaptation() {
-  const original = state.report.recipe;
+  const original = currentRecipe();
   const adapted = state.adaptation;
   const title = clean(value(original.title)) || "recipe";
   $("#adapt-title").textContent = `Adapt ${title}`;
@@ -358,7 +501,9 @@ function renderAdaptation() {
 }
 
 function exportReport() {
-  const report = state.adaptation ? {...state.report, adaptation: state.adaptation} : state.report;
+  const report = {...state.report};
+  if (state.review) report.review = state.review;
+  if (state.adaptation) report.adaptation = state.adaptation;
   const blob = new Blob([JSON.stringify(report, null, 2) + "\n"], {type: "application/json"});
   const href = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -368,9 +513,10 @@ function exportReport() {
   window.setTimeout(() => URL.revokeObjectURL(href), 1000);
 }
 
-async function openPage(page) {
+async function openPage(page, reading = state.previewReading) {
   const dialog = $("#source-dialog");
   if (!dialog.open) dialog.showModal();
+  state.previewReading = reading;
   state.page = Math.min(state.pages, Math.max(1, Number(page) || 1));
   const wanted = state.page;
   const sequence = ++state.previewRequest;
@@ -382,11 +528,9 @@ async function openPage(page) {
   };
   updateControls();
   if (!state.file) {
-    const item = state.report.recipe[state.tab][state.selected];
-    const label = evidenceField(item)?.evidence?.source || "A";
-    const reading = state.report.transcriptions[label] || "";
-    const excerpt = reading.split(/^\[page: \d+\]\s*$/m)[wanted]?.trim() || reading.trim();
-    content.innerHTML = `<p>Example transcription · Reading ${escape(label)}</p><pre class="preview-text">${escape(excerpt)}</pre>`;
+    const text = state.report.transcriptions[reading] || "";
+    const excerpt = text.split(/^\[page: \d+\]\s*$/m)[wanted]?.trim() || text.trim();
+    content.innerHTML = `<p>Example transcription · Reading ${escape(reading)}</p><pre class="preview-text">${escape(excerpt)}</pre>`;
     return;
   }
   content.textContent = "Loading source page…";
@@ -439,7 +583,7 @@ document.addEventListener("click", (event) => {
     renderReview();
     if (button) $(`[data-select="${selection}"]`)?.focus({preventScroll: true});
   }
-  if (button?.dataset.sourcePage) openPage(button.dataset.sourcePage);
+  if (button?.dataset.sourcePage) openPage(button.dataset.sourcePage, button.dataset.sourceReading || "A");
 });
 $(".brand").addEventListener("click", (event) => {
   event.preventDefault();
@@ -453,9 +597,20 @@ $(".tabs").addEventListener("keydown", (event) => {
   other.focus();
 });
 $("#open-source").addEventListener("click", () => {
-  const item = state.report.recipe[state.tab][state.selected];
-  openPage(evidenceField(item)?.evidence?.page || 1);
+  const item = currentRecipe()[state.tab][state.selected];
+  const evidence = evidenceField(item)?.evidence;
+  openPage(evidence?.page || 1, evidence?.source || "A");
 });
+$("#field-review-path").addEventListener("change", (event) => {
+  state.reviewPath = event.target.value;
+  renderFieldReview();
+  message("#field-review-status");
+});
+$("#field-review-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  saveFieldReview(event.submitter?.value || "confirm");
+});
+$("#field-review-reopen").addEventListener("click", () => saveFieldReview(null));
 $("#previous-page").addEventListener("click", () => openPage(state.page - 1));
 $("#next-page").addEventListener("click", () => openPage(state.page + 1));
 $("#source-dialog").addEventListener("close", () => { state.previewRequest++; });

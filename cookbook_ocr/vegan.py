@@ -291,6 +291,6 @@ def veganize(
 
         if step["duration"]["value"] and (
             changed_proteins.intersection(step["ingredient_ids"])
-            or (changed_instruction and step["duration"]["status"] == "stated")
+            or (changed_instruction and step["duration"]["status"] in {"stated", "reviewed"})
         ):
             warn(f"{path}/duration", "Check the original timing for the plant-based substitution.")

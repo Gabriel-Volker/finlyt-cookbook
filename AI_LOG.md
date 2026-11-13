@@ -209,3 +209,11 @@ The offline OpenCV experiment used the two Sauerbraten pages as rendered by the 
 ## 2026-11-13 15:47–15:49 · Review, Adapt, and activity diagram
 
 Gabriel asked how Review and Adapt work and requested a project activity diagram. Codex traced the browser and Python handlers, checked how pending fields and export behave, and ran the bundled example offline at six vegan servings using four as the original yield. It returned 18 field changes and three review items for apples, sugar, and vessel capacity. FigJam generation required a team or organization selection. Codex saved the [activity diagram](docs/activity-diagram.md) in Mermaid for GitHub rendering.
+
+## 2026-11-13 15:57–16:03 · Human review and reviewed adaptations
+
+Gabriel asked for the diagram in English and for Review to confirm or correct flagged fields without losing the original evidence. He also asked when the vegan option is generated. Luna compares the OCR texts and extracts the source recipe. When the user enables the vegan option, Python applies substitutions and step changes in Adapt after any requested scaling.
+
+The browser shows the source evidence and related excerpts for a flagged field and records a confirmation or correction. Reopening a field removes its active decision. The original recipe, transcriptions, and comparison remain in the export alongside the reviewed recipe and its decisions. Both the web backend and CLI reapply those decisions to the original extraction before adapting it. A reviewed serving count can supply the scaling baseline. Document findings without a linked recipe field remain visible.
+
+The 52 Python tests passed. An offline HTTP regression checked that the original evidence survived and that scaling and vegan substitution both used reviewed fields. A CLI replay from exported decisions also passed. A Node test with a simulated DOM and the Python backend checked confirmation, correction, reopening, and JSON export. The sandbox denied the live local browser connection. No provider calls were made.

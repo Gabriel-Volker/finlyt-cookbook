@@ -655,9 +655,25 @@ h3 {
 
 #evidence,
 #comparison,
+#field-review-source,
 #adapted-steps {
   display: grid;
   gap: 12px;
+}
+
+#field-review-source .button {
+  justify-self: start;
+}
+
+#field-review-source {
+  overflow-wrap: anywhere;
+}
+
+.field-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 #comparison > .fact-row {
@@ -790,7 +806,9 @@ h3 {
   cursor: pointer;
 }
 
-.field input {
+.field input,
+.field select,
+.field textarea {
   width: 100%;
   min-height: 43px;
   padding: 8px 12px;
@@ -799,6 +817,11 @@ h3 {
   background: var(--surface);
   font-size: 16px;
   font-weight: 600;
+}
+
+.field textarea {
+  resize: vertical;
+  font: inherit;
 }
 
 .field small {

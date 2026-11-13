@@ -79,6 +79,30 @@
             <div id="review-list" role="tabpanel" aria-labelledby="ingredients-tab"></div>
           </div>
           <aside class="stack" aria-label="Recipe evidence">
+            <section class="card card-body" id="field-review" aria-labelledby="field-review-title" hidden>
+              <div class="card-heading">
+                <h2 id="field-review-title">Review flagged fields</h2>
+                <span class="badge" id="field-review-count"></span>
+              </div>
+              <form id="field-review-form" class="settings-form">
+                <div class="field">
+                  <label for="field-review-path">Field</label>
+                  <select id="field-review-path"></select>
+                </div>
+                <div id="field-review-source"></div>
+                <div class="field">
+                  <label for="field-review-value">Verified value</label>
+                  <textarea id="field-review-value" rows="2" required aria-describedby="field-review-hint"></textarea>
+                  <small id="field-review-hint">Confirm a reading after checking the source, or save a correction.</small>
+                </div>
+                <div class="field-review-actions">
+                  <button type="submit" class="button secondary" value="confirm">Confirm value</button>
+                  <button type="submit" class="button primary" value="correct">Save correction</button>
+                  <button type="button" class="button text" id="field-review-reopen" hidden>Reopen</button>
+                </div>
+                <p class="status-message" id="field-review-status" role="status" hidden></p>
+              </form>
+            </section>
             <section class="card card-body" aria-labelledby="evidence-title">
               <div class="card-heading">
                 <h2 id="evidence-title">Source evidence</h2>

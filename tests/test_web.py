@@ -4,6 +4,7 @@ import tempfile
 import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
@@ -111,3 +112,66 @@ class WebTests(unittest.TestCase):
         self.assertEqual(adapted["recipe"], recipe)
         self.assertEqual(adapted["adaptation"]["scale"]["factor"], "3/2")
         self.assertEqual(adapted["adaptation"]["recipe"]["servings"]["value"], "6")
+
+    def test_review_keeps_ocr_evidence_and_adapt_uses_the_reviewed_values(self):
+        assets = Path(__file__).resolve().parents[1] / "cookbook_ocr" / "web_assets"
+        report = json.loads((assets / "example.json").read_text(encoding="utf-8"))
+        quantity = report["recipe"]["ingredients"][0]["quantity"]
+        self.assertEqual(quantity["value"], "1/2")
+        report["transcriptions"]["B"] = report["transcriptions"]["B"].replace("1/2 l vinegar", "1/4 l vinegar")
+        report["comparison"]["review_items"].append({
+            "page": "1", "section": "ingredients", "kind": "conflict",
+            "a_excerpt": "1/2 l vinegar", "b_excerpt": "1/4 l vinegar",
+            "reason": "The vinegar amounts differ.",
+        })
+        quantity.update(value=None, status="needs_review", review_item_ids=[1])
+        roast_index = next(
+            index for index, ingredient in enumerate(report["recipe"]["ingredients"])
+            if ingredient["name"]["value"] == "beef roast"
+        )
+        report["recipe"]["ingredients"][roast_index]["name"].update(value=None, status="needs_review")
+        report["recipe"]["servings"].update(value=None, status="needs_review")
+        report["status"] = "needs_review"
+        original = deepcopy(report)
+        decisions = [
+            {"path": "/ingredients/0/quantity", "action": "correct", "value": "1/4"},
+            {"path": "/servings", "action": "confirm", "value": "4"},
+            {"path": f"/ingredients/{roast_index}/name", "action": "confirm", "value": "beef roast"},
+        ]
+        headers = {"Content-Type": "application/json"}
+        status, _, response = self.request(
+            "POST", "/api/review", json.dumps({"report": report, "decisions": decisions}), headers,
+        )
+        self.assertEqual(status, 200)
+        review = json.loads(response)["review"]
+        self.assertEqual(review["status"], "reviewed")
+        self.assertEqual(review["unresolved_paths"], [])
+        reviewed_quantity = review["recipe"]["ingredients"][0]["quantity"]
+        self.assertEqual(reviewed_quantity["evidence"], quantity["evidence"])
+        self.assertEqual(reviewed_quantity["review_item_ids"], [1])
+        self.assertEqual(reviewed_quantity["status"], "reviewed")
+        self.assertIsNone(review["decisions"][0]["before"])
+        self.assertEqual(review["decisions"][0]["after"], "1/4")
+
+        report["review"] = review
+        status, _, response = self.request(
+            "POST", "/api/adapt", json.dumps({"report": report, "servings": 8, "vegan": True}), headers,
+        )
+        self.assertEqual(status, 200)
+        adapted = json.loads(response)
+        self.assertEqual(adapted["recipe"], original["recipe"])
+        self.assertEqual(adapted["transcriptions"], original["transcriptions"])
+        self.assertEqual(adapted["comparison"], original["comparison"])
+        self.assertEqual(adapted["review"], review)
+        result = adapted["adaptation"]
+        self.assertEqual(result["scale"]["original_servings_source"], "review")
+        self.assertEqual(result["scale"]["factor"], "2")
+        vinegar = result["recipe"]["ingredients"][0]
+        self.assertEqual((vinegar["quantity"]["value"], vinegar["unit"]["value"]), ("500", "ml"))
+        self.assertEqual(result["recipe"]["ingredients"][roast_index]["name"]["value"], "seitan")
+
+        for invalid in ({"path": "/title", "action": "correct", "value": "Tea"},
+                        {"path": "/servings", "action": "confirm", "value": "0"}):
+            with self.subTest(invalid=invalid):
+                body = json.dumps({"report": original, "decisions": [invalid]})
+                self.assertEqual(self.request("POST", "/api/review", body, headers)[0], 400)

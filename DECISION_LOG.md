@@ -92,3 +92,7 @@ Gabriel chose the Figma prototype and requested a blue accent. The web workspace
 ## 2026-11-13 15:43 · Evaluate blur detection on scanned pages
 
 Gabriel proposed using OpenCV to identify scans that are too blurred to read. Codex recommends trying Laplacian variance as a warning on consistently sized grayscale text regions from the existing rasterization. Combine that warning with unreadable passages, missing critical fields, and disagreements on amounts or units. Show the affected page and let the user review it or upload a clearer image. Evaluate any automatic rejection threshold on manually labeled scans across languages, handwriting, resolutions, contrast, noise, and blur types, and measure how many readable pages it would reject. [Consensus Entropy OCR](https://tianyilt.github.io/consensus-entropy/) remains a separate proposal for uncertainty in the transcriptions. The [AI log](AI_LOG.md) records the offline experiment. The application has no blur filter yet.
+
+## 2026-11-13 16:03 · Use reviewed fields in Adapt
+
+Gabriel asked to let the reviewer confirm or correct flagged fields and preserve the original evidence. Store reviewer decisions alongside the extraction and reapply them to the original recipe before adaptation. Keep unresolved fields and document findings available for inspection. Treat an original serving count confirmed in Review as the scaling baseline. The browser keeps the decisions for the current session and includes them in the JSON export.
