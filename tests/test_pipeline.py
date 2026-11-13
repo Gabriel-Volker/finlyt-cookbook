@@ -197,7 +197,10 @@ class PipelineTests(unittest.TestCase):
         self.openai.respond.side_effect = [
             json.dumps(comparison_with_uncertainty()),
             json.dumps(invalid_recipe),
-            json.dumps(EMPTY_RECIPE),
+            json.dumps({"repairs": [{
+                "path": "/title",
+                "span": {"source": "A", "quote": None, "text": "Pear compote"},
+            }]}),
         ]
 
         report = run_pipeline(DOCUMENT, "recipe.pdf", self.gemini, self.openai)
@@ -205,7 +208,8 @@ class PipelineTests(unittest.TestCase):
         self.gemini.transcribe.assert_called_once()
         self.openai.transcribe.assert_called_once()
         self.assertEqual(self.openai.respond.call_count, 3)
-        self.assertEqual(report["recipe"]["title"]["status"], "missing")
+        self.assertEqual(report["recipe"]["title"]["value"], "Pear compote")
+        self.assertEqual(self.openai.respond.call_args.kwargs["text"]["format"]["name"], "recipe_extraction_repair")
 
     def test_withholds_field_if_evidence_is_still_invalid_after_retry(self):
         invalid_recipe = {
@@ -215,7 +219,7 @@ class PipelineTests(unittest.TestCase):
         self.openai.respond.side_effect = [
             json.dumps({"review_items": [], "equivalent_variations": []}),
             json.dumps(invalid_recipe),
-            json.dumps(invalid_recipe),
+            json.dumps({"repairs": [{"path": "/title", "span": invalid_recipe["title"]}]}),
         ]
 
         report = run_pipeline(DOCUMENT, "recipe.pdf", self.gemini, self.openai)

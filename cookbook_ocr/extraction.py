@@ -96,7 +96,24 @@ def _source_quotes(text: str, quote: str) -> list[re.Match]:
     if matches:
         return matches
     # Recover exact source whitespace when the model flattened a line break.
-    pattern = r"\s+".join(re.escape(part) for part in quote.split())
+    words = quote.split()
+    pattern = r"\s+".join(re.escape(word) for word in words)
+    matches = list(re.finditer(pattern, text))
+    if matches:
+        return matches
+    # Match a joined word to source typography without changing the stored span.
+    wrap = r"(?:-[ \t]*\r?\n[ \t]*)?"
+    wrapped_words = []
+    for word in words:
+        parts = [re.escape(word[0])]
+        for left, right in zip(word, word[1:]):
+            if left.isalpha() and right.isalpha():
+                parts.append(wrap)
+            parts.append(re.escape(right))
+        wrapped_words.append("".join(parts))
+    left_boundary = r"(?<!\w)" if words[0][0].isalpha() else ""
+    right_boundary = r"(?!\w)" if words[-1][-1].isalpha() else ""
+    pattern = left_boundary + r"\s+".join(wrapped_words) + right_boundary
     return list(re.finditer(pattern, text))
 
 
@@ -160,11 +177,12 @@ def _field(span, field: str, transcriptions, pages, review_ranges, measure_cuts,
     if span is None:
         return {"value": None, "status": "missing", "evidence": None, "review_item_ids": []}
 
-    source, quote, value = span["source"], span["quote"], span["text"]
+    source, value = span["source"], span["text"]
+    quote = value if span["quote"] is None else span["quote"]
     if source not in transcriptions or not quote.strip() or not value.strip():
         raise ValueError(f"Invalid evidence for {field}.")
     text = transcriptions[source]
-    if not _occurrences(quote, value):
+    if not _source_quotes(quote, value):
         raise ValueError(f"Extraction returned non-verbatim evidence for {field}.")
     quotes = [
         match for match in _source_quotes(text, quote)
@@ -312,7 +330,7 @@ def _omitted_ingredient_lines(transcriptions, names):
 
 def build_recipe(
     candidate: dict, transcriptions: dict[str, str], review_items: list[dict],
-    *, extraction_issues: list[dict] | None = None,
+    *, extraction_issues: list[dict] | None = None, repair_paths: dict | None = None,
 ) -> dict:
     pages = {source: list(PAGE_MARKER.finditer(text)) for source, text in transcriptions.items()}
     ranges = {
@@ -327,6 +345,8 @@ def build_recipe(
         if extraction_issues is None:
             raise error
         extraction_issues.append({"field": path, "reason": str(error)})
+        if repair_paths is not None:
+            repair_paths[path] = str(error)
         return {"value": None, "status": "needs_review", "evidence": None, "review_item_ids": []}
 
     def field(record, name, path, anchors=None):
@@ -346,6 +366,8 @@ def build_recipe(
 
         source, quote, name = (item["name"][key] for key in ("source", "quote", "text"))
         try:
+            if quote is None:
+                raise ValueError("An inferred tool needs an explicit source action quote.")
             # Exact action evidence is validated independently of the inferred label.
             support = _field(
                 {"source": source, "quote": quote, "text": quote}, "inferred tool action",
@@ -380,9 +402,7 @@ def build_recipe(
         related = {}
 
         def flag(key, reason):
-            if extraction_issues is None:
-                raise ValueError(reason)
-            extraction_issues.append({"field": f"{path}/{key}", "reason": reason})
+            invalid_field(f"{path}/{key}", ValueError(reason))
             ingredient[key].update(value=None, status="needs_review")
 
         for key in ("quantity", "unit"):
@@ -453,7 +473,7 @@ def build_recipe(
                     issue["field"] = f"/{collection}/{indexes[collection][int(index)]}/{name}"
 
     for evidence in _omitted_ingredient_lines(transcriptions, names):
-        reason = "A measured ingredient line agreed on by both OCR readings is missing from the extraction."
+        reason = "A measured ingredient line is missing from the extraction."
         if extraction_issues is None:
             raise ValueError(reason)
         extraction_issues.append({"field": "/ingredients", "reason": reason, "evidence": evidence})

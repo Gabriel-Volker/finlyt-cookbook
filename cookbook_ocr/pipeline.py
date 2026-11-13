@@ -2,6 +2,7 @@ import json
 import logging
 import re
 from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 from pathlib import Path
 
 from .adaptation import adapt_recipe
@@ -428,33 +429,98 @@ def _read_document(document: bytes, filename: str, gemini: GeminiClient, openai:
     return {"A": a, "B": b}, comparison, no_readable_text
 
 
-def run_pipeline(
-    document: bytes, filename: str, gemini: GeminiClient, openai: OpenAIClient
-) -> dict:
-    transcriptions, comparison, no_readable_text = _read_document(document, filename, gemini, openai)
+def _extract_recipe(openai: OpenAIClient, transcriptions: dict, review_items: list) -> tuple[dict, list]:
     extraction_prompt = (PROMPTS_DIR / "extract_recipe.system.txt").read_text(encoding="utf-8")
     extraction_schema = json.loads(
         (PROMPTS_DIR / "extract_recipe.schema.json").read_text(encoding="utf-8")
     )
-    extraction_issues = []
-    for attempt in range(2):
-        candidate = _structured_response(
-            openai, extraction_prompt, extraction_schema, "recipe_extraction", transcriptions,
-            max_output_tokens=12288,
+    def propose(prompt, effort):
+        return _structured_response(
+            openai, prompt, extraction_schema, "recipe_extraction", transcriptions,
+            max_output_tokens=12288, reasoning={"effort": effort},
         )
-        try:
-            recipe = build_recipe(
-                candidate, transcriptions, comparison["review_items"],
-                extraction_issues=extraction_issues if attempt else None,
-            )
-            break
-        except ValueError as error:
-            if attempt:
-                raise
-            extraction_prompt += (
-                f"\n\nThe previous extraction failed validation. {error} "
-                "Copy exact source text and quotes, and ensure all step references exist."
-            )
+
+    candidate = propose(extraction_prompt, "low")
+    issues, repairs = [], {}
+    try:
+        recipe = build_recipe(candidate, transcriptions, review_items, extraction_issues=issues, repair_paths=repairs)
+    except ValueError as error:
+        retry_reason = str(error)
+    else:
+        if not issues:
+            return recipe, issues
+        # A missing entry needs a new extraction. A field repair cannot add records or step links.
+        if all(issue["field"] != "/ingredients" for issue in issues):
+            return _repair_extraction(openai, extraction_prompt, extraction_schema, candidate, transcriptions,
+                                      review_items, recipe, issues, repairs)
+        retry_reason = "A measured ingredient line is missing from the extraction."
+
+    LOGGER.warning("Retrying full recipe extraction: %s", retry_reason)
+    prompt = (
+        f"{extraction_prompt}\n\nThe previous extraction failed validation. {retry_reason} "
+        "Copy exact source text and quotes, capture every stated ingredient, and use existing IDs for step references."
+    )
+    candidate = propose(prompt, "medium")
+    issues = []
+    return build_recipe(candidate, transcriptions, review_items, extraction_issues=issues), issues
+
+
+def _repair_extraction(openai, prompt, schema, candidate, transcriptions, review_items, recipe, issues, repairs):
+    targets = {}
+    revised = deepcopy(candidate)
+    for path in repairs:
+        parts = path.strip("/").split("/")
+        record = revised if len(parts) == 1 else revised[parts[0]][int(parts[1])]
+        targets[path] = record, parts[-1]
+
+    repair_schema = {
+        "type": "object", "additionalProperties": False, "required": ["repairs"], "$defs": schema["$defs"],
+        "properties": {"repairs": {"type": "array", "items": {
+            "type": "object", "additionalProperties": False, "required": ["path", "span"],
+            "properties": {"path": {"type": "string", "enum": list(targets)}, "span": {"$ref": "#/$defs/span"}},
+        }}},
+    }
+    fields = [
+        {"path": path, "issue": repairs[path], "record": record if record is not revised else {key: record[key]}}
+        for path, (record, key) in targets.items()
+    ]
+    LOGGER.info("Repairing %d recipe extraction field(s): %s", len(fields), ", ".join(targets))
+    try:
+        response = _structured_response(
+            openai, prompt, repair_schema, "recipe_extraction_repair", {"readings": transcriptions, "fields": fields},
+            max_output_tokens=8192, reasoning={"effort": "medium"},
+        )
+        seen = set()
+        for patch in response["repairs"]:
+            path = patch["path"]
+            if path not in targets or path in seen:
+                continue
+            span = patch["span"]
+            if not isinstance(span, dict) or set(span) != {"source", "quote", "text"}:
+                continue
+            if (not isinstance(span["source"], str) or not isinstance(span["text"], str)
+                    or (span["quote"] is not None and not isinstance(span["quote"], str))):
+                continue
+            seen.add(path)
+            record, key = targets[path]
+            record[key] = span
+        if seen:
+            remaining_issues, remaining_repairs = [], {}
+            checked = build_recipe(revised, transcriptions, review_items,
+                                   extraction_issues=remaining_issues, repair_paths=remaining_repairs)
+            if (remaining_repairs.keys() < repairs.keys()
+                    and not any(issue["field"] == "/ingredients" for issue in remaining_issues)):
+                return checked, remaining_issues
+    except (ProviderError, KeyError, TypeError, ValueError) as error:
+        LOGGER.warning("Could not repair invalid recipe evidence: %s", error)
+    return recipe, issues
+
+
+def run_pipeline(
+    document: bytes, filename: str, gemini: GeminiClient, openai: OpenAIClient
+) -> dict:
+    transcriptions, comparison, no_readable_text = _read_document(document, filename, gemini, openai)
+    recipe, extraction_issues = _extract_recipe(openai, transcriptions, comparison["review_items"])
     if not (any(item["name"]["value"] for item in recipe["ingredients"])
             and any(step["instruction"]["value"] for step in recipe["steps"])):
         reason = ("Neither reader recovered usable text. Check the original or try a sharper copy."

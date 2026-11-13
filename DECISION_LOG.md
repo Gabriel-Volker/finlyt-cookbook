@@ -140,3 +140,7 @@ Gabriel would use Claude Sonnet in Terra's OCR role in production. He chose GPT-
 ## 2026-11-13 19:25 · Prepare both output languages before adaptation
 
 Gabriel chose upfront translation so language and serving changes are immediately usable after import. Prepare the original language and English for each available variant. Use local arithmetic and the prepared translations for serving changes.
+
+## 2026-11-13 20:20 · Preserve recipe evidence while optimizing extraction
+
+Gabriel asked to reduce Luna's extraction latency and retries without sacrificing quality. Start at low reasoning effort and validate locally. Repair individual invalid fields when possible and reserve a full retry for structural failures. Keep review flags when the evidence remains unresolved. Measure extraction separately from OCR and downstream planning.

@@ -62,17 +62,19 @@ With the example's user-supplied baseline of four, the six-serving version scale
 ## Reliability and evaluation
 
 - **Hallucination and trust.** Models read handwriting, interpret steps, and propose changes. Python validates citations, data, and arithmetic. Missing or disputed amounts stay unresolved. Reviewers can inspect the source and correct values or links. `stated`, `inferred`, `missing`, and `needs_review` describe the evidence and review state. They are qualitative signals. Readers can agree on a wrong word, and a valid quote can still conceal an omitted step or a wrong ingredient link.
-- **Non-determinism.** Fresh model calls can vary. Saved reports preserve the readings and plans, and replay applies the same transformations in Python. Changing servings or switching between prepared languages makes zero model calls. Tests use controlled provider responses and check quantities, unit conversion, split measures, and failure paths.
+- **Non-determinism.** Fresh model calls can vary. Luna starts extraction at low reasoning effort. When a field fails validation, one targeted request can repair it while preserving the fields that passed validation. Structural failures such as an omitted measured ingredient still trigger one full retry. Saved reports preserve the readings and plans, and replay applies the same transformations in Python. Changing servings or switching between prepared languages makes zero model calls.
 - **Validation without ground truth.** I tested the German scan, three Portuguese scans and an English text recipe. For an accuracy estimate, I would annotate ingredient–quantity pairs, source spans and step links across clean PDFs, handwriting and degraded scans. Repeat each run and track field accuracy, errors that passed without a flag, and how often review was requested.
 
 | Measured on the two-page Sauerbraten | Time | Estimated API cost |
 | --- | ---: | ---: |
 | Earlier Gemini + Luna OCR, comparison and extraction | 67.54 s | $0.00467 with observed cache reads |
 | Earlier Terra direct-PDF OCR only | 18.09 s | $0.03789 |
-| Current pipeline through bilingual preparation, one import with vegan review pending | 3 min 28 s | $0.02309 at observed cache rates, or $0.03107 with cache reads priced as writes |
+| Previous end-to-end import, vegan planning held for review | 3 min 28 s | $0.02309 at observed cache rates, or $0.03107 with cache reads priced as writes |
+| Current end-to-end import, including a verified vegan plan and both output languages | 3 min | $0.03232 at observed cache rates, or $0.04036 with cache reads priced as writes |
+| Luna extraction and validation within those imports | 108.5 s → 38.6 s | $0.00611 → $0.00245 at observed cache rates |
 | Serving change after preparation, Chromium test | About 110 ms | Zero model calls |
 
-The first two rows measure different scopes and configurations. In the current run, two extraction attempts took 108.5 s and Terra OCR took 21.7 s. The translation provided English and fell back to source wording for the original-language notes after a validation error. [Benchmark details and token counts](AI_LOG.md)
+In the current run, Terra OCR took 19.4 s, Luna repaired individual fields in 16.6 s after its 22.0 s extraction, and bilingual preparation took 59.5 s. Total cost depends on which adaptations can be prepared. The previous import stopped before vegan planning, while the current one completed it and prepared both languages for both variants. Each row describes an individual measurement. [Benchmark details and pricing sources](AI_LOG.md#2026-11-13-20102022--shorten-luna-extraction-and-repair-field-evidence)
 
 ## Examples and tests
 

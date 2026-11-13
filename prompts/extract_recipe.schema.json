@@ -57,7 +57,7 @@
       "required": ["source", "quote", "text"],
       "properties": {
         "source": {"type": "string", "enum": ["A", "B"]},
-        "quote": {"type": "string"},
+        "quote": {"type": ["string", "null"]},
         "text": {"type": "string"}
       }
     },

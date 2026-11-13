@@ -406,3 +406,23 @@ Gabriel asked what makes the current upload take minutes and how much it costs. 
 Terra's OCR call took 21.70 s and Gemini's took 4.37 s. Extraction took 44.24 s on the first attempt and 64.28 s on the validation retry. Vegan planning was held for source review before any model call for that stage. The English display prepared successfully. Original-language notes fell back to their supplied wording after one translation validation failure. A repeat import reused the extraction and scaling plans and made one call to retry the remaining translations. That call took 11.04 s and cost an estimated $0.00089.
 
 The estimated first-import cost is $0.03107 if the observed OpenAI cache reads are priced as 30-minute cache writes with the same token counts. This is a scenario estimate for one file. Billing and latency can vary with account tier, cache state, OCR disagreements, output length, and retries. [OpenAI standard rates](https://developers.openai.com/api/docs/pricing) · [OpenAI cache accounting](https://developers.openai.com/api/docs/guides/prompt-caching) · [Gemini standard rates](https://aistudio.google.com/docs/pricing#gemini-3.1-flash-lite)
+
+## 2026-11-13 20:10–20:22 · Shorten Luna extraction and repair field evidence
+
+Gabriel asked to speed up Luna recipe extraction, reduce retries without sacrificing quality, and update the README before pushing. Codex set low reasoning effort for the initial extraction and let fields cite their existing text when that text contains the entire evidence. For field errors, one follow-up receives only the invalid fields and the readings. Python checks the resulting recipe again and preserves unresolved flags. Structural failures such as omitted measured entries still trigger a full retry. The validator also resolves end-of-line word breaks by returning the literal source span, including its original hyphenation.
+
+Codex ran a fresh web import of the original two-page PDF through bilingual preparation, with an empty application cache. Costs use token usage and standard API rates.
+
+| Stage | Wall time | Provider calls | Estimated USD |
+| --- | ---: | ---: | ---: |
+| Raster preparation and parallel OCR | 19.90 s | 2 | $0.00586 |
+| Luna transcription comparison | 5.83 s | 1 | $0.00024 |
+| Luna extraction and targeted repair | 38.65 s | 2 | $0.00245 |
+| Vegan proposal and Gemini verification | 30.41 s | 2 | $0.00505 |
+| Both scaling plans, parallel checks and one retry | 25.57 s | 5 | $0.01314 |
+| Bilingual preparation for both available variants | 59.47 s | 1 | $0.00557 |
+| First import through bilingual preparation | 179.85 s | 13 | $0.03232 |
+
+The extraction calls took 21.99 s and 16.65 s, down from 44.24 s and 64.28 s for the previous two full attempts. The two runs each made two extraction calls. The estimated extraction cost fell from $0.00611 to $0.00245. The current import's estimate rises to $0.04036 if its OpenAI cache reads are priced as 30-minute writes. Vegan preparation succeeded and both languages prepared successfully. The previous import stopped before vegan planning. An intermediate run took 112.26 s and cost $0.01802, with vegan planning held for review and original-language notes falling back to source wording. These measurements describe different outcomes.
+
+The final German result kept half a litre each of vinegar and water, four onions, and the nine cooking actions, including the day-one or day-two hot marinade, the eight-day cold alternative, and the hour in the sauce. The named roast was supported by both readings. The yield and roast weight remained unknown. Two unsupported optional-ingredient quantities stayed flagged. On frozen OCR for Torta de coco, the first prompt dropped a qualitative amount. After clarifying the prompt, the control matched the eight saved ingredient, quantity, and unit triples and the stated yield of ten. It added a review flag for an unsupported coconut unit and split some instructions into separate steps. An English text control kept all three ingredient amounts, four servings, and the four steps. These checks cover specific recipes and do not estimate accuracy across unseen inputs. All 183 tests passed locally and in Docker. [OpenAI standard rates](https://developers.openai.com/api/docs/pricing) · [OpenAI cache accounting](https://developers.openai.com/api/docs/guides/prompt-caching) · [Gemini standard rates](https://aistudio.google.com/docs/pricing#gemini-3.1-flash-lite)
