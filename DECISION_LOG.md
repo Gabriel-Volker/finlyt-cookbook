@@ -50,3 +50,7 @@ Both checks are outside the scope of the cookbook demo.
 Gabriel wants the comparison LLM to receive both transcriptions without model identities. The [blind comparison test](AI_LOG.md#2026-11-13-132738132909--blind-transcription-comparison) used the labels A and B and repeated the test with the labels swapped.
 
 Codex proposed requiring literal excerpts from each reading and validating those excerpts in code before showing them to a reviewer. Normalize equivalent quantities for comparison while preserving their original notation in the evidence. A reviewer can use the page index and quoted text to inspect the original document.
+
+## 2026-11-13 13:45 · Models selected for OCR and comparison
+
+Gabriel selected Gemini 3.1 Flash-Lite and GPT-6 Luna for independent transcriptions. GPT-6 Luna compares the anonymous text readings. Conflicts, omissions, and unreadable text go into the JSON report for human review, with page references where available and literal excerpts checked in code. The [implementation test](AI_LOG.md#2026-11-13-134528134556--implemented-ocr-and-review-pipeline) flagged a disagreement in the illustrated header.

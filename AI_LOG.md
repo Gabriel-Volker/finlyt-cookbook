@@ -97,3 +97,9 @@ Gabriel asked Codex to test `gpt-6.1-terra` and compare it with Luna. Codex used
 Both calls reported three ordinary input tokens and zero cached input tokens. Terra's output included 272 reasoning tokens. The estimates use the [standard API rates](https://developers.openai.com/api/docs/pricing) and [30-minute cache write rates](https://developers.openai.com/api/docs/guides/prompt-caching). Terra took 5.01 seconds less and cost 13.41 times as much in these single runs.
 
 The recipe body matched on both pages after joining words split across lines and normalizing whitespace and hyphen spacing. Terra read `Josefines` correctly in the illustrated header and put the second page's labels below the recipe, where they appear in the scan. It marked part of the `Korinthen` label unreadable, which Luna read in full. The models therefore had different strengths on this scan even though they agreed on all recipe content.
+
+## 2026-11-13 13:45:28–13:45:56 · Implemented OCR and review pipeline
+
+Gabriel selected Gemini 3.1 Flash-Lite and GPT-6 Luna as the OCR readers, with Luna as the comparator. Codex implemented a Python CLI that runs the readers in parallel and sends their text to the existing comparison prompt and JSON schema under the labels A and B. The reader prompt now preserves the source language for any supported input. The CLI loads credentials from environment variables or a local `.env` and includes an empty `.env.example` for setup.
+
+The live run on `Recipe.pdf` took 28.36 seconds and returned `needs_review` with one conflict on page 1. Gemini read `Josefines` and Luna read `Josetines`. The comparator flagged the name and treated `½ l` and `1/2 l` as equivalent. The CLI verified that the cited excerpts appeared verbatim in their respective transcriptions. Four local unit tests covered the anonymous request, review status, equivalent fractions, and invalid evidence.
