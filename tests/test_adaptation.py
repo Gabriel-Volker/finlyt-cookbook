@@ -3,7 +3,7 @@ from copy import deepcopy
 from fractions import Fraction
 
 from cookbook_ocr.adaptation import adapt_recipe
-from cookbook_ocr.quantities import scale_quantity
+from cookbook_ocr.quantities import quantity_matches, scale_quantity
 from cookbook_ocr.scaling_plan import validate_scaling_plan
 from cookbook_ocr.vegan import validate_vegan_plan
 
@@ -61,6 +61,39 @@ def scaling_plan(source, *rules, variant="original"):
 
 
 class AdaptationTests(unittest.TestCase):
+    def test_scales_portuguese_contractions_and_traditional_spoon_units(self):
+        for unit, plural in (("colher de sopa", "colheres de sopa"), ("colher (sopa)", "colheres (sopa)")):
+            with self.subTest(unit=unit):
+                source = recipe("4", [
+                    ingredient("flour", "farinha", "100", "g"),
+                    ingredient("sugar", "açúcar", "1", "colher (sopa)"),
+                ], [step(f"Adicione 100 g da farinha e 1 {unit} do açúcar.", "flour", "sugar")])
+                result = adapt_recipe(source, servings=8, scaling_plan=scaling_plan(
+                    source, scaling_rule("flour"), scaling_rule("sugar"),
+                ))
+                self.assertEqual(result["status"], "applied")
+                self.assertEqual(result["recipe"]["steps"][0]["instruction"]["value"],
+                                 f"Adicione 200 g da farinha e 2 {plural} do açúcar.")
+        self.assertTrue(quantity_matches("2", "colheres (sopa)", "2", "colheres de sopa"))
+
+    def test_scales_indefinite_article_with_an_explicit_unit(self):
+        source = recipe("4", [ingredient("flour", "flour", "1", "cup")], [step("Add a cup of flour.", "flour")])
+        result = adapt_recipe(source, servings=8, scaling_plan=scaling_plan(source, scaling_rule("flour")))
+        self.assertEqual(result["status"], "applied")
+        self.assertEqual(result["recipe"]["steps"][0]["instruction"]["value"], "Add 2 cups of flour.")
+
+    def test_warns_about_unmatched_measures_without_rewriting_other_parts(self):
+        for written in ("Add one cup of flour.", "Add 1 cup of sifted flour."):
+            with self.subTest(written=written):
+                source = recipe("4", [ingredient("flour", "flour", "2", "cups")], [
+                    step(written, "flour"), step("Add 1 cup of flour.", "flour"),
+                ])
+                result = adapt_recipe(source, servings=8, scaling_plan=scaling_plan(source, scaling_rule("flour")))
+                self.assertEqual(result["status"], "needs_review")
+                self.assertEqual(result["recipe"]["steps"], source["steps"])
+                self.assertEqual({item["path"] for item in result["review_items"]},
+                                 {"/steps/0/instruction", "/steps/1/instruction"})
+
     def test_scale_updates_only_linked_measures_and_yield_in_steps(self):
         source = recipe("Serves 2", [
             ingredient("milk", "milk", "½", "l", preparation="warm"),

@@ -7,6 +7,7 @@ from .adaptation import adapt_recipe
 from .extraction import PAGE_MARKER, UNREADABLE, build_recipe, has_unresolved_fields
 from .providers import GeminiClient, OpenAIClient, ProviderError
 from .quality import assess_blur
+from .quantities import QUANTITY_PATTERN, known_units, quantity_matches
 from .raster import prepare_pdf
 from .scaling_plan import scaling_plan_matches, validate_scaling_plan
 from .vegan import validate_vegan_plan, vegan_plan_matches
@@ -14,6 +15,11 @@ from .vegan_verification import verify_vegan_plan
 
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
+_MEASURE_UNITS = "|".join(re.escape(unit) for unit in sorted(known_units(), key=len, reverse=True))
+_COMPARISON_MEASURE = re.compile(
+    rf"(?<![\d/⁄∕])(?P<quantity>{QUANTITY_PATTERN})(?![\d/⁄∕])"
+    rf"(?:[ \t]*(?P<unit>{_MEASURE_UNITS})(?!\w))?", re.IGNORECASE,
+)
 
 
 class UnreadableRecipeError(ValueError):
@@ -34,16 +40,15 @@ def _all_pages_unreadable(transcription: str, count: int) -> bool:
     return True
 
 
+def _transcription_pages(source: str) -> dict:
+    markers = list(PAGE_MARKER.finditer(source))
+    ends = [marker.start() for marker in markers[1:]] + [len(source)]
+    return {marker[1]: source[marker.end():end] for marker, end in zip(markers, ends)}
+
+
 def validate_comparison(result: dict, a: str, b: str) -> None:
     """Require each citation to appear literally in its own transcription and page."""
-    source_pages = []
-    for source in (a, b):
-        markers = list(PAGE_MARKER.finditer(source))
-        page_ends = [marker.start() for marker in markers[1:]] + [len(source)]
-        source_pages.append({
-            marker.group(1): source[marker.end():next_start]
-            for marker, next_start in zip(markers, page_ends)
-        })
+    source_pages = [_transcription_pages(source) for source in (a, b)]
 
     for items in (result["review_items"], result["equivalent_variations"]):
         for item in items:
@@ -60,6 +65,83 @@ def validate_comparison(result: dict, a: str, b: str) -> None:
                     raise ValueError(f"Comparison returned a non-verbatim excerpt for {label}.")
                 if page is not None and pages and excerpt not in pages.get(page, ""):
                     raise ValueError(f"Comparison cited the wrong page for {label}.")
+
+
+def _cuts_a_measure(source: str, excerpt: str, page: str | None) -> bool:
+    pages = _transcription_pages(source)
+    if page is not None and pages:
+        source = pages.get(page, "")
+    # The quoted amount must include any whole part and the complete numeric token.
+    measures = [match.span("quantity") for match in _COMPARISON_MEASURE.finditer(source)]
+    return any(
+        start < boundary < end
+        for quote in re.finditer(re.escape(excerpt), source)
+        for boundary in quote.span()
+        for start, end in measures
+    )
+
+
+def _add_quantity_conflict(reviews: list, page: str | None, a: str, b: str) -> None:
+    if not any(
+        item["page"] in (None, page) and item["a_excerpt"] and item["b_excerpt"]
+        and (item["a_excerpt"] in a or a in item["a_excerpt"])
+        and (item["b_excerpt"] in b or b in item["b_excerpt"])
+        for item in reviews
+    ):
+        reviews.append({
+            "page": page, "section": "Quantities", "kind": "conflict", "a_excerpt": a, "b_excerpt": b,
+            "reason": "The cited measurements could not be verified as numerically equivalent.",
+        })
+
+
+def _numbered_lines(source: str) -> dict:
+    lines = {}
+    for line in source.splitlines():
+        line = line.strip()
+        measure = list(_COMPARISON_MEASURE.finditer(line))
+        if len(measure) != 1 or UNREADABLE.search(line):
+            continue
+        match = measure[0]
+        before, after = line[:match.start()], line[match.end():]
+        if not any(char.isalpha() for char in before + after):
+            continue
+        context = tuple(" ".join(part.casefold().split()) for part in (before, after))
+        lines.setdefault(context, []).append((line, match["quantity"], match["unit"]))
+    return lines
+
+
+def _check_numeric_equivalences(result: dict, a_source: str, b_source: str) -> dict:
+    equivalents = []
+    reviews = list(result["review_items"])
+    for item in result["equivalent_variations"]:
+        a, b = ([(match["quantity"], match["unit"]) for match in _COMPARISON_MEASURE.finditer(item[key])]
+                for key in ("a_excerpt", "b_excerpt"))
+        equal = len(a) == len(b) and all(
+            first == second or quantity_matches(*first, *second) for first, second in zip(a, b)
+        )
+        complete = item["kind"] == "formatting" if not a else not any(
+            _cuts_a_measure(source, item[key], item["page"])
+            for source, key in ((a_source, "a_excerpt"), (b_source, "b_excerpt"))
+        )
+        if equal and complete and (item["kind"] != "unit_conversion" or all(unit for _, unit in a + b)):
+            equivalents.append(item)
+        else:
+            _add_quantity_conflict(reviews, item["page"], item["a_excerpt"], item["b_excerpt"])
+
+    a_pages, b_pages = _transcription_pages(a_source), _transcription_pages(b_source)
+    for page in a_pages:
+        if page not in b_pages:
+            continue
+        a_lines, b_lines = _numbered_lines(a_pages[page]), _numbered_lines(b_pages[page])
+        for context, a_entries in a_lines.items():
+            b_entries = b_lines.get(context, ())
+            if len(a_entries) != 1 or len(b_entries) != 1:
+                continue
+            a_line, *a_measure = a_entries[0]
+            b_line, *b_measure = b_entries[0]
+            if a_measure != b_measure and not quantity_matches(*a_measure, *b_measure):
+                _add_quantity_conflict(reviews, page, a_line, b_line)
+    return {**result, "review_items": reviews, "equivalent_variations": equivalents}
 
 
 def compare_transcriptions(
@@ -80,7 +162,7 @@ def compare_transcriptions(
             openai, retry_prompt, schema, "transcription_comparison", transcriptions
         )
         validate_comparison(result, a, b)
-    return result
+    return _check_numeric_equivalences(result, a, b)
 
 
 def _structured_response(
@@ -269,9 +351,12 @@ def run_pipeline(
                 f"\n\nThe previous extraction failed validation. {error} "
                 "Copy exact source text and quotes, and ensure all step references exist."
             )
-    if no_readable_text and not (recipe["ingredients"] and recipe["steps"]):
+    if not (any(item["name"]["value"] for item in recipe["ingredients"])
+            and any(step["instruction"]["value"] for step in recipe["steps"])):
+        reason = ("Neither reader recovered usable text. Check the original or try a sharper copy."
+                  if no_readable_text else "The extraction did not recover both ingredients and preparation steps. Check the source.")
         extraction_issues.append({
-            "field": "/recipe", "reason": "Neither reader recovered usable text. Check the original or try a sharper copy.",
+            "field": "/recipe", "reason": reason,
         })
     needs_review = comparison["review_items"] or extraction_issues or has_unresolved_fields(recipe)
     vegan_plan = plan_vegan_recipe(openai, recipe)

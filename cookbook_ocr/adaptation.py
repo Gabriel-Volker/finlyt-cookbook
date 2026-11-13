@@ -21,6 +21,7 @@ from .quantities import (
 from .scaling_plan import (
     compare_scaling_outcomes,
     ingredient_scale_factor,
+    proportional_source_conflict,
     scaling_plan_matches,
     validate_scaling_plan,
     verified_scaling_rules,
@@ -41,6 +42,14 @@ YIELD_INSTRUCTION = re.compile(
 QUANTITY_START = r"(?<![\w.,/⁄∕–—−-])(?<![0-9]\s)"
 ALTERNATE_AMOUNT = re.compile(r"\d\s+(?:or|oder|ou|to|bis|a|até)\s+$", re.IGNORECASE)
 REMAINING_AMOUNT = r"(?:(?:the\s+)?remaining\s+|(?:die\s+|den\s+|das\s+)?restlich\w*\s+)"
+MEASURE_CONNECTOR = r"(?:(?:of(?:\s+the)?|de|da|das|do|dos)\s+)?"
+WRITTEN_AMOUNT = (
+    r"(?:half(?:\s+(?:of\s+)?an?)?|an?|one|two|three|four|five|six|seven|eight|nine|ten|"
+    r"um|uma|dois|duas|três|quatro|cinco|meio|meia|ein|eine|einen|zwei|drei|halb|halbe)"
+)
+UNRECOGNIZED_MODIFIER = (
+    r"(?:(?!(?:and|or|then|with|e|ou|com|und|oder|mit)\b)[^\W\d_]+\s+){0,2}"
+)
 
 
 def _portion_count(field: dict) -> int | None:
@@ -55,22 +64,29 @@ def _phrase_pattern(text: str) -> str:
     return r"\s+".join(re.escape(word) for word in text.split())
 
 
-def _ingredient_measure_patterns(ingredient: dict) -> tuple[re.Pattern, ...]:
+def _ingredient_measure_patterns(ingredient: dict, *, review_only: bool = False) -> tuple[re.Pattern, ...]:
     name = ingredient["name"]["value"]
     if not name:
         return ()
     name_pattern = _phrase_pattern(name)
     unit = ingredient["unit"]["value"]
-    measure = rf"(?P<amount>{QUANTITY_PATTERN})"
+    amount = QUANTITY_PATTERN
+    if review_only:
+        amount = rf"(?:{amount}|{WRITTEN_AMOUNT})" if unit else WRITTEN_AMOUNT
+    elif unit:
+        amount = rf"(?:{amount}|an?)"
+    measure = rf"(?P<amount>{amount})"
     if unit:
         units = sorted(set((*unit_aliases(unit), *known_units())), key=lambda alias: (-len(alias), alias))
         unit_pattern = "|".join(_phrase_pattern(alias) for alias in units)
         measure += rf"(?P<gap>\s*)(?P<unit>{unit_pattern})(?!\w)"
     prep = ingredient["preparation"]["value"]
     modifier = rf"(?:{_phrase_pattern(prep)}\s+)?" if prep else ""
+    if review_only and unit:
+        modifier += UNRECOGNIZED_MODIFIER
     return (
         re.compile(
-            rf"{QUANTITY_START}{measure}\s+(?:of\s+|de\s+)?(?:{REMAINING_AMOUNT})?"
+            rf"{QUANTITY_START}{measure}\s+{MEASURE_CONNECTOR}(?:{REMAINING_AMOUNT})?"
             rf"{modifier}{name_pattern}(?!\w)",
             re.IGNORECASE,
         ),
@@ -97,6 +113,17 @@ class _StepMeasure:
         return f"/steps/{self.step}/{self.field}"
 
 
+@dataclass(frozen=True)
+class _ScaledIngredient:
+    quantity: str
+    unit: str | None
+    scaled_quantity: str
+    scaled_unit: str | None
+    factor: Fraction
+    patterns: tuple[re.Pattern, ...]
+    review_patterns: tuple[re.Pattern, ...]
+
+
 def _step_measures(steps, ingredient_id, patterns):
     for index, step in enumerate(steps):
         if ingredient_id not in step["ingredient_ids"]:
@@ -109,13 +136,16 @@ def _step_measures(steps, ingredient_id, patterns):
                     unit = groups.get("unit")
                     start, end = match.start("amount"), match.end("unit" if unit else "amount")
                     yield _StepMeasure(
-                        index, key, start, end, match["amount"], unit, groups.get("gap", ""),
+                        index, key, start, end,
+                        "1" if match["amount"].casefold() in {"a", "an"} and unit else match["amount"],
+                        unit, groups.get("gap", ""),
                         bool(ALTERNATE_AMOUNT.search(text[:start])),
                     )
 
 
-def _step_amounts_for_scale(mentions, quantity, unit, scaled, scaled_unit, factor, warn):
+def _step_amounts_for_scale(mentions, ingredient: _ScaledIngredient, warn):
     instructions = [item for item in mentions if item.field == "instruction"]
+    quantity, unit = ingredient.quantity, ingredient.unit
     total = normalized_amount(quantity, unit)
     parts = [normalized_amount(item.quantity, item.unit) for item in instructions]
     reconciled = (
@@ -139,7 +169,9 @@ def _step_amounts_for_scale(mentions, quantity, unit, scaled, scaled_unit, facto
             warn(item.path, "Alternative measures in this step need manual scaling.")
             continue
         if quantity_matches(quantity, unit, item.quantity, item.unit):
-            new_quantity, new_unit = scaled, scaled_unit
+            new_quantity, new_unit = ingredient.scaled_quantity, ingredient.scaled_unit
+            if item.unit and quantity_matches("1", item.unit, "1", new_unit):
+                new_unit = item.unit
         elif reconciled and (
             item.field == "instruction"
             or any(
@@ -148,7 +180,7 @@ def _step_amounts_for_scale(mentions, quantity, unit, scaled, scaled_unit, facto
                 for match in instructions
             )
         ):
-            new_quantity, new_unit = scale_quantity(item.quantity, item.unit, factor)
+            new_quantity, new_unit = scale_quantity(item.quantity, item.unit, ingredient.factor)
         else:
             warn(item.path, "A step measure differs from its linked ingredient quantity.")
             continue
@@ -179,7 +211,15 @@ def _scale_steps(recipe, measures, batch_ingredients, held_ingredients, original
     edits_by_path = {}
     owners = {}
     step_amounts = {
-        ingredient_id: list(dict.fromkeys(_step_measures(recipe["steps"], ingredient_id, measure[-1])))
+        ingredient_id: list(dict.fromkeys(_step_measures(
+            recipe["steps"], ingredient_id, measure.patterns,
+        )))
+        for ingredient_id, measure in measures.items()
+    }
+    review_amounts = {
+        ingredient_id: list(_step_measures(
+            recipe["steps"], ingredient_id, measure.review_patterns,
+        ))
         for ingredient_id, measure in measures.items()
     }
     for ingredient_id, amounts in step_amounts.items():
@@ -191,6 +231,15 @@ def _scale_steps(recipe, measures, batch_ingredients, held_ingredients, original
             held_spans.setdefault(item.path, []).append((item.start, item.end))
 
     for ingredient_id, amounts in step_amounts.items():
+        unmatched = [
+            item for item in review_amounts[ingredient_id]
+            if (item.path, item.start, item.end) not in owners
+            and (item.start, item.end) not in held_spans.get(item.path, ())
+        ]
+        if unmatched:
+            for path in dict.fromkeys(item.path for item in (*unmatched, *amounts)):
+                warn(path, "Check the linked ingredient amounts. At least one could not be scaled safely.")
+            continue
         if any(
             len(owners[item.path, item.start, item.end]) > 1
             or any(item.start < end and start < item.end for start, end in held_spans.get(item.path, ()))
@@ -199,10 +248,7 @@ def _scale_steps(recipe, measures, batch_ingredients, held_ingredients, original
             for path in dict.fromkeys(item.path for item in amounts):
                 warn(path, "A step measure could belong to more than one linked ingredient.")
             continue
-        quantity, unit, scaled, scaled_unit, factor, _ = measures[ingredient_id]
-        for item, replacement in _step_amounts_for_scale(
-            amounts, quantity, unit, scaled, scaled_unit, factor, warn
-        ):
+        for item, replacement in _step_amounts_for_scale(amounts, measures[ingredient_id], warn):
             edits_by_path.setdefault(item.path, {}).setdefault((item.start, item.end), set()).add(replacement)
 
     for index, step in enumerate(recipe["steps"]):
@@ -326,6 +372,12 @@ def adapt_recipe(
                     applied["reason"] = reason
                     warn(f"{path}/quantity", reason)
                     continue
+                reason = proportional_source_conflict(adapted, index, ingredient) if rule["mode"] == "proportional" else None
+                if reason:
+                    applied.update(mode="review", multiplier=None, reason=reason)
+                    held_ingredients.append(ingredient)
+                    warn(f"{path}/quantity", reason)
+                    continue
                 if rule["mode"] == "per_batch":
                     # The ingredient list needs a total. The method still uses the original amount per batch.
                     applied.update(batches=int(multiplier), per_batch_quantity=quantity, per_batch_unit=unit)
@@ -339,8 +391,10 @@ def adapt_recipe(
                     continue
                 scaled, scaled_unit = adjusted
                 if rule["mode"] != "per_batch":
-                    measures[ingredient["id"]] = (
-                        quantity, unit, scaled, scaled_unit, multiplier, _ingredient_measure_patterns(ingredient)
+                    measures[ingredient["id"]] = _ScaledIngredient(
+                        quantity, unit, scaled, scaled_unit, multiplier,
+                        _ingredient_measure_patterns(ingredient),
+                        _ingredient_measure_patterns(ingredient, review_only=True),
                     )
                 change(f"{path}/quantity", quantity_field, scaled, rule["reason"])
                 change(f"{path}/unit", unit_field, scaled_unit, "Convert within the same metric dimension.")

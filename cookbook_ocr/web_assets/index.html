@@ -79,9 +79,9 @@
             <div id="review-list" role="tabpanel" aria-labelledby="ingredients-tab"></div>
           </div>
           <aside class="stack" aria-label="Recipe evidence">
-            <section class="card card-body" id="field-review" aria-labelledby="field-review-title" hidden>
+            <section class="card card-body" id="field-review" aria-labelledby="field-review-title">
               <div class="card-heading">
-                <h2 id="field-review-title">Review flagged fields</h2>
+                <h2 id="field-review-title">Review fields</h2>
                 <span class="badge" id="field-review-count"></span>
               </div>
               <form id="field-review-form" class="settings-form">
@@ -90,15 +90,21 @@
                   <select id="field-review-path"></select>
                 </div>
                 <div id="field-review-source"></div>
-                <div class="field">
-                  <label for="field-review-value">Verified value</label>
+                <div class="field" id="field-review-text">
+                  <label for="field-review-value">Reviewed value</label>
                   <textarea id="field-review-value" rows="2" required aria-describedby="field-review-hint"></textarea>
                   <small id="field-review-hint">Confirm a reading after checking the source, or save a correction.</small>
+                </div>
+                <div class="field" id="field-review-links" hidden>
+                  <label for="field-review-references">Linked entries</label>
+                  <select id="field-review-references" multiple size="5" aria-describedby="field-review-links-hint" disabled></select>
+                  <small id="field-review-links-hint">Select the entries used in this step. Use Ctrl or Command to select several.</small>
                 </div>
                 <div class="field-review-actions">
                   <button type="submit" class="button secondary" value="confirm">Confirm value</button>
                   <button type="submit" class="button primary" value="correct">Save correction</button>
-                  <button type="button" class="button text" id="field-review-reopen" hidden>Reopen</button>
+                  <button type="button" class="button text" id="field-review-clear" hidden>Mark not stated</button>
+                  <button type="button" class="button text" id="field-review-reopen" hidden>Undo review</button>
                 </div>
                 <p class="status-message" id="field-review-status" role="status" hidden></p>
               </form>

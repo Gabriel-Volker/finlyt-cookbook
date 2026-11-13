@@ -132,8 +132,37 @@ class PipelineTests(unittest.TestCase):
 
         report = run_pipeline(DOCUMENT, "recipe.pdf", self.gemini, self.openai)
 
-        self.assertEqual(report["status"], "no_discrepancies")
+        self.assertEqual(report["status"], "needs_review")
+        self.assertEqual(report["extraction_issues"][0]["field"], "/recipe")
         self.assertEqual(report["comparison"], comparison)
+
+    def test_checks_numeric_equivalences_and_complete_quotes(self):
+        cases = [
+            ("Add ½ cup flour.", "Add 1½ cup flour.", "½ cup flour", "1½ cup flour", "quantity_notation", False),
+            ("Add ½ cup flour.", "Add 1½ cup flour.", "½ cup flour", "½ cup flour", "quantity_notation", False),
+            ("Add ½ cup flour.", "Add 1 1/2 cup flour.", "½ cup flour", "1 1/2 cup flour", "formatting", False),
+            ("Add 1½ cup flour.", "Add 1 1/2 cup flour.", "1½ cup flour", "1 1/2 cup flour", "quantity_notation", True),
+            ("Add ½ l water.", "Add 500 ml water.", "½ l water", "500 ml water", "unit_conversion", True),
+        ]
+        for a, b, excerpt_a, excerpt_b, kind, equivalent in cases:
+            with self.subTest(a=a, b=b, kind=kind):
+                self.openai.respond.return_value = json.dumps({
+                    "review_items": [], "equivalent_variations": [{
+                        "page": "1", "kind": kind, "a_excerpt": excerpt_a,
+                        "b_excerpt": excerpt_b, "reason": "Same amount.",
+                    }],
+                })
+                result = compare_transcriptions(self.openai, "", {}, f"[page: 1]\n{a}", f"[page: 1]\n{b}")
+                self.assertEqual(bool(result["equivalent_variations"]), equivalent)
+                self.assertEqual(bool(result["review_items"]), not equivalent)
+
+    def test_detects_a_numeric_difference_the_model_omits(self):
+        self.openai.respond.return_value = json.dumps({"review_items": [], "equivalent_variations": []})
+        a = "[page: 1]\n½ cup flour\n½ l water"
+        b = "[page: 1]\n1½ cup flour\n500 ml water"
+        report = compare_transcriptions(self.openai, "", {}, a, b)
+        self.assertEqual([(item["a_excerpt"], item["b_excerpt"]) for item in report["review_items"]],
+                         [("½ cup flour", "1½ cup flour")])
 
     def test_retries_extraction_with_invalid_evidence_without_repeating_ocr(self):
         invalid_recipe = {

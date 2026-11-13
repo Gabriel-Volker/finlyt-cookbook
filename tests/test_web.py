@@ -140,6 +140,7 @@ class WebTests(unittest.TestCase):
             {"path": "/ingredients/0/quantity", "action": "correct", "value": "1/4"},
             {"path": "/servings", "action": "confirm", "value": "4"},
             {"path": f"/ingredients/{roast_index}/name", "action": "confirm", "value": "beef roast"},
+            {"path": "/title", "action": "correct", "value": "Reviewed Sauerbraten"},
         ]
         headers = {"Content-Type": "application/json"}
         status, _, response = self.request(
@@ -155,6 +156,8 @@ class WebTests(unittest.TestCase):
         self.assertEqual(reviewed_quantity["status"], "reviewed")
         self.assertIsNone(review["decisions"][0]["before"])
         self.assertEqual(review["decisions"][0]["after"], "1/4")
+        self.assertEqual(review["recipe"]["title"]["value"], "Reviewed Sauerbraten")
+        self.assertEqual(review["recipe"]["title"]["evidence"], original["recipe"]["title"]["evidence"])
 
         report["review"] = review
         report["vegan_plan"] = validate_vegan_plan(review["recipe"], {
@@ -186,7 +189,7 @@ class WebTests(unittest.TestCase):
         self.assertEqual((vinegar["quantity"]["value"], vinegar["unit"]["value"]), ("500", "ml"))
         self.assertEqual(result["recipe"]["ingredients"][roast_index]["name"]["value"], "seitan")
 
-        for invalid in ({"path": "/title", "action": "correct", "value": "Tea"},
+        for invalid in ({"path": "/unknown", "action": "correct", "value": "Tea"},
                         {"path": "/servings", "action": "confirm", "value": "0"}):
             with self.subTest(invalid=invalid):
                 body = json.dumps({"report": original, "decisions": [invalid]})

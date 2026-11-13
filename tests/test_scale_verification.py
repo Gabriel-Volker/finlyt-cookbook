@@ -17,6 +17,22 @@ def verified_plan(source, luna_rules, gemini_rules):
 
 
 class ScalingVerificationTests(unittest.TestCase):
+    def test_agreeing_models_cannot_multiply_a_source_amount_marked_fixed_or_per_batch(self):
+        for instruction in ("Use 20 ml oil once for the whole recipe.", "Use 20 ml oil per batch of 4 servings.",
+                            "Use 20 ml oil, regardless of servings.", "Use 0.02 l oil once for the whole recipe."):
+            with self.subTest(instruction=instruction):
+                method = f"{instruction[:-1]}, then add 100 g flour."
+                source = recipe("4", [ingredient("oil", "oil", "20", "ml"),
+                                      ingredient("flour", "flour", "100", "g")],
+                                [step(method, "oil", "flour")])
+                rules = [scaling_rule("oil"), scaling_rule("flour")]
+                result = adapt_recipe(source, servings=8, scaling_plan=verified_plan(source, rules, rules))
+                self.assertEqual(result["status"], "needs_review")
+                self.assertEqual(result["scale"]["verification"]["material_conflicts"], [])
+                self.assertEqual(result["scale"]["ingredients"][0]["mode"], "review")
+                self.assertEqual([item["quantity"]["value"] for item in result["recipe"]["ingredients"]], ["20", "200"])
+                self.assertEqual(result["recipe"]["steps"][0]["instruction"]["value"], method.replace("100 g", "200 g"))
+
     def test_differs_at_new_yield_and_leaves_other_ingredients_scalable(self):
         oil_text = "Use 20 ml oil once for the whole recipe."
         source = recipe("4", [

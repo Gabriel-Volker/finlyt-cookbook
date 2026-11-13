@@ -1,4 +1,5 @@
 import unittest
+from copy import deepcopy
 
 from cookbook_ocr.extraction import build_recipe
 from cookbook_ocr.pipeline import validate_comparison
@@ -248,3 +249,72 @@ class ExtractionTests(unittest.TestCase):
                 candidate["steps"][0][reference].append("missing")
                 with self.assertRaises(ValueError):
                     build_recipe(candidate, TRANSCRIPTIONS, [])
+
+    def test_preserves_evidence_when_a_measure_is_taken_from_the_wrong_ingredient(self):
+        candidate = porridge()
+        candidate["ingredients"][0].update(quantity=span("1", "1 cup salt"), unit=span("cup", "1 cup salt"))
+        for separator in ("; ", " "):
+            with self.subTest(separator=separator):
+                text = TRANSCRIPTIONS["A"].replace("2 cups water", f"2 cups water{separator}1 cup salt")
+                readings = {"A": text, "B": text}
+                with self.assertRaisesRegex(ValueError, "same ingredient"):
+                    build_recipe(candidate, readings, [])
+                issues = []
+                water = build_recipe(candidate, readings, [], extraction_issues=issues)["ingredients"][0]
+                for key in ("quantity", "unit"):
+                    self.assertIsNone(water[key]["value"])
+                    self.assertEqual(water[key]["status"], "needs_review")
+                    self.assertEqual(water[key]["evidence"]["quote"], "1 cup salt")
+                self.assertEqual([item["field"] for item in issues], ["/ingredients/0/quantity", "/ingredients/0/unit"])
+
+    def test_rejects_cooking_duration_as_an_ingredient_amount(self):
+        candidate = porridge()
+        candidate["ingredients"][0].update(quantity=span("10", "Simmer water for 10 minutes."), unit=None)
+        text = "[page: 1]\nOat porridge\nSimmer water for 10 minutes.\nrolled oats\nsaucepan"
+        candidate["steps"] = []
+        with self.assertRaisesRegex(ValueError, "same ingredient"):
+            build_recipe(candidate, {"A": text, "B": text}, [])
+
+    def test_quantity_and_unit_from_two_readings_must_belong_to_the_same_measure(self):
+        candidate = porridge()
+        candidate["ingredients"][0].update(
+            quantity=span("1/2", "1/2 cup water"), unit=span("cup", "½ cup water", source="B"),
+        )
+        first = TRANSCRIPTIONS["A"].replace("2 cups water", "1/2 cup water")
+        second = first.replace("1/2 cup water", "½ cup water")
+        water = build_recipe(candidate, {"A": first, "B": second}, [])["ingredients"][0]
+        self.assertEqual((water["quantity"]["value"], water["unit"]["value"]), ("1/2", "cup"))
+        candidate["ingredients"][0]["unit"] = span("ml", "500 ml water", source="B")
+        second = first.replace("1/2 cup water", "500 ml water")
+        with self.assertRaisesRegex(ValueError, "same ingredient amount"):
+            build_recipe(candidate, {"A": first, "B": second}, [])
+
+    def test_deduplicates_one_source_occurrence_and_preserves_distinct_measures(self):
+        candidate = porridge()
+        water = candidate["ingredients"][0]
+        water["name"] = span("water", "2 cups water")
+        duplicate = {**deepcopy(water), "id": "water-repeat"}
+        candidate["ingredients"].append(duplicate)
+        candidate["steps"][0]["ingredient_ids"].append("water-repeat")
+        readings = {"A": TRANSCRIPTIONS["A"], "B": TRANSCRIPTIONS["A"]}
+        result = build_recipe(candidate, readings, [])
+        self.assertEqual([item["id"] for item in result["ingredients"]], ["water", "oats"])
+        self.assertEqual(result["steps"][0]["ingredient_ids"], ["water", "oats"])
+
+        duplicate.update(name=span("water", "1 cup water"), quantity=span("1", "1 cup water"),
+                         unit=span("cup", "1 cup water"))
+        text = TRANSCRIPTIONS["A"].replace("2 cups water", "2 cups water\n1 cup water")
+        result = build_recipe(candidate, {"A": text, "B": text}, [])
+        self.assertEqual([item["id"] for item in result["ingredients"]], ["water", "oats", "water-repeat"])
+
+    def test_flags_an_agreed_measured_line_omitted_from_an_ingredient_section(self):
+        candidate = porridge()
+        text = TRANSCRIPTIONS["A"].replace("2 cups water\nrolled oats", "Ingredients:\n2 cups water\n100 g sugar\nrolled oats")
+        readings = {"A": text, "B": text}
+        with self.assertRaisesRegex(ValueError, "missing from the extraction"):
+            build_recipe(candidate, readings, [])
+        issues = []
+        result = build_recipe(candidate, readings, [], extraction_issues=issues)
+        self.assertEqual([item["id"] for item in result["ingredients"]], ["water", "oats"])
+        self.assertEqual(issues[0]["field"], "/ingredients")
+        self.assertEqual(issues[0]["evidence"], {"source": "A", "page": "1", "quote": "100 g sugar"})

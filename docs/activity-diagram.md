@@ -39,7 +39,7 @@ flowchart TD
     subgraph review ["Review"]
         display["Show recipe and review flags"]
         inspect["Inspect excerpts and source page"]
-        resolve["Confirm or correct a flagged field"]
+        resolve["Confirm or correct a recipe field"]
         saveReview["Save decision and original evidence"]
         refreshPlan["Refresh plans for the reviewed recipe"]
         display -.->|"Select item"| inspect

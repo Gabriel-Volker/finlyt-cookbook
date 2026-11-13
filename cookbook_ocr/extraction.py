@@ -1,9 +1,11 @@
 """Ground structured recipe values in the OCR texts and their review findings."""
 
 import re
+from collections import defaultdict
+from dataclasses import dataclass
 from difflib import SequenceMatcher
 
-from .quantities import QUANTITY_PATTERN
+from .quantities import QUANTITY_PATTERN, quantity_matches
 
 
 PAGE_MARKER = re.compile(r"^\[page: ([1-9][0-9]*)\][ \t]*\r?$", re.MULTILINE)
@@ -14,6 +16,24 @@ MEASURE_FIELDS = {"quantity", "servings", "duration"}
 MEASURE_WHITESPACE = r"(?:[^\S\r\n]|\r?\n(?![^\S\r\n]*\r?\n))"
 MEASURE_TOKEN = re.compile(QUANTITY_PATTERN.replace(r"\s", MEASURE_WHITESPACE), re.IGNORECASE)
 PRINTED_PAGE_LABEL = re.compile(r"^\s*(?:page|seite|p[áa]gina)[ \t]+\d+\.?[ \t]*\r?\n", re.IGNORECASE)
+INGREDIENT_BREAK = re.compile(r"[;,!?]|\.(?=\s)|\s+[-–—]\s+|\b(?:and|und|e)\b", re.IGNORECASE)
+INGREDIENT_HEADING = re.compile(r"(?:ingredients?|ingredientes?|zutaten)\s*:?", re.IGNORECASE)
+SECTION_HEADING = re.compile(
+    r"(?:method|directions|instructions|preparation|modo de preparo|preparo|zubereitung)\s*:?", re.IGNORECASE,
+)
+MEASURED_LINE = re.compile(rf"\s*[-•]?\s*{QUANTITY_PATTERN}\s+[^\W\d_]", re.IGNORECASE)
+TIME_OR_TEMPERATURE = re.compile(
+    r"\s*(?:°\s*[CF]|seconds?|minutes?|hours?|secs?|mins?|hrs?|segundos?|minutos?|horas?|sekunden?|minuten?|stunden?)\b",
+    re.IGNORECASE,
+)
+AMOUNT_UNIT_GAP = re.compile(r"\s*(?:(?:heaped|level|rasa?s?|cheia?s?|gestrichen(?:e[nr]?)?)\s+)?", re.I)
+
+
+@dataclass(frozen=True)
+class _Anchor:
+    start: int
+    end: int
+    quote: re.Match
 
 
 def _occurrences(text: str, excerpt: str) -> list[int]:
@@ -78,7 +98,7 @@ def _review_ranges(
     return ranges
 
 
-def _field(span, field: str, transcriptions, pages, review_ranges, measure_cuts) -> dict:
+def _field(span, field: str, transcriptions, pages, review_ranges, measure_cuts, anchors: list) -> dict:
     if span is None:
         return {"value": None, "status": "missing", "evidence": None, "review_item_ids": []}
 
@@ -94,40 +114,142 @@ def _field(span, field: str, transcriptions, pages, review_ranges, measure_cuts)
                    for marker in pages[source])
     ]
     spans = [
-        (source_quote.start() + match.start(), source_quote.start() + match.end(), source_quote)
+        _Anchor(source_quote.start() + match.start(), source_quote.start() + match.end(), source_quote)
         for source_quote in quotes for match in _source_quotes(source_quote.group(), value)
     ]
     if field in MEASURE_FIELDS:
         # An ambiguous quote must not select a separate measure over the intended mixed number.
         cuts = measure_cuts[source]
         if any(
-            start in cuts or end in cuts
-            or re.fullmatch(r"[\d.,/⁄∕]", text[max(0, start - 1):start])
-            or re.match(r"[\d/⁄∕]|[.,]\d", text[end:end + 2])
-            for start, end, _ in spans
+            anchor.start in cuts or anchor.end in cuts
+            or re.fullmatch(r"[\d.,/⁄∕]", text[max(0, anchor.start - 1):anchor.start])
+            or re.match(r"[\d/⁄∕]|[.,]\d", text[anchor.end:anchor.end + 2])
+            for anchor in spans
         ):
             raise ValueError(f"Extraction returned ambiguous evidence or a partial measure for {field}.")
     if not spans:
         raise ValueError(f"Extraction returned non-verbatim evidence or a partial measure for {field}.")
 
-    page_numbers = {_page_at(pages[source], start) for start, _, _ in spans}
+    anchors.extend(spans)
+    return _anchored_field(value, source, text, pages[source], review_ranges[source], spans)
+
+
+def _anchored_field(value, source, text, pages, review_ranges, anchors) -> dict:
+    page_numbers = {_page_at(pages, anchor.start) for anchor in anchors}
     page = page_numbers.pop() if len(page_numbers) == 1 else None
     review_ids = set()
-    for start, end, _ in spans:
+    for anchor in anchors:
         review_ids.update(
-            index for left, right, index in review_ranges[source]
-            if (start < right and left < end)
-            or (left == right and start <= left <= end)
+            index for left, right, index in review_ranges
+            if (anchor.start < right and left < anchor.end)
+            or (left == right and anchor.start <= left <= anchor.end)
         )
 
     needs_review = bool(review_ids or UNREADABLE.search(value))
-    start, end, source_quote = spans[0]
+    anchor = anchors[0]
     return {
-        "value": None if needs_review else text[start:end],
+        "value": None if needs_review else text[anchor.start:anchor.end],
         "status": "needs_review" if needs_review else "stated",
-        "evidence": {"source": source, "page": page, "quote": source_quote.group()},
+        "evidence": {"source": source, "page": page, "quote": anchor.quote.group()},
         "review_item_ids": sorted(review_ids),
     }
+
+
+def _name_mentions(value: str) -> re.Pattern:
+    # Ignore OCR hyphenation and spacing without changing the evidence we return.
+    words = re.sub(r"(?<=\w)-\s*\n\s*(?=\w)", "", value).split()
+    parts = [r"(?:-\s*\n\s*)?".join(re.escape(char) for char in word) for word in words]
+    return re.compile(r"(?<!\w)" + r"\s+".join(parts) + r"(?!\w)", re.IGNORECASE)
+
+
+def _ingredient_anchor(text, anchor, name, others, name_anchors):
+    line_start = text.rfind("\n", 0, anchor.start) + 1
+    line_end = text.find("\n", anchor.end)
+    if line_end == -1:
+        line_end = len(text)
+    # A quote that explicitly spans a wrapped line can supply the same ingredient occurrence.
+    start = min(line_start, anchor.quote.start())
+    end = max(line_end, anchor.quote.end())
+    other_mentions = [mention.span() for other in others for mention in other.finditer(text, start, end)]
+    for mention in name.finditer(text, start, end):
+        if name_anchors is not None and mention.span() not in name_anchors:
+            continue
+        if any(left <= mention.start() and mention.end() <= right for left, right in other_mentions):
+            continue
+        if mention.end() <= anchor.start:
+            gap = text[mention.end():anchor.start]
+            previous_breaks = list(INGREDIENT_BREAK.finditer(text, start, mention.start()))
+            local_start = previous_breaks[-1].end() if previous_breaks else start
+            if not re.match(r"\s*[:(]", gap) and MEASURE_TOKEN.search(text, local_start, mention.start()):
+                continue
+        elif mention.start() >= anchor.end:
+            gap = text[anchor.end:mention.start()]
+        else:
+            continue
+        if (len(gap) <= 64 and gap.count("\n") <= 1 and not re.search(r"\n\s*\n", gap)
+                and not INGREDIENT_BREAK.search(gap) and not MEASURE_TOKEN.search(gap)
+                and not any(other.search(gap) for other in others)):
+            return True
+    return False
+
+
+def _unit_anchors(quantity_value, quantity_source, unit_source, unit_anchors, quantity_anchors, transcriptions):
+    text = transcriptions[unit_source]
+    if quantity_source == unit_source:
+        return [unit for unit in unit_anchors if any(
+            quantity.end <= unit.start and AMOUNT_UNIT_GAP.fullmatch(text[quantity.end:unit.start])
+            for quantity in quantity_anchors
+        )]
+
+    # The local amount in the other reading can use an equivalent fraction notation.
+    compatible = []
+    for unit in unit_anchors:
+        start = text.rfind("\n", 0, unit.start) + 1
+        candidates = list(MEASURE_TOKEN.finditer(text, min(start, unit.quote.start()), unit.start))
+        if candidates and AMOUNT_UNIT_GAP.fullmatch(text[candidates[-1].end():unit.start]):
+            amount = candidates[-1].group()
+            if amount == quantity_value or quantity_matches(amount, None, quantity_value, None):
+                compatible.append(unit)
+    return compatible
+
+
+def _deduplicate_entities(items, anchors):
+    unique = []
+    aliases = {}
+    indexes = {}
+    seen = {}
+    for index, (item, occurrence) in enumerate(zip(items, anchors)):
+        fields = [field for name, field in item.items() if name != "id"]
+        key = (occurrence, tuple((field["value"], field["status"]) for field in fields))
+        if occurrence is not None and all(field["status"] != "needs_review" for field in fields) and key in seen:
+            indexes[index], aliases[item["id"]] = seen[key]
+        else:
+            indexes[index] = len(unique)
+            seen[key] = len(unique), item["id"]
+            unique.append(item)
+    return unique, aliases, indexes
+
+
+def _omitted_ingredient_lines(transcriptions, names):
+    """Report agreed measured lines under explicit ingredient headings."""
+    def measured_lines(source):
+        in_ingredients = False
+        page = None
+        for line in transcriptions[source].splitlines():
+            if marker := PAGE_MARKER.fullmatch(line):
+                page = marker[1]
+                in_ingredients = False
+            elif INGREDIENT_HEADING.fullmatch(line.strip()):
+                in_ingredients = True
+            elif not line.strip() or SECTION_HEADING.fullmatch(line.strip()):
+                in_ingredients = False
+            elif in_ingredients and MEASURED_LINE.match(line) and not UNREADABLE.search(line):
+                yield page, line.strip()
+
+    second_reading = set(measured_lines("B"))
+    for page, line in dict.fromkeys(measured_lines("A")):
+        if (page, line) in second_reading and not any(name.search(line) for name in names):
+            yield {"source": "A", "page": page, "quote": line}
 
 
 def build_recipe(
@@ -143,31 +265,104 @@ def build_recipe(
         source: _measure_cut_offsets(text, pages[source]) for source, text in transcriptions.items()
     }
 
-    def field(record, name, path):
+    def field(record, name, path, anchors=None):
         try:
-            return _field(record[name], name, transcriptions, pages, ranges, measure_cuts)
+            return _field(record[name], name, transcriptions, pages, ranges, measure_cuts,
+                          anchors if anchors is not None else [])
         except ValueError as error:
             if extraction_issues is None:
                 raise
             extraction_issues.append({"field": f"{path}/{name}", "reason": str(error)})
             return {"value": None, "status": "needs_review", "evidence": None, "review_item_ids": []}
 
-    ingredients = [
-        {"id": item["id"], **{
-            name: field(item, name, f"/ingredients/{index}") for name in INGREDIENT_FIELDS
+    def resolve_ingredient(index, item, names):
+        path = f"/ingredients/{index}"
+        anchors = defaultdict(list)
+        ingredient = {"id": item["id"], **{
+            name: field(item, name, path, anchors[name]) for name in INGREDIENT_FIELDS
         }}
-        for index, item in enumerate(candidate["ingredients"])
-    ]
-    tools = [
-        {"id": item["id"], "name": field(item, "name", f"/tools/{index}")}
-        for index, item in enumerate(candidate["tools"])
-    ]
+        others = [name for name in names if name.pattern != names[index].pattern]
+        name_spans = {(anchor.start, anchor.end) for anchor in anchors["name"]}
+        related = {}
+
+        def flag(key, reason):
+            if extraction_issues is None:
+                raise ValueError(reason)
+            extraction_issues.append({"field": f"{path}/{key}", "reason": reason})
+            ingredient[key].update(value=None, status="needs_review")
+
+        for key in ("quantity", "unit"):
+            if not anchors[key]:
+                continue
+            source = item[key]["source"]
+            text = transcriptions[source]
+            allowed = name_spans if source == item["name"]["source"] else None
+            linked = [anchor for anchor in anchors[key]
+                      if _ingredient_anchor(text, anchor, names[index], others, allowed)
+                      and not (key == "quantity" and TIME_OR_TEMPERATURE.match(text, anchor.end))]
+            if linked:
+                ingredient[key] = _anchored_field(item[key]["text"], source, text, pages[source], ranges[source], linked)
+                related[key] = linked
+            else:
+                flag(key, f"Extraction could not tie the {key} to the same ingredient in the source.")
+
+        # Independently found quantity and unit must describe the same local measure.
+        if "quantity" in related and "unit" in related and ingredient["quantity"]["status"] == "stated":
+            source = item["unit"]["source"]
+            compatible = _unit_anchors(
+                item["quantity"]["text"], item["quantity"]["source"], source,
+                related["unit"], related["quantity"], transcriptions,
+            )
+            if compatible:
+                ingredient["unit"] = _anchored_field(item["unit"]["text"], source, transcriptions[source],
+                                                     pages[source], ranges[source], compatible)
+            else:
+                flag("unit", "Extraction could not tie the unit to the same ingredient amount in the source.")
+        occurrence = None
+        if len(anchors["name"]) == 1:
+            anchor = anchors["name"][0]
+            occurrence = (item["name"]["source"], anchor.start, anchor.end)
+            if "quantity" in related:
+                if len(related["quantity"]) == 1:
+                    amount = related["quantity"][0]
+                    occurrence += (item["quantity"]["source"], amount.start, amount.end)
+                else:
+                    occurrence = None
+        return ingredient, occurrence
+
+    names = [_name_mentions(item["name"]["text"]) for item in candidate["ingredients"]]
+    ingredients, ingredient_anchors = [], []
+    for index, item in enumerate(candidate["ingredients"]):
+        ingredient, occurrence = resolve_ingredient(index, item, names)
+        ingredients.append(ingredient)
+        ingredient_anchors.append(occurrence)
+    tools, tool_anchors = [], []
+    for index, item in enumerate(candidate["tools"]):
+        anchors = []
+        tools.append({"id": item["id"], "name": field(item, "name", f"/tools/{index}", anchors)})
+        tool_anchors.append((item["name"]["source"], anchors[0].start, anchors[0].end) if len(anchors) == 1 else None)
     ingredient_ids = {item["id"] for item in ingredients}
     tool_ids = {item["id"] for item in tools}
     if len(ingredient_ids) != len(ingredients) or len(tool_ids) != len(tools):
         raise ValueError("Extraction returned duplicate ingredient or tool IDs.")
     if any(not key.strip() for key in ingredient_ids | tool_ids):
         raise ValueError("Extraction returned an empty ingredient or tool ID.")
+    ingredients, ingredient_aliases, ingredient_indexes = _deduplicate_entities(ingredients, ingredient_anchors)
+    tools, tool_aliases, tool_indexes = _deduplicate_entities(tools, tool_anchors)
+    if extraction_issues is not None:
+        indexes = {"ingredients": ingredient_indexes, "tools": tool_indexes}
+        for issue in extraction_issues:
+            match = re.fullmatch(r"/(ingredients|tools)/(\d+)/(\w+)", issue["field"])
+            if match:
+                collection, index, name = match.groups()
+                if int(index) in indexes[collection]:
+                    issue["field"] = f"/{collection}/{indexes[collection][int(index)]}/{name}"
+
+    for evidence in _omitted_ingredient_lines(transcriptions, names):
+        reason = "A measured ingredient line agreed on by both OCR readings is missing from the extraction."
+        if extraction_issues is None:
+            raise ValueError(reason)
+        extraction_issues.append({"field": "/ingredients", "reason": reason, "evidence": evidence})
 
     steps = []
     for index, step in enumerate(candidate["steps"]):
@@ -178,8 +373,8 @@ def build_recipe(
                 name: field(step, name, f"/steps/{index}")
                 for name in ("instruction", "duration", "condition")
             },
-            "ingredient_ids": list(dict.fromkeys(step["ingredient_ids"])),
-            "tool_ids": list(dict.fromkeys(step["tool_ids"])),
+            "ingredient_ids": list(dict.fromkeys(ingredient_aliases.get(key, key) for key in step["ingredient_ids"])),
+            "tool_ids": list(dict.fromkeys(tool_aliases.get(key, key) for key in step["tool_ids"])),
         })
 
     return {

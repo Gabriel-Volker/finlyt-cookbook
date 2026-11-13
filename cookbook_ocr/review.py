@@ -11,6 +11,8 @@ REVIEW_FIELDS = {
     "tools": ("name",),
     "steps": ("instruction", "duration", "condition"),
 }
+OPTIONAL_FIELDS = {"title", "servings", "quantity", "unit", "preparation", "optional_when", "duration", "condition"}
+REFERENCE_FIELDS = {"ingredient_ids": "ingredients", "tool_ids": "tools"}
 
 
 def review_recipe(recipe: dict, decisions: list) -> dict:
@@ -28,34 +30,59 @@ def review_recipe(recipe: dict, decisions: list) -> dict:
                 for name in names
             })
         pending = {path for path, field in fields.items() if field["status"] == "needs_review"}
-        original_values = {path: fields[path]["value"] for path in pending}
+        references = {}
+        for key, collection in REFERENCE_FIELDS.items():
+            allowed = {item["id"] for item in reviewed[collection]}
+            references.update({f"/steps/{index}/{key}": (step, key, allowed)
+                               for index, step in enumerate(reviewed["steps"])})
     except (KeyError, TypeError):
         raise ValueError("The extraction report contains an invalid recipe object.") from None
 
     recorded = []
+    seen = set()
     for decision in decisions:
         if not isinstance(decision, dict):
             raise ValueError("Each review decision must be an object.")
         path, action = decision.get("path"), decision.get("action")
-        if not isinstance(path, str) or path not in pending:
-            raise ValueError("Each review decision must address a different field flagged for review.")
+        if not isinstance(path, str) or (path not in fields and path not in references) or path in seen:
+            raise ValueError("Each review decision must address a different existing recipe field.")
         if action not in ("confirm", "correct"):
             raise ValueError("Choose confirm or correct for the review decision.")
 
-        field = fields[path]
-        before = original_values[path]
-        value = decision.get("value", before if action == "confirm" else None)
-        if not isinstance(value, str) or not value.strip() or UNREADABLE.search(value):
-            raise ValueError("Enter the value verified against the original recipe.")
-        value = value.strip()
-        if path == "/servings" and not re.fullmatch(r"[1-9][0-9]*", value):
-            raise ValueError("Enter a positive whole number for original servings.")
+        if path in references:
+            step, key, allowed = references[path]
+            before = step[key]
+            value = decision.get("value", before if action == "confirm" else None)
+            if (not isinstance(before, list) or not isinstance(value, list)
+                    or any(not isinstance(item, str) or item not in allowed for item in value)):
+                raise ValueError("Choose existing recipe entries for step references.")
+            value = list(dict.fromkeys(value))
+            if action == "confirm" and set(value) == set(before):
+                value = before
+        else:
+            field = fields[path]
+            before = field["value"]
+            value = decision.get("value", before if action == "confirm" else None)
+            key = path.rsplit("/", 1)[-1]
+            can_clear = action == "correct" and "value" in decision and key in OPTIONAL_FIELDS
+            if value is not None or not can_clear:
+                if not isinstance(value, str) or not value.strip() or UNREADABLE.search(value):
+                    raise ValueError("Enter the value verified against the original recipe.")
+                value = value.strip()
+                if action == "confirm" and isinstance(before, str) and value == before.strip():
+                    value = before
+                if path == "/servings" and (action == "correct" or before is None) and not re.fullmatch(r"[1-9][0-9]*", value):
+                    raise ValueError("Enter a positive whole number for original servings.")
         if action == "confirm" and before is not None and value != before:
             raise ValueError("Use correct to change an existing extracted value.")
 
-        field.update(value=value, status="reviewed")
+        if path in references:
+            step[key] = value
+        else:
+            field.update(value=value, status="reviewed")
         recorded.append({"path": path, "action": action, "value": value, "before": before, "after": value})
-        pending.remove(path)
+        pending.discard(path)
+        seen.add(path)
 
     return {
         "recipe": reviewed,

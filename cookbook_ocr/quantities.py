@@ -60,9 +60,12 @@ _METRIC_BASE = {
 }
 _UNIT_FORMS = (
     ("cup", "cups"), ("xícara", "xícaras"), ("tasse", "tassen"),
+    ("xícara (chá)", "xícaras (chá)", "xícara de chá", "xícaras de chá"),
     ("teaspoon", "teaspoons", "tsp", "tsp."),
     ("tablespoon", "tablespoons", "tbsp", "tbsp."),
-    ("colher de chá", "colheres de chá"), ("colher de sopa", "colheres de sopa"),
+    ("colher de chá", "colheres de chá", "colher (chá)", "colheres (chá)"),
+    ("colher de sopa", "colheres de sopa", "colher (sopa)", "colheres (sopa)"),
+    ("colher de café", "colheres de café", "colher (café)", "colheres (café)"),
     ("teelöffel", "tl", "tl."), ("esslöffel", "el", "el."),
     ("ounce", "ounces", "oz"), ("pound", "pounds", "lb", "lbs"),
 )
@@ -208,9 +211,12 @@ def step_unit(quantity: str, unit: str) -> str:
     value = parse_number(quantity)
     if value is None:
         return unit
-    for singular, plural, *_ in _UNIT_FORMS:
+    for forms in _UNIT_FORMS:
+        singular, plural = forms[:2]
         if plural.endswith(".") or plural in {"tl", "el"}:
             continue
+        if len(forms) == 4 and " " in forms[2] and unit.casefold() in forms[2:]:
+            singular, plural = forms[2:]
         if unit.casefold() in (singular, plural):
             inflected = singular if 0 < value <= 1 else plural
             return inflected.capitalize() if unit[0].isupper() else inflected

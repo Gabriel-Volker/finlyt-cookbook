@@ -191,15 +191,16 @@ function renderReview() {
   const fields = flaggedFields();
   const linkedFindings = new Set(fields.flatMap(({field}) => field.review_item_ids || []));
   const documentFindings = (report.comparison?.review_items || []).filter((item, index) => !linkedFindings.has(index + 1));
+  const documentIssues = (report.extraction_issues || []).some(({field}) => ["/recipe", "/ingredients", "/steps"].includes(field));
   $("#review-title").textContent = clean(value(recipe.title)) || "Untitled recipe";
   $("#review-subtitle").textContent = `${state.filename} · ${countLabel(state.pages, "page")}`;
   const pendingFields = state.review ? state.review.status === "needs_review" : fields.length > 0;
-  const reviewNeeded = pendingFields || documentFindings.length > 0 || (!state.review && report.status === "needs_review");
+  const reviewNeeded = pendingFields || documentIssues || documentFindings.length > 0 || (!state.review && report.status === "needs_review");
   const status = $("#reading-status");
   status.classList.toggle("warning", reviewNeeded);
   status.classList.toggle("info", !reviewNeeded);
-  const label = pendingFields ? "Needs review" : documentFindings.length ? "Document findings"
-    : reviewNeeded ? "Needs review" : state.review?.decisions.length ? "Fields reviewed" : "Readings agree";
+  const label = pendingFields || documentIssues ? "Needs review" : documentFindings.length ? "Document findings"
+    : reviewNeeded ? "Needs review" : state.review?.decisions.length ? "Review updated" : "Readings agree";
   status.innerHTML = `${reviewNeeded ? icon("warning") : icon("check", 12)} ${label}`;
   const readings = Object.keys(report.transcriptions || {});
   $("#reading-count").textContent = countLabel(readings.length, "reading");
@@ -271,15 +272,19 @@ function renderComparison() {
   const intro = reviews.length || issues.length
     ? `${countLabel(reviews.length + issues.length, "original finding")}.`
     : (state.review?.status ?? state.report.status) === "needs_review" ? "Some extracted fields need review."
-      : state.review?.decisions.length ? "The flagged fields have been reviewed."
+      : state.review?.decisions.length ? "Review decisions saved."
       : `Both readings agree on the recipe.${variations.length ? ` ${countLabel(variations.length, "difference")} treated as equivalent.` : ""}`;
-  const list = [...reviews, ...issues].map((item) => `<li>
-    ${item.page ? `<button class="button text" type="button" data-source-page="${escape(item.page)}">Page ${escape(item.page)}</button>` : ""}
-    <strong>${escape(item.section || item.field || "Review")}</strong>
-    <p>${escape(item.reason)}</p>
-    ${["A", "B"].filter((source) => item[`${source.toLowerCase()}_excerpt`]).map((source) =>
-      `<blockquote><span class="evidence-meta">Reading ${source}</span><br>${escape(item[`${source.toLowerCase()}_excerpt`])}</blockquote>`).join("")}
-  </li>`).join("");
+  const list = [...reviews, ...issues].map((item) => {
+    const page = item.page ?? item.evidence?.page;
+    return `<li>
+      ${page ? `<button class="button text" type="button" data-source-page="${escape(page)}" data-source-reading="${escape(item.evidence?.source || "A")}">Page ${escape(page)}</button>` : ""}
+      <strong>${escape(item.section || item.field || "Review")}</strong>
+      <p>${escape(item.reason)}</p>
+      ${item.evidence?.quote ? `<blockquote><span class="evidence-meta">Reading ${escape(item.evidence.source)}</span><br>${escape(item.evidence.quote)}</blockquote>` : ""}
+      ${["A", "B"].filter((source) => item[`${source.toLowerCase()}_excerpt`]).map((source) =>
+        `<blockquote><span class="evidence-meta">Reading ${source}</span><br>${escape(item[`${source.toLowerCase()}_excerpt`])}</blockquote>`).join("")}
+    </li>`;
+  }).join("");
   $("#comparison").innerHTML = `<p>${escape(intro)}</p>
     ${list ? `<ul class="comparison-list">${list}</ul>` : ""}
     <div class="fact-row"><strong>Original servings</strong><span>${escape(value(recipe.servings) || (recipe.servings?.status === "needs_review" ? "Needs review" : "Not stated"))}</span></div>`;
@@ -289,58 +294,93 @@ const reviewFieldLabels = {
   title: "Title", servings: "Original servings", name: "Name", quantity: "Quantity", unit: "Unit",
   preparation: "Preparation", optional_when: "Optionality", instruction: "Instruction",
   duration: "Duration", condition: "Condition",
+  ingredient_ids: "Linked ingredients", tool_ids: "Linked utensils",
 };
+const reviewOptionalFields = new Set(["title", "servings", "quantity", "unit", "preparation", "optional_when", "duration", "condition"]);
+const reviewReferenceFields = {ingredient_ids: "ingredients", tool_ids: "tools"};
 
-function flaggedFields() {
+function reviewFields() {
   const original = state.report.recipe;
+  const recipe = currentRecipe();
   const fields = [];
-  function add(item, names, path = "", label = "") {
+  function add(item, names, group, path = "", label = "") {
     for (const name of names) {
-      const field = item[name];
-      if (field?.status === "needs_review") {
-        fields.push({path: `${path}/${name}`, field, label: [label, reviewFieldLabels[name]].filter(Boolean).join(" · ")});
-      }
+      const collection = reviewReferenceFields[name];
+      const field = collection ? {value: item[name] || [], status: "stated"} : item[name];
+      fields.push({path: `${path}/${name}`, field, name, group, collection,
+        label: [label, reviewFieldLabels[name]].filter(Boolean).join(" · ")});
     }
   }
-  add(original, ["title", "servings"]);
+  add(original, ["title", "servings"], "Recipe");
   original.ingredients.forEach((item, index) => add(item, ["name", "quantity", "unit", "preparation", "optional_when"],
-    `/ingredients/${index}`, clean(value(currentRecipe().ingredients[index].name)) || `Ingredient ${index + 1}`));
-  original.tools.forEach((item, index) => add(item, ["name"], `/tools/${index}`,
-    clean(value(currentRecipe().tools[index].name)) || `Utensil ${index + 1}`));
-  original.steps.forEach((item, index) => add(item, ["instruction", "duration", "condition"],
-    `/steps/${index}`, stepLabel(item, index)));
+    "Ingredients", `/ingredients/${index}`, clean(value(recipe.ingredients[index].name)) || `Ingredient ${index + 1}`));
+  original.tools.forEach((item, index) => add(item, ["name"], "Utensils", `/tools/${index}`,
+    clean(value(recipe.tools[index].name)) || `Utensil ${index + 1}`));
+  original.steps.forEach((item, index) => add(item, ["instruction", "duration", "condition", "ingredient_ids", "tool_ids"],
+    "Steps", `/steps/${index}`, stepLabel(item, index)));
   return fields;
 }
 
-function renderFieldReview() {
-  const fields = flaggedFields();
-  $("#field-review").hidden = fields.length === 0;
-  if (!fields.length) return;
+function flaggedFields() {
+  return reviewFields().filter(({field}) => field.status === "needs_review");
+}
 
+function renderFieldReview() {
+  const fields = reviewFields();
   const decisions = new Map((state.review?.decisions || []).map((decision) => [decision.path, decision]));
+  const pending = fields.filter(({field, path}) => field.status === "needs_review" && !decisions.has(path));
   const selected = fields.find(({path}) => path === state.reviewPath)
-    || fields.find(({path}) => !decisions.has(path)) || fields[0];
+    || pending[0] || fields[0];
   state.reviewPath = selected.path;
   const decision = decisions.get(selected.path);
   const select = $("#field-review-path");
-  select.innerHTML = fields.map(({path, label}) =>
-    `<option value="${escape(path)}">${escape(label)}${decisions.has(path) ? " · Reviewed" : ""}</option>`).join("");
+  const groups = new Map([["Needs review", pending]]);
+  const pendingPaths = new Set(pending.map(({path}) => path));
+  for (const field of fields) {
+    if (pendingPaths.has(field.path)) continue;
+    if (!groups.has(field.group)) groups.set(field.group, []);
+    groups.get(field.group).push(field);
+  }
+  select.innerHTML = [...groups].filter(([, entries]) => entries.length).map(([label, entries]) =>
+    `<optgroup label="${escape(label)}">${entries.map(({path, label}) =>
+      `<option value="${escape(path)}">${escape(label)}${decisions.has(path) ? " · Reviewed" : ""}</option>`).join("")}</optgroup>`).join("");
   select.value = selected.path;
-  $("#field-review-count").textContent = `${decisions.size} of ${fields.length} reviewed`;
+  $("#field-review-count").textContent = pending.length ? `${pending.length} flagged` : "";
+  $("#field-review-count").hidden = !pending.length;
   $("#field-review-reopen").hidden = !decision;
-  $("#field-review-value").value = decision?.value ?? value(selected.field);
+  $("#field-review-reopen").textContent = selected.field.status === "needs_review" ? "Reopen" : "Undo review";
+  const reviewedValue = decision ? decision.value : selected.field.value;
+  const isReference = Boolean(selected.collection);
+  const sourceValue = Array.isArray(reviewedValue) ? reviewedValue : [];
+  $("#field-review-text").hidden = isReference;
+  $("#field-review-value").disabled = isReference;
+  $("#field-review-links").hidden = !isReference;
+  const linked = $("#field-review-references");
+  linked.disabled = !isReference;
+  linked.innerHTML = isReference ? currentRecipe()[selected.collection].map((entry, index) => {
+    const name = clean(value(entry.name)) || `${selected.collection === "tools" ? "Utensil" : "Ingredient"} ${index + 1}`;
+    return `<option value="${escape(entry.id)}"${sourceValue.includes(entry.id) ? " selected" : ""}>${escape(name)}</option>`;
+  }).join("") : "";
+  $("#field-review-value").value = isReference ? "" : reviewedValue ?? "";
+  $("#field-review-clear").hidden = !reviewOptionalFields.has(selected.name) || (reviewedValue === null && !pendingPaths.has(selected.path));
   $("#field-review-hint").textContent = selected.path === "/servings"
     ? "Enter the original serving count as a positive whole number."
     : "Confirm a reading after checking the source, or save a correction.";
 
-  const evidence = selected.field.evidence;
+  const stepIndex = isReference ? Number(selected.path.split("/")[2]) : null;
+  const evidence = isReference ? state.report.recipe.steps[stepIndex].instruction.evidence : selected.field.evidence;
+  const describe = (content) => {
+    if (!isReference) return content ?? "Not stated";
+    const names = new Map(currentRecipe()[selected.collection].map((entry) => [entry.id, clean(value(entry.name)) || entry.id]));
+    return (Array.isArray(content) ? content : []).map((id) => names.get(id) || id).join(", ") || "None";
+  };
   const related = (selected.field.review_item_ids || [])
     .map((id) => state.report.comparison?.review_items[id - 1]).filter(Boolean);
   const issue = state.report.extraction_issues?.find(({field}) => field === selected.path);
-  const page = evidence?.page || related.find((item) => item.page)?.page || 1;
+  const page = evidence?.page || issue?.evidence?.page || related.find((item) => item.page)?.page || 1;
   $("#field-review-source").innerHTML = `
-    ${decision ? `<p><strong>${decision.action === "confirm" ? "Confirmed" : "Corrected"}</strong> · ${escape(decision.value)}</p>` : ""}
-    ${value(selected.field) ? `<p>Original extracted value · ${escape(value(selected.field))}</p>` : ""}
+    ${decision ? `<p><strong>${decision.action === "confirm" ? "Confirmed" : "Corrected"}</strong> · ${escape(describe(decision.value))}</p>` : ""}
+    <p>Original extracted value · ${escape(describe(selected.field.value))}</p>
     ${evidence ? `<div class="evidence-box">
       <div class="evidence-meta">Original evidence${evidence.page ? ` · Page ${escape(evidence.page)}` : ""}${evidence.source ? ` · Reading ${escape(evidence.source)}` : ""}</div>
       <blockquote class="evidence-quote">${escape(evidence.quote)}</blockquote>
@@ -350,13 +390,15 @@ function renderFieldReview() {
         `<div class="evidence-meta">Reading ${source}</div><blockquote class="evidence-quote">${escape(item[`${source.toLowerCase()}_excerpt`])}</blockquote>`).join("")}
       </div>`).join("")}
     ${issue ? `<p>${escape(issue.reason)}</p>` : ""}
-    <button type="button" class="button text" data-source-page="${escape(page)}" data-source-reading="${escape(evidence?.source || "A")}">Open source page</button>`;
+    <button type="button" class="button text" data-source-page="${escape(page)}" data-source-reading="${escape(evidence?.source || issue?.evidence?.source || "A")}">Open source page</button>`;
 }
 
 function setReviewBusy(busy) {
   state.reviewing = busy;
+  const isReference = !$("#field-review-links").hidden;
   for (const control of all("#field-review-form select, #field-review-form textarea, #field-review-form button, button[data-screen='adapt']")) {
-    control.disabled = busy;
+    control.disabled = busy || (control.id === "field-review-value" && isReference)
+      || (control.id === "field-review-references" && !isReference);
   }
 }
 
@@ -390,12 +432,15 @@ function renderVeganOption() {
   message("#vegan-plan-status", hint);
 }
 
-async function saveFieldReview(action) {
+async function saveFieldReview(action, clear = false) {
   if (state.reviewing) return;
   const report = state.report;
   const path = state.reviewPath;
-  const verified = $("#field-review-value").value.trim();
-  if (action && !verified) {
+  const referenceList = $("#field-review-references");
+  const isReference = !$("#field-review-links").hidden;
+  const verified = isReference ? [...referenceList.selectedOptions].map((option) => option.value)
+    : clear ? null : $("#field-review-value").value.trim();
+  if (action && !clear && verified === "") {
     message("#field-review-status", "Enter the verified value.", true);
     return;
   }
@@ -428,7 +473,7 @@ async function saveFieldReview(action) {
     renderReview();
     renderFieldReview();
     message("#field-review-status", action === "confirm" ? "Value confirmed."
-      : action === "correct" ? "Correction saved." : "Field reopened for review.");
+      : action === "correct" ? "Correction saved." : "Review decision undone.");
   } catch (error) {
     if (report === state.report) message("#field-review-status", error.message, true);
   } finally {
@@ -721,6 +766,7 @@ $("#field-review-form").addEventListener("submit", (event) => {
   event.preventDefault();
   saveFieldReview(event.submitter?.value || "confirm");
 });
+$("#field-review-clear").addEventListener("click", () => saveFieldReview("correct", true));
 $("#field-review-reopen").addEventListener("click", () => saveFieldReview(null));
 $("#previous-page").addEventListener("click", () => openPage(state.page - 1));
 $("#next-page").addEventListener("click", () => openPage(state.page + 1));

@@ -6,7 +6,7 @@ from fractions import Fraction
 from hashlib import sha256
 
 from .extraction import UNREADABLE
-from .quantities import quantity_matches, scale_quantity, unit_aliases
+from .quantities import QUANTITY_PATTERN, quantity_matches, scale_quantity, unit_aliases
 from .review import REVIEW_FIELDS
 
 
@@ -25,6 +25,11 @@ _FIXED_AMOUNT = re.compile(
 )
 _PER_BATCH_AMOUNT = re.compile(rf"\b{_PER_BATCH}\b", re.IGNORECASE)
 _SENTENCE_END = re.compile(r"(?<=[.!?;])\s+(?=[A-ZÀ-Ü])|\n\s*\n")
+_CLAUSE_END = re.compile(
+    r";|,(?!\d|\s*(?:regardless|independentemente|unabhängig)\b)|"
+    r"\b(?:and then|then|depois|em seguida|anschließend|danach)\b",
+    re.IGNORECASE,
+)
 _AMBIGUOUS_BATCH = re.compile(
     r"(?:\d\s*(?:[-–—/,]|\s+(?:to|bis|a|até|and|or|und|oder|ou))|"
     r"\b(?:at least|at most|up to|around|about|approximately|até|cerca de|pelo menos|"
@@ -105,17 +110,17 @@ def _supports_ingredient_mode(fields: dict, references: list[dict], index: int, 
     name, quantity, unit = (ingredient[key]["value"] for key in ("name", "quantity", "unit"))
     if not name:
         return False
-    measure = _phrase(quantity)
+    measure = rf"(?P<amount>{QUANTITY_PATTERN})"
     if unit:
-        units = "|".join(_phrase(alias) for alias in unit_aliases(unit))
-        measure += rf"\s*(?:{units})"
+        units = "|".join(_phrase(alias) for alias in sorted(unit_aliases(unit), key=len, reverse=True))
+        measure += rf"\s*(?P<unit>{units})"
     prep = ingredient["preparation"]["value"]
     modifier = rf"(?:{_phrase(prep)}\s+)?" if prep else ""
     name = rf"{modifier}{_phrase(name)}(?!\w)"
-    named_measure = re.compile(
-        rf"(?<![\w.,/⁄∕–—−-])(?<![0-9]\s){measure}\s+(?:(?:of|de)\s+)?{name}|"
-        rf"(?<!\w){name}\s*\(\s*{measure}\s*\)",
-        re.IGNORECASE,
+    named_measure = (
+        re.compile(rf"(?<![\w.,/⁄∕–—−-])(?<![0-9]\s){measure}\s+"
+                   rf"(?:(?:of(?:\s+the)?|de|da|das|do|dos)\s+)?{name}", re.IGNORECASE),
+        re.compile(rf"(?<!\w){name}\s*\(\s*{measure}\s*\)", re.IGNORECASE),
     )
     for item in references:
         path, quote = item["path"], item["quote"]
@@ -124,9 +129,39 @@ def _supports_ingredient_mode(fields: dict, references: list[dict], index: int, 
             if quote not in sentence or _NEGATION.search(sentence) or not wording.search(quote):
                 continue
             own_value = path.startswith(prefix) and quote in (fields[path]["value"] or "")
-            if own_value or (path.startswith((prefix, "/steps/")) and named_measure.search(quote)):
+            if own_value or (path.startswith((prefix, "/steps/")) and any(
+                quantity_matches(quantity, unit, match["amount"], match.groupdict().get("unit"))
+                for pattern in named_measure for match in pattern.finditer(quote)
+            )):
                 return True
     return False
+
+
+def proportional_source_conflict(recipe: dict, index: int, ingredient: dict) -> str | None:
+    """Do not multiply an amount with an explicit fixed or per-batch instruction."""
+    fields = _evidence_fields(recipe, index, ingredient)
+    prefix = f"/ingredients/{index}/"
+    for wording, reason in (
+        (_FIXED_AMOUNT, "The recipe specifies a fixed amount. Check the proportional scaling rule."),
+        (_PER_BATCH_AMOUNT, "The recipe specifies an amount per batch. Check the proportional scaling rule."),
+    ):
+        references = []
+        for path, field in fields.items():
+            if not path.startswith((prefix, "/steps/")) or field["status"] not in {"stated", "reviewed", "derived"}:
+                continue
+            value = field["value"] or ""
+            sources = [value]
+            if field["status"] == "stated" and field.get("evidence"):
+                sources.append(field["evidence"].get("quote") or "")
+            for source in sources:
+                for sentence in _SENTENCE_END.split(source):
+                    for clause in _CLAUSE_END.split(sentence):
+                        quote = clause.strip()
+                        if wording.search(quote) and not UNREADABLE.search(quote):
+                            references.append({"path": path, "quote": quote})
+        if _supports_ingredient_mode(fields, references, index, ingredient, wording):
+            return reason
+    return None
 
 
 def _normalize_rule(recipe: dict, index: int, ingredient: dict, rule: dict) -> dict:
