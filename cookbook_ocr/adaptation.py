@@ -70,7 +70,7 @@ ALTERNATE_AMOUNT = re.compile(r"\d\s+(?:or|oder|ou|to|bis|a|até)\s+$", re.IGNOR
 REMAINING_AMOUNT = r"(?:(?:the\s+)?remaining\s+|(?:die\s+|den\s+|das\s+)?restlich\w*\s+)"
 MEASURE_CONNECTOR = r"(?:(?:of(?:\s+the)?|de|da|das|do|dos)\s+)?"
 WRITTEN_AMOUNT = (
-    r"(?:half(?:\s+(?:of\s+)?an?)?|an?|one|two|three|four|five|six|seven|eight|nine|ten|"
+    r"(?:half(?:\s+(?:of\s+)?an?)?|an|one|two|three|four|five|six|seven|eight|nine|ten|"
     r"um|uma|dois|duas|três|quatro|cinco|meio|meia|ein|eine|einen|zwei|drei|halb|halbe)"
 )
 UNRECOGNIZED_MODIFIER = (
@@ -99,7 +99,8 @@ def _ingredient_measure_patterns(ingredient: dict, *, review_only: bool = False)
     unit = ingredient["unit"]["value"]
     amount = QUANTITY_PATTERN
     if review_only:
-        amount = rf"(?:{amount}|{WRITTEN_AMOUNT})" if unit else WRITTEN_AMOUNT
+        # Bare “a” is also a Portuguese article, as in “a canela”.
+        amount = rf"(?:{amount}|a|{WRITTEN_AMOUNT})" if unit else WRITTEN_AMOUNT
     elif unit:
         amount = rf"(?:{amount}|an?)"
     measure = rf"(?P<amount>{amount})"

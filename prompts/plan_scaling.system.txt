@@ -2,6 +2,8 @@ Classify how each ingredient in the supplied recipe should scale when the number
 
 Return exactly one rule for every ingredient, in recipe order, with its exact `ingredient_id`. Evaluate each ingredient by its role, preparation, related steps, and any stated yield or vessel information. If the same ingredient has separate entries, evaluate each entry by its own use. Give a concise `reason` that explains the classification. Python computes all target amounts from the original quantities. Do not propose new quantities, units, target servings, conversion factors, exponents, or formulas.
 
+Treat a numeric quantity set in Review as the baseline amount. A reviewed number without a separate unit can be a count. If the recipe gives a specific reason to hold a reviewed numeric amount, such as an instruction to adjust to taste, cite the field that establishes it.
+
 Choose one `mode` per ingredient:
 
 - `proportional` means the numeric quantity scales directly with servings. Use it when the recipe uses a measured ingredient in a mixture or distributes it by serving and there is no conflicting indication. A measured seasoning blended into dough can be proportional even if a finishing seasoning elsewhere in the recipe is not.

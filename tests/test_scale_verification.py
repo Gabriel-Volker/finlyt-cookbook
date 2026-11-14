@@ -78,6 +78,43 @@ class ScalingVerificationTests(unittest.TestCase):
         revised["servings"]["value"] = "3"
         self.assertFalse(scaling_plan_matches(revised, plan))
 
+    def test_scales_added_and_corrected_quantities_with_unitless_counts(self):
+        text = "Coloque numa panela a água, o açúcar, o cravo e a canela."
+        source = recipe("1", [
+            ingredient("clove", "cravo"), ingredient("cinnamon", "canela", "2"),
+            ingredient("water", "água", "2", "xícaras (chá)"),
+        ], [step(text, "clove", "cinnamon", "water")])
+        reviewed = review_recipe(source, [
+            {"path": "/ingredients/0/quantity", "action": "correct", "value": "1"},
+            {"path": "/ingredients/1/quantity", "action": "correct", "value": "1"},
+        ])["recipe"]
+        luna = [scaling_rule("clove", "review"), scaling_rule("cinnamon", "review"), scaling_rule("water")]
+        gemini = [scaling_rule("clove", "review", evidence=(("/ingredients/0/quantity", "1"),)),
+                  scaling_rule("cinnamon"), scaling_rule("water")]
+
+        result = adapt_recipe(reviewed, servings=5, scaling_plan=verified_plan(reviewed, luna, gemini))
+
+        self.assertTrue(all(rule["mode"] == "proportional" for rule in result["scale"]["ingredients"]))
+        self.assertEqual([row["quantity"]["value"] for row in result["recipe"]["ingredients"]], ["5", "5", "10"])
+        self.assertEqual(result["recipe"]["steps"][0]["instruction"]["value"], text)
+        self.assertEqual([row["quantity"]["value"] for row in reviewed["ingredients"]], ["1", "1", "2"])
+
+    def test_preserves_evidenced_review_and_fixed_rules_for_a_reviewed_amount(self):
+        for mode, text in (
+            ("review", "Add salt to taste."),
+            ("fixed", "Use 3 g salt once for the whole recipe."),
+        ):
+            with self.subTest(mode=mode):
+                source = recipe("2", [ingredient("salt", "salt", None, "g")], [step(text, "salt")])
+                reviewed = review_recipe(source, [
+                    {"path": "/ingredients/0/quantity", "action": "correct", "value": "3"},
+                ])["recipe"]
+                rules = [scaling_rule("salt", mode, evidence=(("/steps/0/instruction", text),))]
+                result = adapt_recipe(reviewed, servings=4, scaling_plan=verified_plan(reviewed, rules, rules))
+
+                self.assertEqual(result["recipe"]["ingredients"][0]["quantity"]["value"], "3")
+                self.assertEqual(result["scale"]["ingredients"][0]["mode"], mode)
+
     def test_offline_rebase_keeps_unaffected_verified_rules(self):
         source = recipe("2", [ingredient("water", "water", "½", "l"), ingredient("salt", "salt", "2", "g")],
                         [step("Add ½ l water.", "water"), step("Stir in 2 g salt.", "salt")])

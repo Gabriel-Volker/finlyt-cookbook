@@ -155,7 +155,8 @@ def _supports_ingredient_mode(fields: dict, references: list[dict], index: int, 
 
 _FIXED_AMOUNT_WARNING = "The recipe specifies a fixed amount. Check the proportional scaling rule."
 _PER_BATCH_AMOUNT_WARNING = "The recipe specifies an amount per batch. Check the proportional scaling rule."
-SCALING_RULE_DISPLAY_TEXTS = (_FIXED_AMOUNT_WARNING, _PER_BATCH_AMOUNT_WARNING)
+_REVIEWED_AMOUNT_REASON = "Scale the numeric amount set in Review with the servings."
+SCALING_RULE_DISPLAY_TEXTS = (_FIXED_AMOUNT_WARNING, _PER_BATCH_AMOUNT_WARNING, _REVIEWED_AMOUNT_REASON)
 
 
 def proportional_source_conflict(recipe: dict, index: int, ingredient: dict) -> str | None:
@@ -214,13 +215,19 @@ def _normalize_rule(recipe: dict, index: int, ingredient: dict, rule: dict) -> d
             references.append(reference)
 
     quantity, unit = ingredient["quantity"]["value"], ingredient["unit"]["value"]
+    amount_paths = {f"/ingredients/{index}/quantity", f"/ingredients/{index}/unit"}
     if any(ingredient[key]["status"] == "needs_review" for key in ("name", "quantity", "unit")):
         mode, reason = "review", "Resolve the source ingredient or measure before scaling."
     elif any(path.startswith("/steps/") and path.endswith(("/instruction", "/condition"))
              and field["status"] == "needs_review" for path, field in fields.items()):
         mode, reason = "review", "Resolve the linked preparation instruction or condition before scaling."
-    elif mode != "review" and (not quantity or scale_quantity(quantity, unit, Fraction(1)) is None):
-        mode, reason = "review", "The source has no supported numeric amount to scale."
+    elif not quantity or scale_quantity(quantity, unit, Fraction(1)) is None:
+        if mode != "review":
+            mode, reason = "review", "The source has no supported numeric amount to scale."
+    elif (mode == "review" and ingredient["quantity"]["status"] == "reviewed"
+          and all(item["path"] in amount_paths for item in references)):
+        # The numeric baseline and its unit alone give no evidence of a special use.
+        mode, reason = "proportional", _REVIEWED_AMOUNT_REASON
     elif mode == "fixed" and not _supports_ingredient_mode(fields, references, index, ingredient, _FIXED_AMOUNT):
         mode, reason = "review", "Check the amount. The recipe does not support a fixed quantity."
     elif mode == "per_batch" and not any(
