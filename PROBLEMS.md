@@ -1,6 +1,6 @@
 # Known problems and regression cases
 
-**Fixed** means a specific reproduction now passes. **Mitigated** means the workflow reduces the impact and the failure can still occur. **Open** means the behavior can still occur or the original cause is unknown. The live observations come from individual runs. The audit cases used controlled model outputs. See [AI_LOG.md](AI_LOG.md) for run details and [examples/](examples/) for saved recipe reports.
+**Fixed** means a specific reproduction now passes. **Mitigated** means the workflow reduces the impact and the failure can still occur. **Open** means the behavior can still occur or the original cause is unknown. Live observations come from individual runs. The current OCR readers are Gemini 3.1 Flash-Lite and GPT-6.1 Terra. Rows that mention Luna transcribing a scan describe earlier experiments. See [AI_LOG.md](AI_LOG.md) for run details and [examples/](examples/) for saved recipe reports.
 
 ## OCR and document import
 

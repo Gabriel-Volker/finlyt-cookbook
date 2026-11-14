@@ -12,7 +12,7 @@ docker build -t finlyt-cookbook .
 docker run --rm --env-file .env -p 127.0.0.1:8000:8000 --entrypoint python finlyt-cookbook -m cookbook_ocr.web --host 0.0.0.0
 ```
 
-Select **Try example**, open the source evidence in **Review**, then set six servings and enable **Make vegan** in **Adapt**. Export the result as JSON. For a live run, place the supplied `Recipe.pdf` in the repository root or select it from its current location. The PDF and `.env` are excluded from Git and the Docker build. [Open the local workspace](http://127.0.0.1:8000/)
+Select **Try example**, open the source evidence in **Review**, then keep the target of six servings and enable **Make vegan** in **Adapt**. Export the result as JSON. For a live run, select the supplied `Recipe.pdf` from its current location. The PDF and `.env` are excluded from Git and the Docker build. [Open the local workspace](http://127.0.0.1:8000/)
 
 ## Activity diagram
 
@@ -23,11 +23,13 @@ flowchart TD
     entry -->|"Upload"| upload["Validate the uploaded file"]
     upload --> route{"Read text directly?"}
     route -->|"TXT or eligible PDF"| native["Read native text with page markers"]
-    route -->|"Scan or image"| ocr["Run Gemini and Terra OCR in parallel"]
-    ocr --> blur{"Do both readers flag every page and the blur check concur?"}
+    route -->|"Scan or image"| geminiOCR["Gemini 3.1 Flash-Lite reads the original file"]
+    route -->|"Scan or image"| terraOCR["GPT-6.1 Terra reads the image or rendered PDF pages, with a direct PDF fallback"]
+    geminiOCR --> blur{"Do both readers flag every page and does the local blur check confirm it?"}
+    terraOCR --> blur
     blur -->|"Yes"| rescan(["Ask for a sharper copy"])
-    blur -->|"Otherwise"| compare["Check unreadable spans and compare differing readings with Luna"]
-    native --> extract["Extract with Luna and validate source evidence"]
+    blur -->|"Otherwise"| compare["Check unreadable spans and use GPT-6 Luna to compare differing transcriptions"]
+    native --> extract["Extract fields with GPT-6 Luna and validate source evidence in Python"]
     compare --> extract
     extract --> veganPlan["Propose vegan substitutions and method changes with Luna"]
     veganPlan --> measures["Validate edits and any equivalent measures against the source"]
@@ -39,7 +41,7 @@ flowchart TD
     approved -->|"No"| original
     vegan --> scalePlan["Classify scaling for each available variant with Luna and Gemini"]
     original --> scalePlan
-    scalePlan --> translations["Prepare both display languages for the available variants"]
+    scalePlan --> translations["Prepare both display languages with Luna for the available variants"]
     translations --> review["Review the recipe, source evidence and warnings"]
     saved --> review
 
@@ -47,7 +49,7 @@ flowchart TD
     correction --> review
     review -->|"Open Adapt"| current["Reuse current plans or refresh stale plans and translations"]
     current --> options["Choose servings, output language and any available vegan option"]
-    options --> apply["Apply verified vegan changes, then scale in Python when possible"]
+    options --> apply["Apply verified vegan changes, then scale from the current recipe amounts in Python"]
     apply --> display["Display adjusted recipe and warnings using prepared translations"]
     display -->|"Change settings"| options
     display -->|"Review a warning"| review
@@ -56,14 +58,18 @@ flowchart TD
 
 ## Design decisions
 
+Gemini 3.1 Flash-Lite and GPT-6.1 Terra transcribe scanned documents and images in parallel. GPT-6 Luna works from text to compare differing transcriptions, extract recipe fields, propose vegan changes, classify scaling, and prepare translations. Gemini also verifies vegan proposals and independently classifies scaling.
+
 | Stage | What I chose and why |
 | --- | --- |
-| **Ingest** | The Sauerbraten has two photographed pages and no text layer. Its method continues across the page boundary, and the drawings contain readable labels. I preserve page order and keep the header and labels in the readings for review. Docling missed complete ingredient–quantity pairs in my test, so I use Gemini 3.1 Flash-Lite on the original scan and GPT-6.1 Terra on rendered pages, with a PDF fallback above the raster budget. UTF-8 text and eligible digital PDFs go directly to extraction. |
-| **Extract** | I chose separate readings and extraction over one image-to-JSON prompt so the reviewer can see where an error entered the result. Luna once read `Bratenstand` for `Bratenfond`. That disagreement left the sauce instruction and its ingredient pending review. Python checks verbatim evidence and page references, ties quantities and units to the ingredient occurrence, and merges exact duplicate detections. Optional ingredients keep their qualifying text. Inferred tools cite a linked action and are labeled. The roast weight and original yield are absent, so both stay unknown. |
+| **Ingest** | The Sauerbraten has two photographed pages. Its method continues across the page boundary, and the drawings contain readable labels. I preserve page order and keep the header and labels for review. Docling missed complete ingredient–quantity pairs in my test. For scanned PDFs, Gemini receives the original file and Terra receives rendered PNG pages within the local raster budget or the original PDF above it. Both readers receive uploaded PNG or JPEG files directly. UTF-8 text and eligible text-layer PDFs go directly to text extraction. |
+| **Extract** | Separate readings show where an error entered the result. In an early OCR experiment, Luna read `Bratenstand` for `Bratenfond`. That disagreement left the sauce instruction and its ingredient pending review. Python checks verbatim evidence and page references, ties quantities and units to the ingredient occurrence, and merges exact duplicate detections. Optional ingredients keep their qualifying text. Inferred tools cite a linked action and are labeled. The roast weight and original yield are absent, so both stay unknown. |
 | **Manipulate** | Luna proposes substitutes that serve the original ingredient's role and revises the affected steps. When the source has a confirmed numeric amount, Luna can propose a different quantity or unit and give the basis for the equivalence. Python checks linked amounts, and Gemini verifies the final ingredient list and method and approves the exact substitute and measure. Adapt shows the reason when it cannot offer a vegan version. Python applies verified changes before scaling and records them separately from the source evidence. |
 | **Output** | Review and Adapt show source quotes, corrections, uncertainty, and what changed. I translate for display after anchoring the source fields and reuse those translations with the calculated quantities. Rewriting the recipe on every serving change would make those numbers harder to verify. Export preserves the source, review decisions, plans, and selected result so the adaptation can be replayed. |
 
 With the example's user-supplied baseline of four, the six-serving version scales half a litre each of vinegar and water to **750 mL each** and four onions to **six**. The preparation uses the same values. The roast quantity stays flagged for review.
+
+A numeric quantity entered in **Review** becomes the baseline for scaling, including counts without a separate unit. In the Cocada de colher regression test, cloves and cinnamon entered as one each became five each at 5×. Supported fixed and per-batch rules still apply. Conflicts with a measured step or other evidence that supports a review rule can hold the amount for review.
 
 In a live Pastèizinhos replay, Gemini approved **six tablespoons of aquafaba for two eggs**, and the app applied the conversion while preserving the original recipe. The source gives no amounts for the frying oil or coating sugar, so both remain flagged. The check covered the generated plan and its application. A kitchen test is still pending. [Recorded run](AI_LOG.md#2026-11-13-20422049--verify-and-fix-the-vegan-equivalence-decision)
 
@@ -77,7 +83,7 @@ Within the ten-hour challenge, I prioritized accurate extraction and correct rec
 
 | Measured on the two-page Sauerbraten | Time | Estimated API cost |
 | --- | ---: | ---: |
-| Earlier Gemini + Luna OCR, comparison and extraction | 67.54 s | $0.00467 with observed cache reads |
+| Earlier Luna OCR experiment with Gemini, including comparison and extraction | 67.54 s | $0.00467 with observed cache reads |
 | Earlier Terra direct-PDF OCR only | 18.09 s | $0.03789 |
 | Previous end-to-end import, vegan planning held for review | 3 min 28 s | $0.02309 at observed cache rates, or $0.03107 with cache reads priced as writes |
 | End-to-end import measured on Nov 13, including a verified vegan plan and both output languages | 3 min | $0.03232 at observed cache rates, or $0.04036 with cache reads priced as writes |
